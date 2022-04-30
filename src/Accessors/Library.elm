@@ -270,6 +270,12 @@ def d =
     get ((key "baz" << try << L.bar) |> or 0) dict
     --> 0
 
+    over ((key "foo" << try << L.bar) |> or 0) ((+) 1) dict
+    --> Dict.fromList [("foo", { bar = 3 })]
+
+    over ((key "baz" << try << L.bar) |> or 0) ((+) 1) dict
+    --> Dict.fromList [("foo", { bar = 2 })]
+
 -}
 or :
     attribute
@@ -278,7 +284,7 @@ or :
 or d l =
     makeOneToOne_ "||"
         (get l >> Maybe.withDefault d)
-        (over l)
+        (\fn s -> set l (get l s |> Maybe.withDefault d |> fn) s)
 
 
 {-| values: This accessor lets you traverse a Dict including the index of each element

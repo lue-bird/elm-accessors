@@ -22,12 +22,12 @@ dict =
 
 spec0 : Test.Test
 spec0 =
-    Test.test "#or: \n\n    get ((key \"baz\" << try << L.bar) |> or 0) dict\n    --> 0" <|
+    Test.test "#or: \n\n    over ((key \"baz\" << try << L.bar) |> or 0) ((+) 1) dict\n    --> Dict.fromList [(\"foo\", { bar = 2 })]" <|
         \() ->
             Expect.equal
                 (
-                get ((key "baz" << try << L.bar) |> or 0) dict
+                over ((key "baz" << try << L.bar) |> or 0) ((+) 1) dict
                 )
                 (
-                0
+                Dict.fromList [("foo", { bar = 2 })]
                 )
