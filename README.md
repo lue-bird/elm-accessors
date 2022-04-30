@@ -122,5 +122,11 @@ or
 
 `elm-test-rs`
 
+
+to generate examples from doc tests
+
+`npx elm-verify-examples`
+config is in tests/elm-verify-examples.json
+
 If you write new accessor combinators that rely on common library datas, I'll be
 happy to review and merge. Please include tests for your combinators.

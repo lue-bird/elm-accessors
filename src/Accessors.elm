@@ -150,7 +150,18 @@ void super =
     void super
 
 
-{-| This function gives the name of the function as a string...
+{-| This function gives the name of the composition of accessors as a string.
+
+This is useful when you want to use type safe composition of functions as an identifier
+similar to the way you'd use a Sum type's constructors to key a dictionary for a form.
+
+    import Accessors exposing (..)
+    import Accessors.Library exposing (..)
+    import Lens as L
+
+    name (L.email << try << L.info << dictEntry "subject")
+    --> ".email?.info{}"
+
 -}
 name : Accessor a b c d e -> String
 name accessor =

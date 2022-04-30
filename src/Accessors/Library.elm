@@ -3,27 +3,36 @@ module Accessors.Library exposing (onEach, try, dictEntry)
 {-| This library contains common accessors.
 
 @docs onEach, try, dictEntry
+
 -}
 
-import Accessors exposing (Relation, makeOneToOne, makeOneToN)
+import Accessors exposing (..)
 import Dict exposing (Dict)
+
 
 {-| This accessor combinator lets you access values inside lists.
 
-    listRecord = { foo = [ {bar = 2}
-                         , {bar = 3}
-                         , {bar = 4}
+    import Accessors exposing (..)
+    import Accessors.Library exposing (..)
+    import Lens as L
+
+    listRecord : { foo : List { bar : Int } }
+    listRecord = { foo = [ { bar = 2 }
+                         , { bar = 3 }
+                         , { bar = 4 }
                          ]
                  }
 
-    get (foo << onEach << bar) listRecord
-    -- returns [2, 3, 4] 
+    get (L.foo << onEach << L.bar) listRecord
+    --> [2, 3, 4]
 
-    over (foo << onEach << bar) ((+) 1) listRecord
-    -- returns {foo = [{bar = 3}, {bar = 4}, {bar = 5}]}
+    over (L.foo << onEach << L.bar) ((+) 1) listRecord
+    --> { foo = [{ bar = 3 }, { bar = 4 }, { bar = 5 }] }
+
 -}
-onEach : Relation super sub wrap -> Relation (List super) sub (List wrap)
-onEach = makeOneToN List.map List.map
+onEach : Relation attribute built transformed -> Relation (List attribute) built (List transformed)
+onEach =
+    makeOneToN_ ":[]" List.map List.map
 
 
 {-| This accessor combinator lets you access values inside Maybe.
@@ -43,31 +52,41 @@ onEach = makeOneToN List.map List.map
 
     over (qux << try << bar) ((+) 1) maybeRecord
     -- returns {foo = Just {bar = 2}, qux = Nothing}
+
 -}
-try : Relation super sub wrap -> Relation (Maybe super) sub (Maybe wrap)
-try = makeOneToN Maybe.map Maybe.map
+try : Relation attribute built transformed -> Relation (Maybe attribute) built (Maybe transformed)
+try =
+    makeOneToN_ "?" Maybe.map Maybe.map
+
 
 {-| This accessor combinator lets you access Dict members.
 
 In terms of accessors, think of Dicts as records where each field is a Maybe.
 
+    import Dict exposing (Dict)
+    import Accessors exposing (..)
+    import Accessors.Library exposing (..)
+    import Lens as L
+
+    dict : Dict String {bar : Int}
     dict = Dict.fromList [("foo", {bar = 2})]
 
     get (dictEntry "foo") dict
-    -- returns Just {bar = 2}
+    --> Just {bar = 2}
 
-    get (dictEntry "baz" dict)
-    -- returns Nothing
+    get (dictEntry "baz") dict
+    --> Nothing
 
-    get (dictEntry "foo" << try << bar) dict
-    -- returns Just 2
+    get (dictEntry "foo" << try << L.bar) dict
+    --> Just 2
 
     set (dictEntry "foo") Nothing dict
-    -- returns Dict.remove "foo" dict
+    --> Dict.remove "foo" dict
 
-    set (dictEntry "baz" << try << bar) 3 dict
-    -- returns dict
+    set (dictEntry "baz" << try << L.bar) 3 dict
+    --> dict
+
 -}
-dictEntry : comparable -> Relation (Maybe v) reachable wrap -> Relation (Dict comparable v) reachable wrap
-dictEntry key =
-    makeOneToOne (Dict.get key) (Dict.update key)
+dictEntry : comparable -> Relation (Maybe attribute) reachable wrap -> Relation (Dict comparable attribute) reachable wrap
+dictEntry k =
+    makeOneToOne_ "{}" (Dict.get k) (Dict.update k)
