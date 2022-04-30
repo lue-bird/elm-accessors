@@ -75,24 +75,34 @@ suite =
             , describe "dict"
                 [ test "get present" <|
                     \_ ->
-                        get (dictEntry "foo") dict
+                        get (key "foo") dict
                             |> Expect.equal (Just 7)
                 , test "get absent" <|
                     \_ ->
-                        get (dictEntry "bar") dict
+                        get (key "bar") dict
                             |> Expect.equal Nothing
                 , test "nested get present" <|
                     \_ ->
-                        get (L.bar << dictEntry "foo") recordWithDict
+                        get (L.bar << key "foo") recordWithDict
                             |> Expect.equal (Just 7)
                 , test "nested get absent" <|
                     \_ ->
-                        get (L.bar << dictEntry "bar") recordWithDict
+                        get (L.bar << key "bar") recordWithDict
                             |> Expect.equal Nothing
                 , test "get with try" <|
                     \_ ->
-                        get (dictEntry "foo" << try << L.bar) dictWithRecord
+                        get (key "foo" << try << L.bar) dictWithRecord
                             |> Expect.equal (Just "Yop")
+                , test "get with def" <|
+                    \_ ->
+                        dictWithRecord
+                            |> get (key "not_it" << def { bar = "Stuff" } << L.bar)
+                            |> Expect.equal "Stuff"
+                , test "get with or" <|
+                    \_ ->
+                        dictWithRecord
+                            |> get ((key "not_it" << try << L.bar) |> or "Stuff")
+                            |> Expect.equal "Stuff"
                 ]
             ]
         , describe "set"
@@ -147,49 +157,49 @@ suite =
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                set (dictEntry "foo") (Just 9) dict
+                                set (key "foo") (Just 9) dict
                         in
-                        get (dictEntry "foo") updatedDict |> Expect.equal (Just 9)
+                        get (key "foo") updatedDict |> Expect.equal (Just 9)
                 , test "set currently absent to present" <|
                     \_ ->
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                set (dictEntry "bar") (Just 9) dict
+                                set (key "bar") (Just 9) dict
                         in
-                        get (dictEntry "bar") updatedDict |> Expect.equal (Just 9)
+                        get (key "bar") updatedDict |> Expect.equal (Just 9)
                 , test "set currently present to absent" <|
                     \_ ->
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                set (dictEntry "foo") Nothing dict
+                                set (key "foo") Nothing dict
                         in
-                        get (dictEntry "foo") updatedDict |> Expect.equal Nothing
+                        get (key "foo") updatedDict |> Expect.equal Nothing
                 , test "set currently absent to absent" <|
                     \_ ->
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                set (dictEntry "bar") Nothing dict
+                                set (key "bar") Nothing dict
                         in
-                        get (dictEntry "bar") updatedDict |> Expect.equal Nothing
+                        get (key "bar") updatedDict |> Expect.equal Nothing
                 , test "set with try present" <|
                     \_ ->
                         let
                             updatedDict : Dict String { bar : String }
                             updatedDict =
-                                set (dictEntry "foo" << try << L.bar) "Sup" dictWithRecord
+                                set (key "foo" << try << L.bar) "Sup" dictWithRecord
                         in
-                        get (dictEntry "foo" << try << L.bar) updatedDict |> Expect.equal (Just "Sup")
+                        get (key "foo" << try << L.bar) updatedDict |> Expect.equal (Just "Sup")
                 , test "set with try absent" <|
                     \_ ->
                         let
                             updatedDict : Dict String { bar : String }
                             updatedDict =
-                                set (dictEntry "bar" << try << L.bar) "Sup" dictWithRecord
+                                set (key "bar" << try << L.bar) "Sup" dictWithRecord
                         in
-                        get (dictEntry "bar" << try << L.bar) updatedDict |> Expect.equal Nothing
+                        get (key "bar" << try << L.bar) updatedDict |> Expect.equal Nothing
                 ]
             ]
         , describe "over"
