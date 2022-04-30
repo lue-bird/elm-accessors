@@ -1,5 +1,5 @@
 module Accessors.Library exposing
-    ( try, def, or
+    ( try, def, or, defaulted
     , values, keyed, key, dictEntry
     , onEach, onEachIx, at
     , onEvery, onEveryIx, ix
@@ -11,7 +11,7 @@ module Accessors.Library exposing
 
 ## Maybe
 
-@docs try, def, or
+@docs try, def, or, defaulted
 
 
 ## Dict
@@ -214,7 +214,8 @@ try =
     makeOneToN_ "?" Maybe.map Maybe.map
 
 
-{-| This accessor combinator lets you provide a default value for otherwise failable compositions
+{-| Structure Preserving
+This accessor combinator lets you provide a default value for otherwise failable compositions
 
     import Accessors exposing (..)
     import Accessors.Library exposing (..)
@@ -231,6 +232,12 @@ try =
     get (key "baz" << def {bar = 0}) dict
     --> {bar = 0}
 
+    over (key "foo" << def { bar = 0 } << L.bar) ((+) 1) dict
+    --> Dict.fromList [("foo", { bar = 3 })]
+
+    over (key "baz" << def { bar = 0 } << L.bar) ((+) 1) dict
+    --> Dict.fromList [("foo", { bar = 2 })]
+
     -- NOTE: The following do not compile :thinking:
     --get (key "foo" << try << L.bar << def 0) dict
     ----> 2
@@ -244,6 +251,46 @@ def d =
     makeOneToN_ "??"
         (\f -> Maybe.withDefault d >> f)
         Maybe.map
+
+
+{-| NON-structure preserving:
+This accessor combinator lets you provide a default value for otherwise failable compositions
+but will also set that default in your structure if used with set / over.
+
+    import Accessors exposing (..)
+    import Accessors.Library exposing (..)
+    import Dict exposing (Dict)
+    import Lens as L
+
+    dict : Dict String {bar : Int}
+    dict =
+        Dict.fromList [("foo", {bar = 2})]
+
+    get (key "foo" << defaulted {bar = 0}) dict
+    --> {bar = 2}
+
+    get (key "baz" << defaulted {bar = 0}) dict
+    --> {bar = 0}
+
+    over (key "foo" << defaulted { bar = 0 } << L.bar) ((+) 1) dict
+    --> Dict.fromList [("foo", { bar = 3 })]
+
+    over (key "baz" << defaulted { bar = 0 } << L.bar) ((+) 1) dict
+    --> Dict.fromList [("foo", { bar = 2 }), ("baz", { bar = 1 })]
+
+    -- NOTE: The following do not compile :thinking:
+    --get (key "foo" << try << L.bar << defaulted 0) dict
+    ----> 2
+
+    --get (key "baz" << try << L.bar << defaulted 0) dict
+    ----> 0
+
+-}
+defaulted : attribute -> (Relation attribute reachable wrap -> Relation (Maybe attribute) reachable wrap)
+defaulted d =
+    makeOneToOne_ "???"
+        (Maybe.withDefault d)
+        (\fn -> Maybe.withDefault d >> fn >> Just)
 
 
 {-| This accessor combinator lets you provide a default value for otherwise failable compositions
