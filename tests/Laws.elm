@@ -1,19 +1,84 @@
 module Laws exposing (..)
 
-import Accessors as A exposing (Lens_, Setable)
+import Accessor as A exposing (LensArgument)
 import Array exposing (Array)
+import Array.Accessor as Array
 import Dict exposing (Dict)
+import Dict.Accessor as Dict
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, string)
 import Lens as L
+import List.Accessor as List
 import Maybe exposing (Maybe)
 import String
-import Test exposing (..)
+import Test exposing (Test, test)
 
 
-eq : a -> a -> Expectation
-eq =
-    Expect.equal
+suite : Test
+suite =
+    Test.describe
+        "Laws"
+        [ isLens L.name personFuzzer stringAlter string
+        , isLens L.age personFuzzer intAlter int
+        , isSetable (L.email << A.onJust) personFuzzer stringAlter string
+
+        -- TODO: How to express laws for "Prism"-ish things elm-monocle calls this Optional.
+        -- , isOptional (L.email << A.try)
+        , isSetable (L.stuff << List.elementAt 0) personFuzzer stringAlter string
+        , isSetable (L.stuff << List.elementEach) personFuzzer stringAlter string
+        , isSetable (L.things << Array.elementAt 0) personFuzzer stringAlter string
+        , isSetable (L.things << Array.elementEach) personFuzzer stringAlter string
+        , isLens
+            (L.info << Dict.valueAt ( "stuff", identity ))
+            personFuzzer
+            maybeStringAlter
+            (Fuzz.maybe string)
+        , test "Name compositions output `jq` style String's" <|
+            \() ->
+                (L.info << L.stuff << List.elementAt 7 << L.name)
+                    |> A.description
+                    |> A.descriptionToString
+                    |> Expect.equal ".info.stuff(7)?.name"
+        ]
+
+
+type alias Alter a =
+    a -> a
+
+
+stringAlter : Fuzzer (Alter String)
+stringAlter =
+    Fuzz.oneOf
+        -- [ Fuzz.map String.reverse string
+        -- , String.toUpper
+        -- , String.toLower
+        [ Fuzz.map String.append string
+        , Fuzz.map (\s -> String.append s >> String.reverse) string
+        , Fuzz.map (\s -> String.append s >> String.toUpper) string
+        , Fuzz.map (\s -> String.append s >> String.toLower) string
+        ]
+
+
+intAlter : Fuzzer (Alter Int)
+intAlter =
+    Fuzz.oneOf
+        [ Fuzz.map (+) int
+        , Fuzz.map (-) int
+        , Fuzz.map (*) int
+        , Fuzz.map (//) int
+        ]
+
+
+maybeStringAlter : Fuzzer (Alter (Maybe String))
+maybeStringAlter =
+    Fuzz.oneOf
+        [ Fuzz.map
+            (\_ ->
+                Maybe.andThen String.toInt
+                    >> Maybe.map String.fromInt
+            )
+            (Fuzz.maybe string)
+        ]
 
 
 type alias Person =
@@ -26,69 +91,18 @@ type alias Person =
     }
 
 
-suite : Test
-suite =
-    describe "Laws"
-        [ isLens L.name personFuzzer strFun string
-        , isLens L.age personFuzzer intFun int
-        , isSetable (L.email << A.try) personFuzzer strFun string
-
-        -- TODO: How to express laws for "Prism"-ish things elm-monocle calls this Optional.
-        -- , isOptional (L.email << A.try)
-        , isSetable (L.stuff << A.at 0) personFuzzer strFun string
-        , isSetable (L.stuff << A.each) personFuzzer strFun string
-        , isSetable (L.things << A.ix 0) personFuzzer strFun string
-        , isSetable (L.things << A.every) personFuzzer strFun string
-        , isLens (L.info << A.key "stuff") personFuzzer maybeStrFun (Fuzz.maybe string)
-        , test "Name compositions output `jq` style String's" <|
-            \() ->
-                A.name (L.info << L.stuff << A.at 7 << L.name)
-                    |> eq ".info.stuff(7)?.name"
-        ]
-
-
-type alias Function a =
-    a -> a
-
-
-strFun : Fuzzer (Function String)
-strFun =
-    Fuzz.oneOf
-        -- [ Fuzz.map String.reverse string
-        -- , String.toUpper
-        -- , String.toLower
-        [ Fuzz.map String.append string
-        , Fuzz.map (\s -> String.append s >> String.reverse) string
-        , Fuzz.map (\s -> String.append s >> String.toUpper) string
-        , Fuzz.map (\s -> String.append s >> String.toLower) string
-        ]
-
-
-intFun : Fuzzer (Function Int)
-intFun =
-    Fuzz.oneOf
-        [ Fuzz.map (+) int
-        , Fuzz.map (-) int
-        , Fuzz.map (*) int
-        , Fuzz.map (//) int
-        ]
-
-
-maybeStrFun : Fuzzer (Function (Maybe String))
-maybeStrFun =
-    Fuzz.oneOf
-        [ Fuzz.map
-            (\_ ->
-                Maybe.andThen String.toInt
-                    >> Maybe.map String.fromInt
-            )
-            (Fuzz.maybe string)
-        ]
-
-
 personFuzzer : Fuzzer Person
 personFuzzer =
-    Fuzz.map (\_ -> Person) Fuzz.unit
+    Fuzz.constant
+        (\name age email stuff info things ->
+            { name = name
+            , age = age
+            , email = email
+            , stuff = stuff
+            , info = info
+            , things = things
+            }
+        )
         |> Fuzz.andMap string
         |> Fuzz.andMap int
         |> Fuzz.andMap (Fuzz.maybe string)
@@ -97,21 +111,33 @@ personFuzzer =
         |> Fuzz.andMap (Fuzz.list string |> Fuzz.map Array.fromList)
 
 
-isSetable : Setable structure transformed attribute built -> Fuzzer structure -> Fuzzer (Function attribute) -> Fuzzer attribute -> Test
+type alias Settable structure transformed attribute built =
+    A.Relation attribute attribute built -> A.Relation structure attribute transformed
+
+
+isSetable :
+    Settable structure transformed attribute built
+    -> Fuzzer structure
+    -> Fuzzer (Alter attribute)
+    -> Fuzzer attribute
+    -> Test
 isSetable l fzr fnFzr val =
-    describe ("isSetable: " ++ A.name l)
-        [ fuzz fzr
+    Test.describe
+        ("isSetable: " ++ (l |> A.description |> A.descriptionToString))
+        [ Test.fuzz fzr
             "identity"
             (Expect.true "setter"
                 << setter_id l
             )
-        , fuzz (Fuzz.tuple3 ( fzr, fnFzr, fnFzr ))
+        , Test.fuzz
+            (Fuzz.tuple3 ( fzr, fnFzr, fnFzr ))
             "composition"
             (\( s, f, g ) ->
                 Expect.true "setter" <|
                     setter_composition l s f g
             )
-        , fuzz (Fuzz.tuple3 ( fzr, val, val ))
+        , Test.fuzz
+            (Fuzz.tuple3 ( fzr, val, val ))
             "set_set"
             (\( s, a, b ) ->
                 Expect.true "setter" <|
@@ -121,18 +147,23 @@ isSetable l fzr fnFzr val =
 
 
 isLens :
-    Lens_ structure attribute
+    LensArgument structure attribute
     -> Fuzzer structure
-    -> Fuzzer (Function attribute)
+    -> Fuzzer (Alter attribute)
     -> Fuzzer attribute
     -> Test
-isLens l fzr valFn val =
-    describe ("isLens: " ++ A.name l)
-        [ isSetable l fzr valFn val
+isLens l fuzzer valFn val =
+    Test.describe
+        ("isLens: " ++ (l |> A.description |> A.descriptionToString))
+        [ isSetable l fuzzer valFn val
 
-        -- There's Traversal laws in here somewhere but not sure they're expressible in Elm.
-        , fuzz fzr "lens_set_get" (lens_set_get l >> Expect.true "lens_set_get")
-        , fuzz (Fuzz.tuple ( fzr, val ))
+        -- there's Traversal laws in here somewhere but not sure they're expressible in elm
+        , Test.fuzz
+            fuzzer
+            "lens_set_get"
+            (lens_set_get l >> Expect.true "lens_set_get")
+        , Test.fuzz
+            (Fuzz.tuple ( fuzzer, val ))
             "lens_get_set"
             (\( b, s ) ->
                 lens_get_set l b s
@@ -141,36 +172,36 @@ isLens l fzr valFn val =
         ]
 
 
-setter_id : Setable structure transformed attribute built -> structure -> Bool
+setter_id : Settable structure transformed attribute built -> structure -> Bool
 setter_id l s =
-    A.over l identity s == s
+    A.map l identity s == s
 
 
 setter_composition :
-    Setable structure transformed attribute built
+    Settable structure transformed attribute built
     -> structure
-    -> Function attribute
-    -> Function attribute
+    -> Alter attribute
+    -> Alter attribute
     -> Bool
 setter_composition l s f g =
-    A.over l f (A.over l g s) == A.over l (f << g) s
+    A.map l f (A.map l g s) == A.map l (f << g) s
 
 
 setter_set_set :
-    Setable structure transformed attribute built
+    Settable structure transformed attribute built
     -> structure
     -> attribute
     -> attribute
     -> Bool
 setter_set_set l s a b =
-    A.set l b (A.set l a s) == A.set l b s
+    A.map l (\_ -> b) (A.map l (\_ -> a) s) == A.map l (\_ -> b) s
 
 
-lens_set_get : Lens_ structure attribute -> structure -> Bool
+lens_set_get : LensArgument structure attribute -> structure -> Bool
 lens_set_get l s =
-    A.set l (A.get l s) s == s
+    A.map l (\_ -> A.access l s) s == s
 
 
-lens_get_set : Lens_ structure attribute -> structure -> attribute -> Bool
+lens_get_set : LensArgument structure attribute -> structure -> attribute -> Bool
 lens_get_set l s a =
-    A.get l (A.set l a s) == a
+    A.access l (A.map l (\_ -> a) s) == a

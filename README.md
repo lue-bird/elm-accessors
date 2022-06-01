@@ -10,18 +10,20 @@ There are two kinds of relations between a container and its content: 1:1
 relations (e.g. a record and its field) and 1:n relations (e.g. a `List` can
 contain 0-n elements, a `Maybe` can contain 0-1 elements).
 
-For 1:1 relations, the `makeOneToOne` function will let you build an accessor
-by describing how to get the sub-element from the super-element, and how to map
+For 1:1 relations, the `for1To1` function will let you build an accessor
+by describing how to access the sub-element from the super-element, and how to map
 a function over it. For instance, with a record:
 
 ```elm
 recordFoo =
-    makeOneToOne
+    for1To1
+        ".foo"
         .foo
         (\alter record -> { record | foo = record.foo |> alter })
 
 recordBar =
-    makeOneToOne
+    for1To1
+        ".bar"
         .bar
         (\alter record -> { record | bar = record.bar |> alter })
 ```
@@ -30,23 +32,25 @@ recordBar =
 very easy to implement:
 
 ```elm
-onEach = 
-    makeOneToN
+elementEach = 
+    for1ToN
+        "List element each"
         List.map
         List.map
 
-try = 
-    makeOneToN
+onJust =
+    for1ToN
+        "Maybe.Just"
         Maybe.map
         Maybe.map
 ```
 
-# Combine your relations
+## combine your relations
 
 Accessors can be composed easily to describe relations:
 
 ```elm
-myData =
+fooBars =
     { foo =
         [ { bar = 3 }
         , { bar = 2 }
@@ -57,39 +61,36 @@ myData =
 myAccessor = recordFoo << onEach << recordBar
 ```
 
-# Manipulate your data easily
+## alter your data easily
 
 Then you use an action function to determine which kind of operation you want to
 do on your data using the accessor
 
 ```elm
-get  myAccessor myData
+fooBars |> access myAccessor
 --> [ 3, 2, 0 ]
 
-set  myAccessor 2 myData
---> { foo = [ { bar = 2 }, { bar = 2 }, { bar = 2 } ] }
-
-over myAccessor (\n -> n * 2) myData
+fooBars |> map myAccessor (\n -> n * 2)
 --> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 ```
 
-# Type-safe and reusable
+# type-safe, reusable
 
 Applying an accessor on non-matching data structures will yield nice
 compile-time errors: 
 
 ```elm
-fail = (recordFoo << recordFoo) myData
+fooBars |> access (recordFoo << recordFoo)
 ```
-> The 2nd argument to `get` is not what I expect:
+> The 2nd argument to `access` is not what I expect:
 > 
-> 293| fail = get (recordFoo << recordFoo) myData
->                                          ^^^^^^
+> ..| access (recordFoo << recordFoo) myData
+>                                     ^^^^^^
 > This `myData` value is a:
 > 
 >     { foo : List { bar : number } }
 > 
-> But `get` needs the 2nd argument to be:
+> But `access` needs the 2nd argument to be:
 > 
 >     { foo : { a | foo : c } }
 
@@ -97,32 +98,28 @@ Any accessor you make can be composed with any other accessor to match your new
 data structures: 
 
 ```elm
-myOtherData = { bar = Just [ 1, 3, 2 ] }
+bar =
+    { bar = Just [ 1, 3, 2 ] }
 
-halfWay = try << onEach
-myOtherAccessor = recordBar << halfWay
+halfWay =
+    try << onEach
 
-get  myOtherAccessor myOtherData
+myOtherAccessor =
+    recordBar << halfWay
+
+bar |> access myOtherAccessor
 --> Just [ 1, 3, 2 ]
 ```
 
-# Play with it in Ellie
+## play with it
 
-[Ellie default code with accessors](https://ellie-app.com/4wHNCxgft87a1). 
+[ellie with accessors](https://ellie-app.com/4wHNCxgft87a1). 
 
-# Contribute
+## contribute
 
-build
+run
 
-```elm make```
-
-run tests
-
-`elm-test`
-
-or 
-
-`elm-test-rs`
+`npx elm-verify-examples` and `elm-test` or `elm-test-rs`
 
 If you write new accessor combinators that rely on common library data, I'll be
 happy to review and merge. Please include tests for your combinators.

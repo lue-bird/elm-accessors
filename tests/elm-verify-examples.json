@@ -1,9 +1,11 @@
 {
   "root": "../src",
   "tests": [
-    "Accessors",
-    "Accessors.SelectList",
-    "Accessors.Lazy",
-    "Accessors.Library"
+    "Accessor",
+    "Tuple.Accessor",
+    "List.Accessor",
+    "Array.Accessor",
+    "Dict.Accessor",
+    "SelectList.Accessor"
   ]
 }
