@@ -1,4 +1,9 @@
 {
   "root": "../src",
-  "tests": ["Accessors", "Accessors.SelectList"]
+  "tests": [
+    "Accessors",
+    "Accessors.SelectList",
+    "Accessors.Lazy",
+    "Accessors.Library"
+  ]
 }
