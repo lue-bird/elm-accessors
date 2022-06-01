@@ -249,7 +249,7 @@ suite =
                 myFoo =
                     makeOneToOne
                         .foo
-                        (\f rec -> { rec | foo = f rec.foo })
+                        (\f record -> { record | foo = f record.foo })
               in
               describe "makeOneToOne"
                 [ test "get" <|

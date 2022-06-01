@@ -19,14 +19,14 @@ import SelectList exposing (SelectList)
 
     listRecord : { foo : SelectList { bar : Int } }
     listRecord =
-        { foo = SelectList.fromLists [{ bar = 1 }] { bar = 2 } [{ bar = 3 }, { bar = 4 }]
+        { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
     get (L.foo << SL.each << L.bar) listRecord
     --> SelectList.fromLists [1] 2 [3, 4]
 
     over (L.foo << SL.each << L.bar) ((+) 1) listRecord
-    --> { foo = SelectList.fromLists [{ bar = 2 }] { bar = 3 } [{ bar = 4 }, { bar = 5 }] }
+    --> { foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] }
 
 -}
 each : Relation attribute built transformed -> Relation (SelectList attribute) built (SelectList transformed)
@@ -43,28 +43,33 @@ each =
 
     listRecord : { foo : SelectList { bar : Int } }
     listRecord =
-        { foo = SelectList.fromLists [{ bar = 1 }] { bar = 2 } [{ bar = 3 }, { bar = 4 }]
+        { foo =
+            SelectList.fromLists
+                [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    multiplyIfGTOne : (Int, { bar : Int }) -> (Int, { bar : Int })
-    multiplyIfGTOne ( idx, ({ bar } as rec) ) =
+    multiplyIfGTOne : ( Int, { bar : Int } ) -> ( Int, { bar : Int } )
+    multiplyIfGTOne ( idx, ({ bar } as record) ) =
         if idx > 0 then
             ( idx, { bar = bar * 10 } )
         else
-            (idx, rec)
+            ( idx, record )
 
 
     get (L.foo << SL.eachIdx) listRecord
-    --> SelectList.fromLists [(0, {bar = 1})] (1, {bar = 2}) [(2, {bar = 3}), (3, {bar = 4})]
+    --> SelectList.fromLists
+    -->     [ ( 0, { bar = 1 } ) ]
+    -->     ( 1, { bar = 2 } )
+    -->     [ ( 2, { bar = 3 } ), ( 3, { bar = 4 } ) ]
 
     over (L.foo << SL.eachIdx) multiplyIfGTOne listRecord
-    --> { foo = SelectList.fromLists [{ bar = 1 }] { bar = 20 } [{ bar = 30 }, { bar = 40 }] }
+    --> { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 20 } [ { bar = 30 }, { bar = 40 } ] }
 
     get (L.foo << SL.eachIdx << snd << L.bar) listRecord
     --> SelectList.fromLists [1] 2 [3, 4]
 
     over (L.foo << SL.eachIdx << snd << L.bar) ((+) 1) listRecord
-    --> {foo = SelectList.fromLists [{bar = 2}] {bar = 3} [{bar = 4}, {bar = 5}]}
+    --> {foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ]}
 
 -}
 eachIdx : Relation ( Int, attribute ) reachable built -> Relation (SelectList attribute) reachable (SelectList built)
@@ -107,24 +112,32 @@ eachIdx =
 
     listRecord : { foo : SelectList { bar : Int } }
     listRecord =
-        { foo = SelectList.fromLists [{ bar = 1 }] { bar = 2 } [{ bar = 3 }, { bar = 4 }]
+        { foo =
+            SelectList.fromLists
+                [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    multiplyIfGTOne : (Int, { bar : Int }) -> (Int, { bar : Int })
-    multiplyIfGTOne ( idx, ({ bar } as rec) ) =
+    multiplyIfGTOne : ( Int, { bar : Int } ) -> ( Int, { bar : Int } )
+    multiplyIfGTOne ( idx, ({ bar } as record) ) =
         if idx > 0 then
             ( idx, { bar = bar * 10 } )
         else
-            (idx, rec)
+            ( idx, record )
 
     get (L.foo << SL.selected << L.bar) listRecord
     --> 2
 
     set (L.foo << SL.selected << L.bar) 37 listRecord
-    --> { foo = SelectList.fromLists [{ bar = 1 }] { bar = 37 } [{ bar = 3 }, { bar = 4 }] }
+    --> { foo =
+    -->     SelectList.fromLists
+    -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
+    --> }
 
     over (L.foo << SL.selected << L.bar) ((*) 10) listRecord
-    --> { foo = SelectList.fromLists [{ bar = 1 }] { bar = 20 } [{ bar = 3 }, { bar = 4 }] }
+    --> { foo =
+    -->     SelectList.fromLists
+    -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]
+    --> }
 
 -}
 selected : Relation attribute reachable built -> Relation (SelectList attribute) reachable built

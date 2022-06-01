@@ -264,11 +264,11 @@ over accessor change s =
 {-| This function lets you build an accessor for containers that have
 a 1:1 relation with what they contain, such as a record and one of its fields:
 
-    foo : Relation field sub wrap -> Relation { rec | foo : field } sub wrap
+    foo : Relation foo sub wrap -> Relation { record | foo : foo } sub wrap
     foo =
         makeOneToOne
             .foo
-            (\change rec -> { rec | foo = change rec.foo })
+            (\alter record -> { record | foo = record.foo |> alter })
 
 -}
 makeOneToOne :
@@ -283,12 +283,12 @@ makeOneToOne =
 for getting unique names out of compositions of accessors. This is useful when you
 want type safe keys for a Dictionary but you still want to use elm/core implementation.
 
-    foo : Relation field sub wrap -> Relation { rec | foo : field } sub wrap
+    foo : Relation field sub wrap -> Relation { record | foo : field } sub wrap
     foo =
         makeOneToOne_
             ".foo"
             .foo
-            (\change rec -> { rec | foo = change rec.foo })
+            (\alter record -> { record | foo = record.foo |> alter })
 
 -}
 makeOneToOne_ :
@@ -354,21 +354,23 @@ makeOneToN_ n getter mapper (Relation sub) =
 
 {-| This accessor combinator lets you access values inside List.
 
-    import Accessors exposing (..)
+    import Accessors exposing (each, get, over)
     import Lens as L
 
-    listRecord : {foo : List {bar : Int}}
-    listRecord = { foo = [ {bar = 2}
-                         , {bar = 3}
-                         , {bar = 4}
-                         ]
-                 }
+    listRecord : { foo : List { bar : Int } }
+    listRecord =
+        { foo =
+            [ { bar = 2 }
+            , { bar = 3 }
+            , { bar = 4 }
+            ]
+        }
 
     get (L.foo << each << L.bar) listRecord
     --> [2, 3, 4]
 
     over (L.foo << each << L.bar) ((+) 1) listRecord
-    --> {foo = [{bar = 3}, {bar = 4}, {bar = 5}]}
+    --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
 
 -}
 each : Relation attribute built transformed -> Relation (List attribute) built (List transformed)
@@ -378,35 +380,38 @@ each =
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (..)
+    import Accessors exposing (eachIdx, snd, get, over)
     import Lens as L
 
-    listRecord : {foo : List {bar : Int}}
-    listRecord = { foo = [ {bar = 2}
-                         , {bar = 3}
-                         , {bar = 4}
-                         ]
-                 }
+    listRecord : { foo : List { bar : Int } }
+    listRecord =
+        { foo =
+            [ { bar = 2 }
+            , { bar = 3 }
+            , { bar = 4 }
+            ]
+        }
 
-    multiplyIfGTOne : (Int, { bar : Int }) -> (Int, { bar : Int })
-    multiplyIfGTOne ( idx, ({ bar } as rec) ) =
+    multiplyIfGTOne : ( Int, { bar : Int } ) -> ( Int, { bar : Int } )
+    multiplyIfGTOne ( idx, ({ bar } as record) ) =
         if idx > 0 then
             ( idx, { bar = bar * 10 } )
+
         else
-            (idx, rec)
+            ( idx, record )
 
 
     get (L.foo << eachIdx) listRecord
-    --> [(0, {bar = 2}), (1, {bar = 3}), (2, {bar = 4})]
+    --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
     over (L.foo << eachIdx) multiplyIfGTOne listRecord
-    --> {foo = [{bar = 2}, {bar = 30}, {bar = 40}]}
+    --> { foo = [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
     get (L.foo << eachIdx << snd << L.bar) listRecord
     --> [2, 3, 4]
 
     over (L.foo << eachIdx << snd << L.bar) ((+) 1) listRecord
-    --> {foo = [{bar = 3}, {bar = 4}, {bar = 5}]}
+    --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
 eachIdx : Relation ( Int, attribute ) reachable built -> Relation (List attribute) reachable (List built)
@@ -425,20 +430,20 @@ eachIdx =
 {-| This accessor combinator lets you access values inside Array.
 
     import Array exposing (Array)
-    import Accessors exposing (..)
+    import Accessors exposing (every, get, over)
     import Lens as L
 
-    arrayRecord : {foo : Array {bar : Int}}
+    arrayRecord : { foo : Array { bar : Int } }
     arrayRecord =
         { foo =
-            Array.fromList [{ bar = 2 }, { bar = 3 }, {bar = 4}]
+            Array.fromList [ { bar = 2 }, { bar = 3 }, { bar = 4 } ]
         }
 
     get (L.foo << every << L.bar) arrayRecord
-    --> Array.fromList [2, 3, 4]
+    --> Array.fromList [ 2, 3, 4 ]
 
     over (L.foo << every << L.bar) ((+) 1) arrayRecord
-    --> {foo = Array.fromList [{bar = 3}, {bar = 4}, {bar = 5}]}
+    --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
 every : Relation attribute built transformed -> Relation (Array attribute) built (Array transformed)
@@ -448,36 +453,40 @@ every =
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (..)
+    import Accessors exposing (everyIdx, snd, get, over)
     import Lens as L
     import Array exposing (Array)
 
     arrayRecord : { foo : Array { bar : Int } }
-    arrayRecord = { foo = [ {bar = 2}
-                          , {bar = 3}
-                          , {bar = 4}
-                          ] |> Array.fromList
-                  }
+    arrayRecord =
+        { foo =
+            Array.fromList
+                [ { bar = 2 }
+                , { bar = 3 }
+                , { bar = 4 }
+                ]
+        }
 
-    multiplyIfGTOne : (Int, { bar : Int }) -> (Int, { bar : Int })
-    multiplyIfGTOne ( idx, ({ bar } as rec) ) =
+    multiplyIfGTOne : ( Int, { bar : Int } ) -> ( Int, { bar : Int } )
+    multiplyIfGTOne ( idx, ({ bar } as record) ) =
         if idx > 0 then
             ( idx, { bar = bar * 10 } )
         else
-            (idx, rec)
+            ( idx, record )
 
 
     get (L.foo << everyIdx) arrayRecord
-    --> [(0, {bar = 2}), (1, {bar = 3}), (2, {bar = 4})] |> Array.fromList
+    --> Array.fromList
+    -->     [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
     over (L.foo << everyIdx) multiplyIfGTOne arrayRecord
-    --> {foo = [{bar = 2}, {bar = 30}, {bar = 40}] |> Array.fromList}
+    --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
     get (L.foo << everyIdx << snd << L.bar) arrayRecord
-    --> [2, 3, 4] |> Array.fromList
+    --> Array.fromList [ 2, 3, 4 ]
 
     over (L.foo << everyIdx << snd << L.bar) ((+) 1) arrayRecord
-    --> {foo = [{bar = 3}, {bar = 4}, {bar = 5}] |> Array.fromList}
+    --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ]}
 
 -}
 everyIdx : Relation ( Int, attribute ) reachable built -> Relation (Array attribute) reachable (Array built)
@@ -495,13 +504,14 @@ everyIdx =
 
 {-| This accessor combinator lets you access values inside Maybe.
 
-    import Accessors exposing (..)
+    import Accessors exposing (get, over, try)
     import Lens as L
 
     maybeRecord : { foo : Maybe { bar : Int }, qux : Maybe { bar : Int } }
-    maybeRecord = { foo = Just { bar = 2 }
-                  , qux = Nothing
-                  }
+    maybeRecord =
+        { foo = Just { bar = 2 }
+        , qux = Nothing
+        }
 
     get (L.foo << try << L.bar) maybeRecord
     --> Just 2
@@ -510,10 +520,10 @@ everyIdx =
     --> Nothing
 
     over (L.foo << try << L.bar) ((+) 1) maybeRecord
-    --> {foo = Just {bar = 3}, qux = Nothing}
+    --> { foo = Just { bar = 3 }, qux = Nothing }
 
     over (L.qux << try << L.bar) ((+) 1) maybeRecord
-    --> {foo = Just {bar = 2}, qux = Nothing}
+    --> { foo = Just { bar = 2 }, qux = Nothing }
 
 -}
 try : Relation attribute built transformed -> Relation (Maybe attribute) built (Maybe transformed)
@@ -521,20 +531,20 @@ try =
     makeOneToN_ "?" Maybe.map Maybe.map
 
 
-{-| This accessor combinator lets you provide a default value for otherwise failable compositions
+{-| This accessor combinator lets you provide a default value for otherwise fallible compositions
 
     import Dict exposing (Dict)
     import Lens as L
 
-    dict : Dict String {bar : Int}
+    dict : Dict String { bar : Int }
     dict =
-        Dict.fromList [("foo", {bar = 2})]
+        Dict.fromList [ ( "foo", { bar = 2 } ) ]
 
-    get (key "foo" << def {bar = 0}) dict
-    --> {bar = 2}
+    get (key "foo" << def { bar = 0 }) dict
+    --> { bar = 2 }
 
-    get (key "baz" << def {bar = 0}) dict
-    --> {bar = 0}
+    get (key "baz" << def { bar = 0 }) dict
+    --> { bar = 0 }
 
     -- NOTE: The following do not compile :thinking:
     --get (key "foo" << try << L.bar << def 0) dict
@@ -551,21 +561,21 @@ def d =
         Maybe.map
 
 
-{-| This accessor combinator lets you provide a default value for otherwise failable compositions
+{-| This accessor combinator lets you provide a default value for otherwise fallible compositions
 
     import Dict exposing (Dict)
     import Lens as L
 
-    dict : Dict String {bar : Int}
+    dict : Dict String { bar : Int }
     dict =
-        Dict.fromList [("foo", {bar = 2})]
+        Dict.fromList [ ( "foo", { bar = 2 } ) ]
 
     -- NOTE: Use `def` for this.
-    --get (key "foo" << or {bar = 0}) dict
-    ----> {bar = 2}
+    --get (key "foo" << or { bar = 0 }) dict
+    ----> { bar = 2 }
 
-    --get (key "baz" << or {bar = 0}) dict
-    ----> {bar = 0}
+    --get (key "baz" << or { bar = 0 }) dict
+    ----> { bar = 0 }
 
     get ((key "foo" << try << L.bar) |> or 0) dict
     --> 2
@@ -586,13 +596,14 @@ or d l =
 
 {-| This accessor lets you access values inside the Ok variant of a Result.
 
-    import Accessors exposing (..)
+    import Accessors exposing (get, over, ok)
     import Lens as L
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
-    maybeRecord = { foo = Ok { bar = 2 }
-                  , qux = Err "Not an Int"
-                  }
+    maybeRecord =
+        { foo = Ok { bar = 2 }
+        , qux = Err "Not an Int"
+        }
 
     get (L.foo << ok << L.bar) maybeRecord
     --> Just 2
@@ -614,13 +625,14 @@ ok =
 
 {-| This accessor lets you access values inside the Err variant of a Result.
 
-    import Accessors exposing (..)
+    import Accessors exposing (get, over, err)
     import Lens as L
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
-    maybeRecord = { foo = Ok { bar = 2 }
-                  , qux = Err "Not an Int"
-                  }
+    maybeRecord =
+        { foo = Ok { bar = 2 }
+        , qux = Err "Not an Int"
+        }
 
     get (L.foo << err) maybeRecord
     --> Nothing
@@ -651,28 +663,38 @@ err =
 
 {-| values: This accessor lets you traverse a Dict including the index of each element
 
-    import Accessors exposing (..)
+    import Accessors exposing (values, over, get)
     import Lens as L
     import Dict exposing (Dict)
 
-    dictRecord : {foo : Dict String {bar : Int}}
-    dictRecord = { foo = [ ("a", { bar = 2 })
-                         , ("b", { bar = 3 })
-                         , ("c", { bar = 4 })
-                         ] |> Dict.fromList
-                 }
+    dictRecord : { foo : Dict String { bar : Int } }
+    dictRecord =
+        { foo =
+            Dict.fromList
+                [ ( "a", { bar = 2 } )
+                , ( "b", { bar = 3 } )
+                , ( "c", { bar = 4 } )
+                ]
+        }
 
     get (L.foo << values) dictRecord
-    --> [("a", {bar = 2}), ("b", {bar = 3}), ("c", {bar = 4})] |> Dict.fromList
+    --> Dict.fromList
+    -->     [ ( "a", { bar = 2 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
 
     over (L.foo << values << L.bar) ((*) 10) dictRecord
-    --> {foo = [("a", {bar = 20}), ("b", {bar = 30}), ("c", {bar = 40})] |> Dict.fromList}
+    --> { foo =
+    -->     Dict.fromList
+    -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 30 } ), ( "c", { bar = 40 } ) ]
+    --> }
 
     get (L.foo << values << L.bar) dictRecord
-    --> [("a", 2), ("b", 3), ("c", 4)] |> Dict.fromList
+    --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     over (L.foo << values << L.bar) ((+) 1) dictRecord
-    --> {foo = [("a", {bar = 3}), ("b", {bar = 4}), ("c", {bar = 5})] |> Dict.fromList}
+    --> { foo =
+    -->     Dict.fromList
+    -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
+    --> }
 
 -}
 values : Relation attribute reachable built -> Relation (Dict comparable attribute) reachable (Dict comparable built)
@@ -684,36 +706,46 @@ values =
 
 {-| keyed: This accessor lets you traverse a Dict including the index of each element
 
-    import Accessors exposing (..)
+    import Accessors exposing (get, over, keyed, snd)
     import Lens as L
     import Dict exposing (Dict)
 
-    dictRecord : {foo : Dict String {bar : Int}}
-    dictRecord = { foo = [ ("a", { bar = 2 })
-                         , ("b", { bar = 3 })
-                         , ("c", { bar = 4 })
-                         ] |> Dict.fromList
-                 }
+    dictRecord : { foo : Dict String { bar : Int } }
+    dictRecord =
+        { foo =
+            Dict.fromList
+                [ ( "a", { bar = 2 } )
+                , ( "b", { bar = 3 } )
+                , ( "c", { bar = 4 } )
+                ]
+        }
 
-    multiplyIfA : (String, { bar : Int }) -> (String, { bar : Int })
-    multiplyIfA ( key, ({ bar } as rec) ) =
+    multiplyIfA : ( String, { bar : Int } ) -> ( String, { bar : Int } )
+    multiplyIfA ( key, ({ bar } as record) ) =
         if key == "a" then
             ( key, { bar = bar * 10 } )
         else
-            (key, rec)
+            ( key, record )
 
 
     get (L.foo << keyed) dictRecord
-    --> [("a", ("a", {bar = 2})), ("b", ("b", {bar = 3})), ("c", ("c", {bar = 4}))] |> Dict.fromList
+    --> Dict.fromList
+    -->     [ ( "a", ( "a", { bar = 2 } ) ), ( "b", ( "b", { bar = 3 } ) ), ( "c", ( "c", { bar = 4 } ) ) ]
 
     over (L.foo << keyed) multiplyIfA dictRecord
-    --> {foo = [("a", {bar = 20}), ("b", {bar = 3}), ("c", {bar = 4})] |> Dict.fromList}
+    --> { foo =
+    -->     Dict.fromList
+    -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
+    --> }
 
     get (L.foo << keyed << snd << L.bar) dictRecord
-    --> [("a", 2), ("b", 3), ("c", 4)] |> Dict.fromList
+    --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     over (L.foo << keyed << snd << L.bar) ((+) 1) dictRecord
-    --> {foo = [("a", {bar = 3}), ("b", {bar = 4}), ("c", {bar = 5})] |> Dict.fromList}
+    --> { foo =
+    -->     Dict.fromList
+    -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
+    --> }
 
 -}
 keyed : Relation ( comparable, attribute ) reachable built -> Relation (Dict comparable attribute) reachable (Dict comparable built)
@@ -728,14 +760,15 @@ keyed =
 In terms of accessors, think of Dicts as records where each field is a Maybe.
 
     import Dict exposing (Dict)
-    import Accessors exposing (..)
+    import Accessors exposing (try, get, set)
     import Lens as L
 
-    dict : Dict String {bar : Int}
-    dict = Dict.fromList [("foo", {bar = 2})]
+    dict : Dict String { bar : Int }
+    dict =
+        Dict.fromList [ ( "foo", { bar = 2 } ) ]
 
     get (key "foo") dict
-    --> Just {bar = 2}
+    --> Just { bar = 2 }
 
     get (key "baz") dict
     --> Nothing
@@ -757,11 +790,11 @@ key k =
 
 {-| at: Structure Preserving accessor over List members.
 
-    import Accessors exposing (..)
+    import Accessors exposing (get, set, at)
     import Lens as L
 
     list : List { bar : String }
-    list = [{ bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" }]
+    list = [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
     get (at 1) list
     --> Just { bar = "Things" }
@@ -773,7 +806,7 @@ key k =
     --> Just "Stuff"
 
     set (at 0 << L.bar) "Whatever" list
-    --> [{ bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" }]
+    --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
     set (at 9000 << L.bar) "Whatever" list
     --> list
@@ -810,11 +843,12 @@ at idx =
 In terms of accessors, think of Dicts as records where each field is a Maybe.
 
     import Array exposing (Array)
-    import Accessors exposing (..)
+    import Accessors exposing (get, ix)
     import Lens as L
 
     arr : Array { bar : String }
-    arr = Array.fromList [{ bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" }]
+    arr =
+        Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
     get (ix 1) arr
     --> Just { bar = "Things" }
@@ -826,7 +860,7 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     --> Just "Stuff"
 
     set (ix 0 << L.bar) "Whatever" arr
-    --> Array.fromList [{ bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" }]
+    --> Array.fromList [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
     set (ix 9000 << L.bar) "Whatever" arr
     --> arr
@@ -835,23 +869,24 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
 ix : Int -> Relation v reachable wrap -> Relation (Array v) reachable (Maybe wrap)
 ix idx =
     makeOneToOne_
-        ("[" ++ String.fromInt idx ++ "]")
+        ("[" ++ (idx |> String.fromInt) ++ "]")
         (Array.get idx)
-        (\fn ->
+        (\fn array ->
             -- NOTE: `<< try` at the end ensures we can't delete any existing keys
             -- so `List.filterMap identity` should be safe
-            -- TODO: there's a better way to write this no doubt.
-            Array.indexedMap
-                (\idx_ v ->
-                    if idx == idx_ then
-                        fn (Just v)
+            -- TODO: there's a better way to write this no doubt
+            array
+                |> Array.indexedMap
+                    (\idx_ v ->
+                        if idx == idx_ then
+                            fn (Just v)
 
-                    else
-                        Just v
-                )
-                >> Array.foldl
-                    (\e acc ->
-                        case e of
+                        else
+                            Just v
+                    )
+                |> Array.foldl
+                    (\element acc ->
+                        case element of
                             Just v ->
                                 Array.push v acc
 
@@ -863,21 +898,22 @@ ix idx =
         << try
 
 
-{-| Lens over the first component of a Tuple
+{-| Lens over the first component of a Tuple.
 
-    import Accessors exposing (..)
+    import Accessors exposing (get, set, over, fst)
 
-    charging : (String, Int)
-    charging = ("It's over", 1)
+    charging : ( String, Int )
+    charging =
+        ( "It's over", 1 )
 
     get fst charging
     --> "It's over"
 
     set fst "It's over" charging
-    --> ("It's over", 1)
+    --> ( "It's over", 1 )
 
-    over fst (\s -> String.toUpper s ++ "!!!") charging
-    --> ("IT'S OVER!!!", 1)
+    over fst (\m -> (m |> String.toUpper) ++ "!!!") charging
+    --> ( "IT'S OVER!!!", 1 )
 
 -}
 fst : Relation sub reachable wrap -> Relation ( sub, x ) reachable wrap
@@ -885,24 +921,25 @@ fst =
     makeOneToOne_ "_1" Tuple.first Tuple.mapFirst
 
 
-{-|
+{-| Lens over the second component of a Tuple.
 
-    import Accessors exposing (..)
+    import Accessors exposing (get, set, over, snd)
 
-    meh : (String, Int)
-    meh = ("It's over", 1)
+    meh : ( String, Int )
+    meh =
+        ( "It's over", 1 )
 
     get snd meh
     --> 1
 
     set snd 1125 meh
-    --> ("It's over", 1125)
+    --> ( "It's over", 1125 )
 
     meh
         |> set snd 1125
-        |> over fst (\s -> String.toUpper s ++ "!!!")
+        |> over fst (\m -> (m |> String.toUpper) ++ "!!!")
         |> over snd ((*) 8)
-    --> ("IT'S OVER!!!", 9000)
+    --> ( "IT'S OVER!!!", 9000 )
 
 -}
 snd : Relation sub reachable wrap -> Relation ( x, sub ) reachable wrap

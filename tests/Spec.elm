@@ -251,7 +251,7 @@ suite =
         , describe "making accessors"
             [ let
                 myFoo =
-                    makeOneToOne .foo (\f rec -> { rec | foo = f rec.foo })
+                    makeOneToOne .foo (\f record -> { record | foo = f record.foo })
               in
               describe "makeOneToOne"
                 [ test "get" <|
