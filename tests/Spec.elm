@@ -1,7 +1,8 @@
 module Spec exposing (suite)
 
-import Accessor exposing (Relation, access, map, mapLazy)
+import Accessor exposing (Relation, access, map, mapLazy, onJust, valueElseOnNothing)
 import Dict exposing (Dict)
+import Dict.Accessor as Dict
 import Expect
 import Field
 import List.Accessor as List
@@ -84,37 +85,32 @@ suite =
                 [ test "present" <|
                     \_ ->
                         dict
-                            |> access (key "foo")
+                            |> access (Dict.valueAtString "foo")
                             |> Expect.equal (Just 7)
                 , test "absent" <|
                     \_ ->
                         dict
-                            |> access (key "bar")
+                            |> access (Dict.valueAtString "bar")
                             |> Expect.equal Nothing
                 , test "nested present" <|
                     \_ ->
                         recordWithDict
-                            |> access (Field.bar << key "foo")
+                            |> access (Field.bar << Dict.valueAtString "foo")
                             |> Expect.equal (Just 7)
                 , test "nested absent" <|
                     \_ ->
                         recordWithDict
-                            |> access (Field.bar << key "bar")
+                            |> access (Field.bar << Dict.valueAtString "bar")
                             |> Expect.equal Nothing
                 , test "with try" <|
                     \_ ->
                         dictWithRecord
-                            |> access (key "foo" << onJust << Field.bar)
+                            |> access (Dict.valueAtString "foo" << onJust << Field.bar)
                             |> Expect.equal (Just "Yop")
                 , test "with valueElseOnNothing" <|
                     \_ ->
                         dictWithRecord
-                            |> access (key "not_it" << valueElseOnNothing { bar = "Stuff" } << Field.bar)
-                            |> Expect.equal "Stuff"
-                , test "with or" <|
-                    \_ ->
-                        dictWithRecord
-                            |> access ((key "not_it" << onJust << Field.bar) |> or "Stuff")
+                            |> access (Dict.valueAtString "not_it" << valueElseOnNothing { bar = "Stuff" } << Field.bar)
                             |> Expect.equal "Stuff"
                 ]
             ]
@@ -175,58 +171,58 @@ suite =
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                dict |> map (key "foo") (\_ -> Just 9)
+                                dict |> map (Dict.valueAtString "foo") (\_ -> Just 9)
                         in
                         updatedDict
-                            |> access (key "foo")
+                            |> access (Dict.valueAtString "foo")
                             |> Expect.equal (Just 9)
                 , test "set currently absent to present" <|
                     \_ ->
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                dict |> map (key "bar") (\_ -> Just 9)
+                                dict |> map (Dict.valueAtString "bar") (\_ -> Just 9)
                         in
                         updatedDict
-                            |> access (key "bar")
+                            |> access (Dict.valueAtString "bar")
                             |> Expect.equal (Just 9)
                 , test "set currently present to absent" <|
                     \_ ->
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                dict |> map (key "foo") (\_ -> Nothing)
+                                dict |> map (Dict.valueAtString "foo") (\_ -> Nothing)
                         in
                         updatedDict
-                            |> access (key "foo")
+                            |> access (Dict.valueAtString "foo")
                             |> Expect.equal Nothing
                 , test "set currently absent to absent" <|
                     \_ ->
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                dict |> set (key "bar") Nothing
+                                dict |> map (Dict.valueAtString "bar") (\_ -> Nothing)
                         in
-                        updatedDict |> access (key "bar") |> Expect.equal Nothing
+                        updatedDict |> access (Dict.valueAtString "bar") |> Expect.equal Nothing
                 , test "set with try present" <|
                     \_ ->
                         let
                             updatedDict : Dict String { bar : String }
                             updatedDict =
-                                dictWithRecord |> map (key "foo" << onJust << Field.bar) (\_ -> "Sup")
+                                dictWithRecord |> map (Dict.valueAtString "foo" << onJust << Field.bar) (\_ -> "Sup")
                         in
                         updatedDict
-                            |> access (key "foo" << onJust << Field.bar)
+                            |> access (Dict.valueAtString "foo" << onJust << Field.bar)
                             |> Expect.equal (Just "Sup")
                 , test "set with try absent" <|
                     \_ ->
                         let
                             updatedDict : Dict String { bar : String }
                             updatedDict =
-                                dictWithRecord |> map (key "bar" << onJust << Field.bar) (\_ -> "Sup")
+                                dictWithRecord |> map (Dict.valueAtString "bar" << onJust << Field.bar) (\_ -> "Sup")
                         in
                         updatedDict
-                            |> access (key "bar" << onJust << Field.bar)
+                            |> access (Dict.valueAtString "bar" << onJust << Field.bar)
                             |> Expect.equal Nothing
                 ]
             ]
@@ -332,9 +328,10 @@ suite =
             [ let
                 myFoo =
                     Accessor.for1To1
-                        ".foo"
-                        .foo
-                        (\alter record -> { record | foo = alter record.foo })
+                        { description = { structure = "record", focus = ".foo" }
+                        , access = .foo
+                        , map = \alter record -> { record | foo = alter record.foo }
+                        }
               in
               Test.describe
                 "Accessor.for1To1"
@@ -365,9 +362,10 @@ suite =
             , let
                 myOnEach =
                     Accessor.for1ToN
-                        "List element List.elementEach"
-                        List.map
-                        List.map
+                        { description = { structure = "List", focus = "element List.elementEach" }
+                        , access = List.map
+                        , map = List.map
+                        }
               in
               Test.describe
                 "Accessor."
