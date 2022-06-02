@@ -111,12 +111,13 @@ personFuzzer =
         |> Fuzz.andMap (Fuzz.list string |> Fuzz.map Array.fromList)
 
 
-type alias Settable structure transformed attribute built =
-    A.Relation attribute attribute built -> A.Relation structure attribute transformed
+type alias Settable structure transformedStructure focus =
+    A.Relation focus focus focus
+    -> A.Relation structure focus transformedStructure
 
 
 isSetable :
-    Settable structure transformed attribute built
+    Settable structure transformed attribute
     -> Fuzzer structure
     -> Fuzzer (Alter attribute)
     -> Fuzzer attribute
@@ -172,13 +173,13 @@ isLens l fuzzer valFn val =
         ]
 
 
-setter_id : Settable structure transformed attribute built -> structure -> Bool
+setter_id : Settable structure transformed attribute -> structure -> Bool
 setter_id l s =
     A.map l identity s == s
 
 
 setter_composition :
-    Settable structure transformed attribute built
+    Settable structure transformed attribute
     -> structure
     -> Alter attribute
     -> Alter attribute
@@ -188,7 +189,7 @@ setter_composition l s f g =
 
 
 setter_set_set :
-    Settable structure transformed attribute built
+    Settable structure transformed attribute
     -> structure
     -> attribute
     -> attribute

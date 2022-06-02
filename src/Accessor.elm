@@ -60,8 +60,9 @@ import RecordWithoutConstructorFunction exposing (RecordWithoutConstructorFuncti
 
 {-| The most general version of this type that everything else specializes
 -}
-type alias Accessor dataBefore dataAfter attrBefore attrAfter reachable =
-    Relation attrBefore reachable attrAfter -> Relation dataBefore reachable dataAfter
+type alias Accessor structure accessible focus focusAccessible transformedFocus =
+    Relation focus transformedFocus focusAccessible
+    -> Relation structure transformedFocus accessible
 
 
 {-| This is an approximation of Van Laarhoven encoded lenses which enable the
@@ -87,14 +88,14 @@ type alias
         -- Structure Before Action
         structure
         -- Structure After Action
-        structureTransformed
+        transformedStructure
         -- Focus Before action
         focus
         -- Focus After action
-        focusTransformed
+        transformedFocus
     =
-    Relation focus focusTransformed structureTransformed
-    -> Relation structure focusTransformed structureTransformed
+    Relation focus transformedFocus transformedStructure
+    -> Relation structure transformedFocus transformedStructure
 
 
 {-| Simplified version of Lens but seems to break type inference for more complicated compositions.
@@ -112,21 +113,18 @@ type alias LensArgument structure attribute =
 --     -> Relation structure (Maybe built) (Maybe transformed)
 
 
-{-| A `Relation super sub wrap` is a type describing how to interact with a
-`sub` data when given a `super` data.
+{-| A `Relation structure focus accessible` describes how to interact with a
+`focus` when given a `structure`.
 
-The `wrap` exists because some types can't ensure that `access` will return a
-`sub`. For instance, `Maybe sub` may not actually contain a `sub`. Therefore,
-`access` returns a `wrap` which, in that example, will be `Maybe sub`
-
-Implementation: A relation is a banal record storing a `access` function and an
-`map` function.
+Sometimes, `access` can't return a `focus`
+For instance, `List focus` may not actually contain 1 `focus`.
+Therefore, `accessible` can be a simple wrapper which, in that example, will be `List focus`
 
 -}
-type Relation structure attribute wrap
+type Relation structure focus accessible
     = Relation
-        { access : structure -> wrap
-        , map : (attribute -> attribute) -> (structure -> structure)
+        { access : structure -> accessible
+        , map : (focus -> focus) -> (structure -> structure)
         , description : List Description
         }
 
@@ -143,27 +141,73 @@ and returns the value accessed by that combinator.
 
 -}
 access :
-    (Relation attribute built attribute -> Relation structure reachable transformed)
-    -> structure
-    -> transformed
+    (Relation focus focus focus
+     -> Relation structure focus accessible
+    )
+    ->
+        (structure
+         -> accessible
+        )
 access accessor =
     \structure ->
         let
             (Relation relation) =
-                accessor
-                    (Relation
-                        { access = \super -> super
-                        , map = void
-                        , description = []
-                        }
-                    )
+                accessor same
         in
         relation.access structure
 
 
-void : a -> b
-void super =
-    void super
+{-| Used with a Prism, think of `!!` boolean coercion in Javascript except type-safe.
+
+    Just 1234
+        |> is try
+    --> True
+
+    Nothing
+        |> is try
+    --> False
+
+    ["Stuff", "things"]
+        |> is (at 2)
+    --> False
+
+    ["Stuff", "things"]
+        |> is (at 0)
+    --> True
+
+-}
+is :
+    (Relation focus focus focus
+     -> Relation structure focus (Maybe focusTransformed)
+    )
+    ->
+        (structure
+         -> Bool
+        )
+is prism =
+    \structure ->
+        (structure |> access prism) /= Nothing
+
+
+description :
+    (Relation focus focus focus
+     -> Relation structure focus accessible
+    )
+    -> List Description
+description accessor =
+    let
+        (Relation relation) =
+            accessor same
+    in
+    relation.description
+
+
+type Description
+    = Identity
+    | FocusDeeper
+        { structure : String
+        , focus : String
+        }
 
 
 {-| This function gives the name of the composition of accessors as a string.
@@ -182,16 +226,99 @@ descriptionToString : List Description -> String
 descriptionToString =
     \descriptionsNested ->
         descriptionsNested
-            |> List.map
+            |> List.filterMap
                 (\description_ ->
-                    description_.structure ++ ">" ++ description_.focus
+                    case description_ of
+                        Identity ->
+                            Nothing
+
+                        FocusDeeper accessing ->
+                            (accessing.structure ++ ">" ++ accessing.focus) |> Just
                 )
             |> String.join ":"
 
 
+same : Relation focus focus focus
+same =
+    Relation
+        { description = [ Identity ]
+        , access = identity
+        , map = identity
+        }
 
--- type alias Modifiable =
---    Relation attribute x y -> Relation structure a transformed
+
+{-| This exposes a description field that's necessary for use with the name function
+for getting unique names out of compositions of accessors. This is useful when you
+want type safe keys for a Dictionary but you still want to use elm/core implementation.
+
+    foo : Relation field sub wrap -> Relation { record | foo : field } sub wrap
+    foo =
+        for1To1
+            { description = { structure = "record", focus = ".foo" }
+            , access = .foo
+            , map = \alter record -> { record | foo = record.foo |> alter }
+            }
+
+-}
+for1To1 :
+    { description :
+        { structure : String
+        , focus : String
+        }
+    , access : structure -> focus
+    , map : (focus -> focus) -> structure -> structure
+    }
+    -> (Relation focus reachable wrap -> Relation structure reachable wrap)
+for1To1 config =
+    \(Relation focus) ->
+        Relation
+            { access =
+                \structure -> focus.access (config.access structure)
+            , map =
+                \change structure -> config.map (focus.map change) structure
+            , description =
+                focus.description |> (::) (FocusDeeper config.description)
+            }
+
+
+{-| This exposes a description field that's necessary for use with the name function
+for getting unique names out of compositions of accessors. This is useful when you
+want type safe keys for a Dictionary but you still want to use elm/core implementation.
+
+    each : Relation elem sub wrap -> Relation (List elem) sub (List wrap)
+    each =
+        for1ToN
+            { description = { structure = "List", focus = "element each" }
+            , access = List.map
+            , map = List.map
+            }
+
+-}
+for1ToN :
+    { description :
+        { structure : String
+        , focus : String
+        }
+    , access :
+        (focus -> transformedFocus) -> structure -> transformedStructure
+    , map :
+        (focus -> focus) -> structure -> structure
+    }
+    ->
+        (-- What is reachable here?
+         Relation focus reachable transformedFocus
+         -> Relation structure reachable transformedStructure
+        )
+for1ToN config =
+    \(Relation sub) ->
+        Relation
+            { access =
+                \super -> config.access sub.access super
+            , map =
+                \change super -> config.map (sub.map change) super
+            , description =
+                sub.description |> (::) (FocusDeeper config.description)
+            }
 
 
 {-| The map function takes:
@@ -208,22 +335,16 @@ map (foo << qux) ((+) 1) myRecord
 
 -}
 map :
-    (Relation attribute attribute built -> Relation structure attribute transformed)
-    -> (attribute -> attribute)
+    (Relation focus focus focus -> Relation structure focus transformed)
+    -> (focus -> focus)
     -> structure
     -> structure
-map accessor change s =
+map accessor change =
     let
         (Relation relation) =
-            accessor
-                (Relation
-                    { access = void
-                    , map = \fn -> fn
-                    , description = []
-                    }
-                )
+            accessor same
     in
-    relation.map change s
+    relation.map change
 
 
 {-| Lazy versions of [`map`](#map).
@@ -267,99 +388,6 @@ mapLazy accessor change =
 
         else
             structure
-
-
-{-| This exposes a description field that's necessary for use with the name function
-for getting unique names out of compositions of accessors. This is useful when you
-want type safe keys for a Dictionary but you still want to use elm/core implementation.
-
-    foo : Relation field sub wrap -> Relation { record | foo : field } sub wrap
-    foo =
-        for1To1
-            { description = { structure = "record", focus = ".foo" }
-            , access = .foo
-            , map = \alter record -> { record | foo = record.foo |> alter }
-            }
-
--}
-for1To1 :
-    { description : Description
-    , access : structure -> focus
-    , map : (focus -> focus) -> structure -> structure
-    }
-    -> (Relation focus reachable wrap -> Relation structure reachable wrap)
-for1To1 config =
-    \(Relation focus) ->
-        Relation
-            { access =
-                \structure -> focus.access (config.access structure)
-            , map =
-                \change structure -> config.map (focus.map change) structure
-            , description =
-                focus.description |> (::) config.description
-            }
-
-
-{-| This exposes a description field that's necessary for use with the name function
-for getting unique names out of compositions of accessors. This is useful when you
-want type safe keys for a Dictionary but you still want to use elm/core implementation.
-
-    each : Relation elem sub wrap -> Relation (List elem) sub (List wrap)
-    each =
-        for1ToN
-            { description = { structure = "List", focus = "element each" }
-            , access = List.map
-            , map = List.map
-            }
-
--}
-for1ToN :
-    { description : Description
-    , access :
-        (attribute -> built) -> structure -> transformed
-    , map :
-        (attribute -> attribute) -> structure -> structure
-    }
-    ->
-        (-- What is reachable here?
-         Relation attribute reachable built
-         -> Relation structure reachable transformed
-        )
-for1ToN config =
-    \(Relation sub) ->
-        Relation
-            { access =
-                \super -> config.access sub.access super
-            , map =
-                \change super -> config.map (sub.map change) super
-            , description =
-                sub.description |> (::) config.description
-            }
-
-
-description :
-    Accessor dataBefore dataAfter attrBefore attrAfter reachable
-    -> List Description
-description accessor =
-    let
-        (Relation relation) =
-            accessor
-                (Relation
-                    -- can we a-void this?
-                    { access = void
-                    , map = void
-                    , description = []
-                    }
-                )
-    in
-    relation.description
-
-
-type alias Description =
-    RecordWithoutConstructorFunction
-        { structure : String
-        , focus : String
-        }
 
 
 {-| This accessor combinator lets you access values inside Maybe.
@@ -502,30 +530,3 @@ onErr =
         , access = accessing
         , map = Result.mapError
         }
-
-
-{-| Used with a Prism, think of `!!` boolean coercion in Javascript except type-safe.
-
-    Just 1234
-        |> is try
-    --> True
-
-    Nothing
-        |> is try
-    --> False
-
-    ["Stuff", "things"]
-        |> is (at 2)
-    --> False
-
-    ["Stuff", "things"]
-        |> is (at 0)
-    --> True
-
--}
-is :
-    (Relation attribute built attribute -> Relation structure reachable (Maybe transformed))
-    -> structure
-    -> Bool
-is prism sup =
-    access prism sup /= Nothing
