@@ -19,16 +19,16 @@ import Linear.Extra as Linear
     import Accessors exposing (every, view, map)
     import Record
 
-    arrayRecord : { foo : Array { bar : Int } }
-    arrayRecord =
+    fooBarray : { foo : Array { bar : Int } }
+    fooBarray =
         { foo =
             Array.fromList [ { bar = 2 }, { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << every << Record.bar) arrayRecord
+    view (Record.foo << every << Record.bar) fooBarray
     --> Array.fromList [ 2, 3, 4 ]
 
-    map (Record.foo << every << Record.bar) ((+) 1) arrayRecord
+    map (Record.foo << every << Record.bar) ((+) 1) fooBarray
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -48,8 +48,8 @@ elementEach =
     import Record
     import Array exposing (Array)
 
-    arrayRecord : { foo : Array { bar : Int } }
-    arrayRecord =
+    fooBarray : { foo : Array { bar : Int } }
+    fooBarray =
         { foo =
             Array.fromList
                 [ { bar = 2 }
@@ -58,42 +58,53 @@ elementEach =
                 ]
         }
 
-    multiplyIfGTOne : ( Int, { bar : Int } ) -> ( Int, { bar : Int } )
-    multiplyIfGTOne ( idx, ({ bar } as record) ) =
-        if idx > 0 then
-            ( idx, { bar = bar * 10 } )
-
-        else
-            ( idx, record )
-
-
-    arrayRecord |> view (Record.foo << everyIdx)
+    fooBarray |> view (Record.foo << everyIdx)
     --> Array.fromList
-    -->     [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
+    -->     [ { index = 0, element = { bar = 2 } }
+    -->     , { index = 1, element = { bar = 3 } }
+    -->     , { index = 2, element = { bar = 4 } }
+    -->     ]
 
-    arrayRecord |> mapOver (Record.foo << everyIdx) multiplyIfGTOne
+    fooBarray
+        |> mapOver
+            (Record.foo << everyIdx)
+            (\{ index, element } ->
+                case index of
+                    0 ->
+                        element
+
+                    _ ->
+                        { bar = element.bar * 10 }
+            )
     --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
-    arrayRecord |> view (Record.foo << everyIdx << Tuple.second << Record.bar)
+    fooBarray
+        |> view (Record.foo << everyIdx << Tuple.second << Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
-    arrayRecord
-        |> mapOver (Record.foo << everyIdx << Tuple.second << Record.bar) ((+) 1)
+    fooBarray
+        |> mapOver
+            (Record.foo << everyIdx << Tuple.second << Record.bar)
+            ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ]}
 
 -}
 elementIndexEach : Relation { element : element, index : Int } reachable built -> Relation (Array element) reachable (Array built)
 elementIndexEach =
     create1ToN
-        { description = { structure = "Array", focus = "{ element, index } each" }
+        { description = { structure = "Array", focus = "{element,index} each" }
         , view =
-            \fn ->
+            \elementView ->
                 Array.indexedMap
-                    (\index element -> { element = element, index = index } |> fn)
+                    (\index element_ ->
+                        { element = element_, index = index } |> elementView
+                    )
         , map =
-            \fn ->
+            \elementMap ->
                 Array.indexedMap
-                    (\index element -> { element = element, index = index } |> fn |> .element)
+                    (\index element_ ->
+                        { element = element_, index = index } |> elementMap |> .element
+                    )
         }
 
 

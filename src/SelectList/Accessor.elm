@@ -6,7 +6,7 @@ module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
 
 -}
 
-import Accessor exposing (Relation, mapOver, view)
+import Accessor exposing (Accessor, Lens, Relation, mapOver, view)
 import SelectList exposing (SelectList)
 
 
@@ -17,19 +17,25 @@ import SelectList exposing (SelectList)
     import Record
     import SelectList exposing (SelectList)
 
-    listRecord : { foo : SelectList { bar : Int } }
-    listRecord =
+    fooBarScroll : { foo : SelectList { bar : Int } }
+    fooBarScroll =
         { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << SL.each << Record.bar) listRecord
+    view (Record.foo << SL.each << Record.bar) fooBarScroll
     --> SelectList.fromLists [1] 2 [3, 4]
 
-    map (Record.foo << SL.each << Record.bar) ((+) 1) listRecord
+    map (Record.foo << SL.each << Record.bar) ((+) 1) fooBarScroll
     --> { foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] }
 
 -}
-elementEach : Relation attribute built transformed -> Relation (SelectList attribute) built (SelectList transformed)
+elementEach :
+    Accessor
+        (SelectList element)
+        element
+        (SelectList elementFocusView)
+        elementFocus
+        elementFocusView
 elementEach =
     Accessor.create1ToN
         { description = { structure = "SelectList", focus = "element each" }
@@ -46,8 +52,8 @@ elementEach =
     import Record
     import SelectList exposing (SelectList)
 
-    listRecord : { foo : SelectList { bar : Int } }
-    listRecord =
+    fooBarScroll : { foo : SelectList { bar : Int } }
+    fooBarScroll =
         { foo =
             SelectList.fromLists
                 [ { bar = 1 } ]
@@ -55,34 +61,52 @@ elementEach =
                 [ { bar = 3 }, { bar = 4 } ]
         }
 
-    multiplyIfGTOne : ( Int, { bar : Int } ) -> ( Int, { bar : Int } )
-    multiplyIfGTOne ( idx, ({ bar } as record) ) =
-        if idx > 0 then
-            ( idx, { bar = bar * 10 } )
-        else
-            ( idx, record )
-
-
-    view (Record.foo << SelectList.elementIndexEach) listRecord
+    view (Record.foo << SelectList.elementIndexEach) fooBarScroll
     --> SelectList.fromLists
     -->     [ ( 0, { bar = 1 } ) ]
     -->     ( 1, { bar = 2 } )
     -->     [ ( 2, { bar = 3 } ), ( 3, { bar = 4 } ) ]
 
-    map (Record.foo << SelectList.elementIndexEach) multiplyIfGTOne listRecord
-    --> { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 20 } [ { bar = 30 }, { bar = 40 } ] }
+    fooBarScroll
+        |> mapOver
+            (Record.foo << SelectList.elementIndexEach)
+            (\{ index, element } =
+                case index of
+                    0 ->
+                        element
 
-    view (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar) listRecord
-    --> SelectList.fromLists [1] 2 [3, 4]
+                    _ ->
+                        { bar = element.bar * 10 }
+            )
+    --> { foo =
+    -->     SelectList.fromLists
+    -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 30 }, { bar = 40 } ]
+    --> }
 
-    map (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar) ((+) 1) listRecord
-    --> { foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] }
+    fooBarScroll
+        |> view (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
+    --> SelectList.fromLists [ 1 ] 2 [ 3, 4 ]
+
+    fooBarScroll
+        |> mapOver
+            (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
+            ((+) 1)
+    --> { foo =
+    -->     SelectList.fromLists
+    -->         [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] #
+    --> }
 
 -}
-elementIndexEach : Relation { index : Int, element : element } reachable built -> Relation (SelectList element) reachable (SelectList built)
+elementIndexEach :
+    Accessor
+        (SelectList element)
+        { index : Int, element : element }
+        (SelectList elementFocusView)
+        elementFocus
+        elementFocusView
 elementIndexEach =
     Accessor.create1ToN
-        { description = { structure = "SelectList", focus = "{ element, index } each" }
+        { description = { structure = "SelectList", focus = "{element,index} each" }
         , view =
             \alter selectList ->
                 let
@@ -139,37 +163,30 @@ elementIndexEach =
     import Record
     import SelectList exposing (SelectList)
 
-    listRecord : { foo : SelectList { bar : Int } }
-    listRecord =
+    fooBarScroll : { foo : SelectList { bar : Int } }
+    fooBarScroll =
         { foo =
             SelectList.fromLists
                 [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    multiplyIfGTOne : ( Int, { bar : Int } ) -> ( Int, { bar : Int } )
-    multiplyIfGTOne ( idx, ({ bar } as record) ) =
-        if idx > 0 then
-            ( idx, { bar = bar * 10 } )
-        else
-            ( idx, record )
-
-    listRecord |> view (Record.foo << SL.selected << Record.bar)
+    fooBarScroll |> view (Record.foo << SL.selected << Record.bar)
     --> 2
 
-    listRecord |> mapOver (Record.foo << SL.selected << Record.bar) (\_ -> 37)
+    fooBarScroll |> mapOver (Record.foo << SL.selected << Record.bar) (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
-    listRecord |> mapOver (Record.foo << SL.selected << Record.bar) ((*) 10)
+    fooBarScroll |> mapOver (Record.foo << SL.selected << Record.bar) ((*) 10)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
 -}
-selected : Relation attribute reachable built -> Relation (SelectList attribute) reachable built
+selected : Lens (SelectList element) element elementFocus elementFocusView
 selected =
     Accessor.create1To1
         { description = { structure = "SelectList", focus = "selected" }

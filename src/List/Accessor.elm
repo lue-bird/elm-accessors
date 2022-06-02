@@ -58,43 +58,54 @@ elementEach =
             ]
         }
 
-    multiplyIfGTOne : ( Int, { bar : Int } ) -> ( Int, { bar : Int } )
-    multiplyIfGTOne ( idx, ({ bar } as record) ) =
-        if idx > 0 then
-            ( idx, { bar = bar * 10 } )
-
-        else
-            ( idx, record )
-
-
-    view (Record.foo << List.elementIndexEach) listRecord
+    listRecord |> view (Record.foo << List.elementIndexEach)
     --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
-    map (Record.foo << List.elementIndexEach) multiplyIfGTOne listRecord
+    listRecord
+        |> mapOver
+            (Record.foo << List.elementIndexEach)
+            (\{ index, element } ->
+                case index of
+                    0 ->
+                        element
+
+                    _ ->
+                        { bar = element.bar * 10 }
+            )
     --> { foo = [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
-    view (Record.foo << List.elementIndexEach << Record.element << Record.bar) listRecord
-    --> [2, 3, 4]
+    listRecord
+        |> view (Record.foo << List.elementIndexEach << Record.element << Record.bar)
+    --> [ 2, 3, 4 ]
 
-    map (Record.foo << List.elementIndexEach << Record.element << Record.bar) ((+) 1) listRecord
+    listRecord
+        |> mapOver
+            (Record.foo << List.elementIndexEach << Record.element << Record.bar)
+            ((+) 1)
     --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
-elementIndexEach : Accessor (List element) { index : Int, element : element } (List elementView) elementFocus elementView
+elementIndexEach :
+    Accessor
+        (List element)
+        { index : Int, element : element }
+        (List elementView)
+        elementFocus
+        elementView
 elementIndexEach =
     create1ToN
-        { description = { structure = "List", focus = "{ element, index } each" }
+        { description = { structure = "List", focus = "{element,index} each" }
         , view =
             \elementAlter ->
                 List.indexedMap
-                    (\index element ->
-                        { element = element, index = index } |> elementAlter
+                    (\index element_ ->
+                        { element = element_, index = index } |> elementAlter
                     )
         , map =
             \elementAlter ->
                 List.indexedMap
-                    (\index element ->
-                        { element = element, index = index } |> elementAlter |> .element
+                    (\index element_ ->
+                        { element = element_, index = index } |> elementAlter |> .element
                     )
         }
 
