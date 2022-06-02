@@ -1,9 +1,9 @@
 module Accessor exposing
-    ( Relation, Lens
+    ( Relation, Accessor, Prism, Lens
     , for1To1, for1ToN
     , view, is
     , Description(..), description, descriptionToString
-    , map, mapLazy
+    , mapOver, mapOverLazy
     , onJust, valueElseOnNothing
     , onOk, onErr
     )
@@ -18,7 +18,7 @@ expects a `Relation` and builds a new relation with it. Accessors are
 composable, which means you can build a chain of relations to manipulate nested
 structures without handling the packing and the unpacking.
 
-@docs Relation, Lens
+@docs Relation, Accessor, Prism, Lens
 
 
 ## create
@@ -34,7 +34,7 @@ structures without handling the packing and the unpacking.
 
 ## nested map
 
-@docs map, mapLazy
+@docs mapOver, mapOverLazy
 
 
 ## for `Maybe`
@@ -91,6 +91,17 @@ Technical note: This is an approximation of [Van Laarhoven encoded lenses](https
 -}
 type alias Lens structure focus focusFocus focusFocusView =
     Accessor structure focus focusFocusView focusFocus focusFocusView
+
+
+{-| Traversal over a single value that might or might not exist. Examples
+
+  - [`onJust`](#onJust)
+  - [`onOk`](#onOk)
+  - [`onErr`](#onErr)
+
+-}
+type alias Prism structure value focusFocus valueView =
+    Relation value focusFocus valueView -> Relation structure focusFocus (Maybe valueView)
 
 
 {-| takes
@@ -213,15 +224,21 @@ same =
         }
 
 
-{-| TODO
+{-| Create a [`Lens`](#Lens) from
 
-    foo : Relation field sub wrap -> Relation { record | foo : field } sub wrap
-    foo =
-        for1To1
-            { description = { structure = "record", focus = ".foo" }
-            , view = .foo
-            , map = \alter record -> { record | foo = record.foo |> alter }
-            }
+  - describing the structure and the targeted focus
+  - a function to [access](#view) the structure's targeted focus
+  - a function on the structure for mapping the targeted focus
+
+```
+foo : Lens { record | foo : foo } foo focusFocus focusFocusView
+foo =
+    for1To1
+        { description = { structure = "record", focus = ".foo" }
+        , view = .foo
+        , map = \alter record -> { record | foo = record.foo |> alter }
+        }
+```
 
 -}
 for1To1 :
@@ -246,15 +263,21 @@ for1To1 focus =
             }
 
 
-{-| TODO
+{-| Create a traversal [`Accessor`](#Accessor) from
 
-    elementEach : Relation elem sub wrap -> Relation (List elem) sub (List wrap)
-    elementEach =
-        for1ToN
-            { description = { structure = "List", focus = "element each" }
-            , view = List.map
-            , map = List.map
-            }
+  - describing the structure and the targeted focus
+  - a function on the structure for mapping the targeted focus [`view`](#view)
+  - a function on the structure for mapping the targeted focus
+
+```
+elementEach : Relation elem sub wrap -> Relation (List elem) sub (List wrap)
+elementEach =
+    for1ToN
+        { description = { structure = "List", focus = "element each" }
+        , view = List.map
+        , map = List.map
+        }
+```
 
 -}
 for1ToN :
@@ -262,10 +285,7 @@ for1ToN :
     , map : (focus -> focus) -> (structure -> structure)
     , description : { structure : String, focus : String }
     }
-    ->
-        (Relation focus focusFocus focusFocusView
-         -> Relation structure focusFocus focusView
-        )
+    -> Accessor structure focus focusView focusFocus focusFocusView
 for1ToN focus =
     \(Relation deeperFocus) ->
         Relation
@@ -296,7 +316,7 @@ map (foo << qux) ((+) 1) myRecord
 ```
 
 -}
-map :
+mapOver :
     (Relation focus focus focus
      -> Relation structure focus focusView
     )
@@ -305,7 +325,7 @@ map :
         (structure
          -> structure
         )
-map accessor change =
+mapOver accessor change =
     let
         (Relation relation) =
             accessor same
@@ -333,7 +353,7 @@ The structure is changed only if the new field is different from the old one.
     mapLazy (Field.foo << Field.qux) ((+) 1) myRecord
 
 -}
-mapLazy :
+mapOverLazy :
     (Relation focus focus focus
      -> Relation structure focus focusView
     )
@@ -342,11 +362,11 @@ mapLazy :
         (structure
          -> structure
         )
-mapLazy accessor change =
+mapOverLazy accessor change =
     \structure ->
         let
             changedStructure =
-                structure |> map accessor change
+                structure |> mapOver accessor change
         in
         if
             (changedStructure |> view accessor)
@@ -356,10 +376,6 @@ mapLazy accessor change =
 
         else
             structure
-
-
-type alias Prism structure value focusFocus valueView =
-    Relation value focusFocus valueView -> Relation structure focusFocus (Maybe valueView)
 
 
 {-| This accessor combinator lets you view values inside Maybe.
@@ -411,25 +427,25 @@ onJust =
     view (Dict.atValueString "baz" << valueElseOnNothing { bar = 0 }) dict
     --> { bar = 0 }
 
-TODO: The following do not compile :thinking:
-
     dict
         |> view
             (Dict.atValueString "foo"
                 << onJust
                 << Field.bar
+                << onJust
                 << valueElseOnNothing 0
             )
-    ----> 2
+    ---> 2
 
     dict
         |> view
             (Dict.atValueString "baz"
                 << onJust
                 << Field.bar
+                << onJust
                 << valueElseOnNothing 0
             )
-    ----> 0
+    ---> 0
 
 -}
 valueElseOnNothing : value -> Relation value focusFocus focusFocusView -> Relation (Maybe value) focusFocus focusFocusView
@@ -463,10 +479,10 @@ valueElseOnNothing fallback =
     maybeRecord |> view (Field.qux << onOk << Field.bar)
     --> Nothing
 
-    maybeRecord |> map (Field.foo << onOk << Field.bar) ((+) 1)
+    maybeRecord |> mapOver (Field.foo << onOk << Field.bar) ((+) 1)
     --> { foo = Ok { bar = 3 }, qux = Err "Not an Int" }
 
-    maybeRecord |> map (Field.qux << onOk << Field.bar) ((+) 1)
+    maybeRecord |> mapOver (Field.qux << onOk << Field.bar) ((+) 1)
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
 -}
@@ -504,10 +520,10 @@ onOk =
     maybeRecord |> view (Field.qux << onErr)
     --> Just "Not an Int"
 
-    maybeRecord |> map (Field.foo << onErr) String.toUpper
+    maybeRecord |> mapOver (Field.foo << onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
-    maybeRecord |> map (Field.qux << onErr) String.toUpper
+    maybeRecord |> mapOver (Field.qux << onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "NOT AN INT" }
 
 -}
