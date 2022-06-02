@@ -5,7 +5,7 @@
 - `module Accessors.Library` remove
     - backwards compatibility for just a few users shouldn't clutter the existing API this much
 - `module Accessors.Lazy` remove
-    - in favor of `Accessors.overLazy`
+    - in favor of `Accessors.mapLazy`
 - `module Accessors`
     - name → `Accessor`
         - plural is just more verbose and doesn't mirror the type name
@@ -15,10 +15,13 @@
     - `Dict` accessors move to `Dict.Accessor`
     - `Settable`, `set` remove
         - in favor of `map` which supplies the value to replace with lazily
-    - `ver` name → `map`
+    - `or` remove
+        - in favor of `valueElseOnNothing`
+    - `def` name → `valueElseOnNothing`
+    - `over` name → `map`
     - `name` → `|> description |> descriptionToString`
     - `Accessors.makeOneToOne_` name → `Accessor.for1To1`
     - `Accessors.makeOneToN_` name → `Accessor.for1ToN`
     - `Accessors.makeOneToOne`, `Accessors.makeOneToN` remove
         - backwards compatibility for just a few users shouldn't affect the existing API this much (-`_`)
-    - `overLazy` add
+    - `mapLazy` add
