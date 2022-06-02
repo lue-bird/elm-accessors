@@ -6,11 +6,11 @@ module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
 
 -}
 
-import Accessor exposing (Relation, access, map)
+import Accessor exposing (Relation, map, view)
 import SelectList exposing (SelectList)
 
 
-{-| This accessor combinator lets you access values inside List.
+{-| This accessor combinator lets you view values inside List.
 
     import Accessors exposing (..)
     import Accessors.SelectList as SL
@@ -22,7 +22,7 @@ import SelectList exposing (SelectList)
         { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    access (Field.foo << SL.each << Field.bar) listRecord
+    view (Field.foo << SL.each << Field.bar) listRecord
     --> SelectList.fromLists [1] 2 [3, 4]
 
     map (Field.foo << SL.each << Field.bar) ((+) 1) listRecord
@@ -33,14 +33,14 @@ elementEach : Relation attribute built transformed -> Relation (SelectList attri
 elementEach =
     Accessor.for1ToN
         { description = { structure = "SelectList", focus = "element each" }
-        , access = SelectList.map
+        , view = SelectList.map
         , map = SelectList.map
         }
 
 
 {-| Traverse a `SelectList` including the absolute index of each element
 
-    import Accessors exposing (access, map)
+    import Accessors exposing (view, map)
     import Tuple.Accessor as Tuple
     import Accessors.SelectList as SelectList
     import Field
@@ -63,7 +63,7 @@ elementEach =
             ( idx, record )
 
 
-    access (Field.foo << SelectList.elementIndexEach) listRecord
+    view (Field.foo << SelectList.elementIndexEach) listRecord
     --> SelectList.fromLists
     -->     [ ( 0, { bar = 1 } ) ]
     -->     ( 1, { bar = 2 } )
@@ -72,7 +72,7 @@ elementEach =
     map (Field.foo << SelectList.elementIndexEach) multiplyIfGTOne listRecord
     --> { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 20 } [ { bar = 30 }, { bar = 40 } ] }
 
-    access (Field.foo << SelectList.elementIndexEach << Field.element << Field.bar) listRecord
+    view (Field.foo << SelectList.elementIndexEach << Field.element << Field.bar) listRecord
     --> SelectList.fromLists [1] 2 [3, 4]
 
     map (Field.foo << SelectList.elementIndexEach << Field.element << Field.bar) ((+) 1) listRecord
@@ -83,7 +83,7 @@ elementIndexEach : Relation { index : Int, element : element } reachable built -
 elementIndexEach =
     Accessor.for1ToN
         { description = { structure = "SelectList", focus = "{ element, index } each" }
-        , access =
+        , view =
             \alter selectList ->
                 let
                     ( before, current, after ) =
@@ -153,7 +153,7 @@ elementIndexEach =
         else
             ( idx, record )
 
-    listRecord |> access (Field.foo << SL.selected << Field.bar)
+    listRecord |> view (Field.foo << SL.selected << Field.bar)
     --> 2
 
     listRecord |> map (Field.foo << SL.selected << Field.bar) (\_ -> 37)
@@ -173,6 +173,6 @@ selected : Relation attribute reachable built -> Relation (SelectList attribute)
 selected =
     Accessor.for1To1
         { description = { structure = "SelectList", focus = "selected" }
-        , access = SelectList.selected
+        , view = SelectList.selected
         , map = SelectList.updateSelected
         }

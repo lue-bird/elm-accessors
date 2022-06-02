@@ -12,7 +12,7 @@ import Dict exposing (Dict)
 
 {-| values: This accessor lets you traverse a Dict including the index of each element
 
-    import Accessors exposing (values, map, access)
+    import Accessors exposing (values, map, view)
     import Field
     import Dict exposing (Dict)
 
@@ -26,7 +26,7 @@ import Dict exposing (Dict)
                 ]
         }
 
-    access (Field.foo << values) dictRecord
+    view (Field.foo << values) dictRecord
     --> Dict.fromList
     -->     [ ( "a", { bar = 2 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
 
@@ -36,7 +36,7 @@ import Dict exposing (Dict)
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 30 } ), ( "c", { bar = 40 } ) ]
     --> }
 
-    access (Field.foo << values << Field.bar) dictRecord
+    view (Field.foo << values << Field.bar) dictRecord
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     map (Field.foo << values << Field.bar) ((+) 1) dictRecord
@@ -50,14 +50,14 @@ valueEach : Relation attribute reachable built -> Relation (Dict comparable attr
 valueEach =
     for1ToN
         { description = { structure = "Dict", focus = "value each" }
-        , access = \fn -> Dict.map (\_ -> fn)
+        , view = \fn -> Dict.map (\_ -> fn)
         , map = \map -> Dict.map (\_ -> map)
         }
 
 
 {-| keyed: This accessor lets you traverse a Dict including the index of each element
 
-    import Accessors exposing (access, map, keyed)
+    import Accessors exposing (view, map, keyed)
     import Tuple.Accessor as Tuple
     import Field
     import Dict exposing (Dict)
@@ -80,7 +80,7 @@ valueEach =
             ( key, record )
 
 
-    access (Field.foo << keyed) dictRecord
+    view (Field.foo << keyed) dictRecord
     --> Dict.fromList
     -->     [ ( "a", ( "a", { bar = 2 } ) ), ( "b", ( "b", { bar = 3 } ) ), ( "c", ( "c", { bar = 4 } ) ) ]
 
@@ -90,7 +90,7 @@ valueEach =
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
     --> }
 
-    access (Field.foo << keyed << Tuple.second << Field.bar) dictRecord
+    view (Field.foo << keyed << Tuple.second << Field.bar) dictRecord
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     map (Field.foo << keyed << Tuple.second << Field.bar) ((+) 1) dictRecord
@@ -104,7 +104,7 @@ valueKeyEach : Relation { key : comparableKey, value : value } reachable built -
 valueKeyEach =
     for1ToN
         { description = { structure = "Dict", focus = "{ key, value } each" }
-        , access =
+        , view =
             \fn -> Dict.map (\key value -> { key = key, value = value } |> fn)
         , map =
             \fn -> Dict.map (\key value -> { key = key, value = value } |> fn |> .value)
@@ -116,7 +116,7 @@ valueKeyEach =
 In terms of accessors, think of Dicts as records where each field is a Maybe.
 
     import Dict exposing (Dict)
-    import Accessors exposing (access, try)
+    import Accessors exposing (view, try)
     import Dict.Accessors as Dict
     import Field
 
@@ -124,13 +124,13 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     dict =
         Dict.fromList [ ( 'b', { bar = 2 } ) ]
 
-    dict |> access (Dict.valueAt ( 'b', String.fromChar ))
+    dict |> view (Dict.valueAt ( 'b', String.fromChar ))
     --> Just { bar = 2 }
 
-    dict |> access (Dict.valueAt ( 'b', String.fromChar ))
+    dict |> view (Dict.valueAt ( 'b', String.fromChar ))
     --> Nothing
 
-    dict |> access (Dict.valueAt ( 'b', String.fromChar ) << onJust << Field.bar)
+    dict |> view (Dict.valueAt ( 'b', String.fromChar ) << onJust << Field.bar)
     --> Just 2
 
     dict |> map (Dict.valueAt ( 'b', String.fromChar )) (\_ -> Nothing)
@@ -149,7 +149,7 @@ valueAt :
 valueAt ( key, keyToString ) =
     Accessor.for1To1
         { description = { structure = "Dict", focus = "value at " ++ (key |> keyToString) }
-        , access = Dict.get key
+        , view = Dict.get key
         , map = Dict.update key
         }
 

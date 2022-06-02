@@ -9,9 +9,9 @@ module List.Accessor exposing (elementAt, elementEach, elementIndexEach)
 import Accessor exposing (Relation, for1To1, for1ToN, onJust)
 
 
-{-| This accessor combinator lets you access values inside List.
+{-| This accessor combinator lets you view values inside List.
 
-    import Accessors exposing (each, access, map)
+    import Accessors exposing (each, view, map)
     import Field
 
     listRecord : { foo : List { bar : Int } }
@@ -23,7 +23,7 @@ import Accessor exposing (Relation, for1To1, for1ToN, onJust)
             ]
         }
 
-    access (Field.foo << each << Field.bar) listRecord
+    view (Field.foo << each << Field.bar) listRecord
     --> [2, 3, 4]
 
     map (Field.foo << each << Field.bar) ((+) 1) listRecord
@@ -34,14 +34,14 @@ elementEach : Relation attribute built transformed -> Relation (List attribute) 
 elementEach =
     for1ToN
         { description = { structure = "List", focus = "element each" }
-        , access = List.map
+        , view = List.map
         , map = List.map
         }
 
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (access, map)
+    import Accessors exposing (view, map)
     import List.Accessor as List
     import Tuple.Accessor as Tuple
     import Field
@@ -64,13 +64,13 @@ elementEach =
             ( idx, record )
 
 
-    access (Field.foo << List.elementIndexEach) listRecord
+    view (Field.foo << List.elementIndexEach) listRecord
     --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
     map (Field.foo << List.elementIndexEach) multiplyIfGTOne listRecord
     --> { foo = [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
-    access (Field.foo << List.elementIndexEach << Field.element << Field.bar) listRecord
+    view (Field.foo << List.elementIndexEach << Field.element << Field.bar) listRecord
     --> [2, 3, 4]
 
     map (Field.foo << List.elementIndexEach << Field.element << Field.bar) ((+) 1) listRecord
@@ -81,7 +81,7 @@ elementIndexEach : Relation { index : Int, element : element } reachable built -
 elementIndexEach =
     for1ToN
         { description = { structure = "List", focus = "{ element, index } each" }
-        , access =
+        , view =
             \elementAlter ->
                 List.indexedMap
                     (\index element ->
@@ -98,7 +98,7 @@ elementIndexEach =
 
 {-| at: Structure Preserving accessor over List members.
 
-    import Accessors exposing (access)
+    import Accessors exposing (view)
     import List.Accessor as List
     import Field
 
@@ -106,13 +106,13 @@ elementIndexEach =
     bars =
         [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> access (List.elementAt 1)
+    bars |> view (List.elementAt 1)
     --> Just { bar = "Things" }
 
-    bars |> access (List.elementAt 9000)
+    bars |> view (List.elementAt 9000)
     --> Nothing
 
-    bars |> access (List.elementAt 0 << Field.bar)
+    bars |> view (List.elementAt 0 << Field.bar)
     --> Just "Stuff"
 
     bars |> map (List.elementAt 0 << Field.bar) (\_ -> "Whatever")
@@ -126,7 +126,7 @@ elementAt : Int -> Relation v reachable wrap -> Relation (List v) reachable (May
 elementAt focusIndex =
     Accessor.for1To1
         { description = { structure = "List", focus = "element at " ++ (focusIndex |> String.fromInt) }
-        , access =
+        , view =
             if focusIndex < 0 then
                 \_ -> Nothing
 

@@ -10,10 +10,10 @@ import Accessor exposing (Relation, for1To1, for1ToN, onJust)
 import Array exposing (Array)
 
 
-{-| This accessor combinator lets you access values inside Array.
+{-| This accessor combinator lets you view values inside Array.
 
     import Array exposing (Array)
-    import Accessors exposing (every, access, map)
+    import Accessors exposing (every, view, map)
     import Field
 
     arrayRecord : { foo : Array { bar : Int } }
@@ -22,7 +22,7 @@ import Array exposing (Array)
             Array.fromList [ { bar = 2 }, { bar = 3 }, { bar = 4 } ]
         }
 
-    access (Field.foo << every << Field.bar) arrayRecord
+    view (Field.foo << every << Field.bar) arrayRecord
     --> Array.fromList [ 2, 3, 4 ]
 
     map (Field.foo << every << Field.bar) ((+) 1) arrayRecord
@@ -33,14 +33,14 @@ elementEach : Relation attribute built transformed -> Relation (Array attribute)
 elementEach =
     for1ToN
         { description = { structure = "Array", focus = "element each" }
-        , access = Array.map
+        , view = Array.map
         , map = Array.map
         }
 
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (everyIdx, access, map)
+    import Accessors exposing (everyIdx, view, map)
     import Tuple.Accessor as Tuple
     import Field
     import Array exposing (Array)
@@ -64,14 +64,14 @@ elementEach =
             ( idx, record )
 
 
-    arrayRecord |> access (Field.foo << everyIdx)
+    arrayRecord |> view (Field.foo << everyIdx)
     --> Array.fromList
     -->     [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
     arrayRecord |> map (Field.foo << everyIdx) multiplyIfGTOne
     --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
-    arrayRecord |> access (Field.foo << everyIdx << Tuple.second << Field.bar)
+    arrayRecord |> view (Field.foo << everyIdx << Tuple.second << Field.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     arrayRecord
@@ -83,7 +83,7 @@ elementIndexEach : Relation { element : element, index : Int } reachable built -
 elementIndexEach =
     for1ToN
         { description = { structure = "Array", focus = "{ element, index } each" }
-        , access =
+        , view =
             \fn ->
                 Array.indexedMap
                     (\index element -> { element = element, index = index } |> fn)
@@ -94,12 +94,12 @@ elementIndexEach =
         }
 
 
-{-| This accessor combinator lets you access Array indices.
+{-| This accessor combinator lets you view Array indices.
 
 In terms of accessors, think of Dicts as records where each field is a Maybe.
 
     import Array exposing (Array)
-    import Accessors exposing (access)
+    import Accessors exposing (view)
     import Array.Accessor exposing (elementAt)
     import Field
 
@@ -107,13 +107,13 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     barray =
         Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> access (elementAt 1)
+    barray |> view (elementAt 1)
     --> Just { bar = "Things" }
 
-    barray |> access (elementAt 9000)
+    barray |> view (elementAt 9000)
     --> Nothing
 
-    barray |> access (elementAt 0 << Field.bar)
+    barray |> view (elementAt 0 << Field.bar)
     --> Just "Stuff"
 
     barray |> map (elementAt 0 << Field.bar) (\_ -> "Whatever")
@@ -127,7 +127,7 @@ elementAt : Int -> Relation v reachable wrap -> Relation (Array v) reachable (Ma
 elementAt index =
     for1To1
         { description = { structure = "Array", focus = "element at " ++ (index |> String.fromInt) }
-        , access = Array.get index
+        , view = Array.get index
         , map =
             \alter array ->
                 -- NOTE: `<< onJust` at the end ensures we can't delete any existing keys

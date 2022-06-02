@@ -1,6 +1,6 @@
 module Accessor exposing
     ( Relation, Lens
-    , access, is
+    , view, is
     , description, descriptionToString
     , map, mapLazy
     , onJust, valueElseOnNothing
@@ -26,7 +26,7 @@ structures without handling the packing and the unpacking.
 
 ## scan
 
-@docs access, is
+@docs view, is
 @docs description, descriptionToString
 
 
@@ -61,14 +61,14 @@ import RecordWithoutConstructorFunction exposing (RecordWithoutConstructorFuncti
 {-| Intuitively, a "Lens" type could look like
 
     type alias Lens structure focus =
-        { access : structure -> focus
+        { view : structure -> focus
         , replace : focus -> (structure -> structure)
         }
 
 Unfortunately, we then need `composeLens`, `composeIso`, `composePrism` functions.
 
 With this approach we're able to make use of `>>`
-to [`access`](#access)/[`map`](#map) a nested structure.
+to [`view`](#view)/[`map`](#map) a nested structure.
 
 Technical note: This is an approximation of [Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/).
 
@@ -97,14 +97,14 @@ type alias LensFinal structure focus =
 {-| A `Relation structure focus accessible` describes how to interact with a
 `focus` when given a `structure`.
 
-Sometimes, `access` can't return a `focus`
+Sometimes, `view` can't return a `focus`
 For instance, `List focus` may not actually contain 1 `focus`.
 Therefore, `accessible` can be a simple wrapper which, in that example, will be `List focus`
 
 -}
 type Relation structure focus accessible
     = Relation
-        { access : structure -> accessible
+        { view : structure -> accessible
         , map : (focus -> focus) -> (structure -> structure)
         , description : List Description
         }
@@ -117,11 +117,11 @@ type Relation structure focus accessible
 
 and returns the value accessed by that combinator.
 
-    { foo = { bar = "filling } } |> access (foo << bar)
+    { foo = { bar = "filling } } |> view (foo << bar)
     --→ "filling"
 
 -}
-access :
+view :
     (Relation focus focus focus
      -> Relation structure focus accessible
     )
@@ -129,13 +129,13 @@ access :
         (structure
          -> accessible
         )
-access accessor =
+view accessor =
     \structure ->
         let
             (Relation relation) =
                 accessor same
         in
-        relation.access structure
+        relation.view structure
 
 
 {-| Used with a Prism, think of `!!` boolean coercion in Javascript except type-safe.
@@ -167,7 +167,7 @@ is :
         )
 is prism =
     \structure ->
-        (structure |> access prism) /= Nothing
+        (structure |> view prism) /= Nothing
 
 
 description :
@@ -223,7 +223,7 @@ same : Relation focus focus focus
 same =
     Relation
         { description = [ Identity ]
-        , access = identity
+        , view = identity
         , map = identity
         }
 
@@ -236,7 +236,7 @@ want type safe keys for a Dictionary but you still want to use elm/core implemen
     foo =
         for1To1
             { description = { structure = "record", focus = ".foo" }
-            , access = .foo
+            , view = .foo
             , map = \alter record -> { record | foo = record.foo |> alter }
             }
 
@@ -246,15 +246,15 @@ for1To1 :
         { structure : String
         , focus : String
         }
-    , access : structure -> focus
+    , view : structure -> focus
     , map : (focus -> focus) -> structure -> structure
     }
     -> (Relation focus reachable wrap -> Relation structure reachable wrap)
 for1To1 config =
     \(Relation focus) ->
         Relation
-            { access =
-                \structure -> focus.access (config.access structure)
+            { view =
+                \structure -> focus.view (config.view structure)
             , map =
                 \change structure -> config.map (focus.map change) structure
             , description =
@@ -270,7 +270,7 @@ want type safe keys for a Dictionary but you still want to use elm/core implemen
     each =
         for1ToN
             { description = { structure = "List", focus = "element each" }
-            , access = List.map
+            , view = List.map
             , map = List.map
             }
 
@@ -280,7 +280,7 @@ for1ToN :
         { structure : String
         , focus : String
         }
-    , access :
+    , view :
         (focus -> focusFocusAccessible) -> (structure -> focusView)
     , map :
         (focus -> focus) -> (structure -> structure)
@@ -292,8 +292,8 @@ for1ToN :
 for1ToN config =
     \(Relation sub) ->
         Relation
-            { access =
-                \super -> config.access sub.access super
+            { view =
+                \super -> config.view sub.view super
             , map =
                 \change super -> config.map (sub.map change) super
             , description =
@@ -363,8 +363,8 @@ mapLazy accessor change =
                 map accessor change structure
         in
         if
-            access accessor newSuper
-                /= access accessor structure
+            view accessor newSuper
+                /= view accessor structure
         then
             newSuper
 
@@ -372,9 +372,9 @@ mapLazy accessor change =
             structure
 
 
-{-| This accessor combinator lets you access values inside Maybe.
+{-| This accessor combinator lets you view values inside Maybe.
 
-    import Accessors exposing (access, map, try)
+    import Accessors exposing (view, map, try)
     import Field
 
     maybeRecord : { foo : Maybe { bar : Int }, qux : Maybe { bar : Int } }
@@ -383,10 +383,10 @@ mapLazy accessor change =
         , qux = Nothing
         }
 
-    access (Field.foo << onJust << Field.bar) maybeRecord
+    view (Field.foo << onJust << Field.bar) maybeRecord
     --> Just 2
 
-    access (Field.qux << onJust << Field.bar) maybeRecord
+    view (Field.qux << onJust << Field.bar) maybeRecord
     --> Nothing
 
     map (Field.foo << onJust << Field.bar) ((+) 1) maybeRecord
@@ -400,7 +400,7 @@ onJust : Relation attribute built transformed -> Relation (Maybe attribute) buil
 onJust =
     for1ToN
         { description = { structure = "Maybe", focus = "Just" }
-        , access = Maybe.map
+        , view = Maybe.map
         , map = Maybe.map
         }
 
@@ -415,16 +415,16 @@ onJust =
     dict =
         Dict.fromList [ ( "foo", { bar = 2 } ) ]
 
-    access (Dict.atValueString "foo" << valueElseOnNothing { bar = 0 }) dict
+    view (Dict.atValueString "foo" << valueElseOnNothing { bar = 0 }) dict
     --> { bar = 2 }
 
-    access (Dict.atValueString "baz" << valueElseOnNothing { bar = 0 }) dict
+    view (Dict.atValueString "baz" << valueElseOnNothing { bar = 0 }) dict
     --> { bar = 0 }
 
 TODO: The following do not compile :thinking:
 
     dict
-        |> access
+        |> view
             (Dict.atValueString "foo"
                 << onJust
                 << Field.bar
@@ -433,7 +433,7 @@ TODO: The following do not compile :thinking:
     ----> 2
 
     dict
-        |> access
+        |> view
             (Dict.atValueString "baz"
                 << onJust
                 << Field.bar
@@ -446,14 +446,14 @@ valueElseOnNothing : attribute -> Relation attribute reachable wrap -> Relation 
 valueElseOnNothing fallback =
     for1ToN
         { description = { structure = "Maybe", focus = "Nothing" }
-        , access = \f -> Maybe.withDefault fallback >> f
+        , view = \f -> Maybe.withDefault fallback >> f
         , map = Maybe.map
         }
 
 
-{-| This accessor lets you access values inside the Ok variant of a Result.
+{-| This accessor lets you view values inside the Ok variant of a Result.
 
-    import Accessors exposing (access, map, onOk)
+    import Accessors exposing (view, map, onOk)
     import Field
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
@@ -462,10 +462,10 @@ valueElseOnNothing fallback =
         , qux = Err "Not an Int"
         }
 
-    maybeRecord |> access (Field.foo << onOk << Field.bar)
+    maybeRecord |> view (Field.foo << onOk << Field.bar)
     --> Just 2
 
-    maybeRecord |> access (Field.qux << onOk << Field.bar)
+    maybeRecord |> view (Field.qux << onOk << Field.bar)
     --> Nothing
 
     maybeRecord |> map (Field.foo << onOk << Field.bar) ((+) 1)
@@ -479,14 +479,14 @@ onOk : Relation attribute built transformed -> Relation (Result x attribute) bui
 onOk =
     for1ToN
         { description = { structure = "Result", focus = "Ok" }
-        , access = \fn -> Result.map fn >> Result.toMaybe
+        , view = \fn -> Result.map fn >> Result.toMaybe
         , map = Result.map
         }
 
 
-{-| This accessor lets you access values inside the Err variant of a Result.
+{-| This accessor lets you view values inside the Err variant of a Result.
 
-    import Accessors exposing (access, map, onErr)
+    import Accessors exposing (view, map, onErr)
     import Field
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
@@ -495,10 +495,10 @@ onOk =
         , qux = Err "Not an Int"
         }
 
-    maybeRecord |> access (Field.foo << onErr)
+    maybeRecord |> view (Field.foo << onErr)
     --> Nothing
 
-    maybeRecord |> access (Field.qux << onErr)
+    maybeRecord |> view (Field.qux << onErr)
     --> Just "Not an Int"
 
     maybeRecord |> map (Field.foo << onErr) String.toUpper
@@ -522,6 +522,6 @@ onErr =
     in
     for1ToN
         { description = { structure = "Result", focus = "Err" }
-        , access = accessing
+        , view = accessing
         , map = Result.mapError
         }

@@ -11,14 +11,14 @@ import Accessor exposing (Relation, for1To1)
 
 {-| Lens over the first component of a Tuple.
 
-    import Accessors exposing (access, map)
+    import Accessors exposing (view, map)
     import Tuple.Accessor as Tuple
 
     charging : ( String, Int )
     charging =
         ( "It's over", 1 )
 
-    charging |> access Tuple.first
+    charging |> view Tuple.first
     --> "It's over"
 
     charging |> map Tuple.first (\_ -> "It's map")
@@ -33,21 +33,21 @@ first : Relation sub reachable wrap -> Relation ( sub, x ) reachable wrap
 first =
     for1To1
         { description = { structure = "Tuple", focus = "first" }
-        , access = Tuple.first
+        , view = Tuple.first
         , map = Tuple.mapFirst
         }
 
 
 {-| Lens map the second component of a Tuple.
 
-    import Accessors exposing (access, map)
+    import Accessors exposing (view, map)
     import Tuple.Accessor as Tuple
 
     jo : ( String, Int )
     jo =
         ( "Hi there", 1 )
 
-    jo |> access Tuple.second
+    jo |> view Tuple.second
     --> 1
 
     jo |> map Tuple.second (\_ -> 1125)
@@ -64,6 +64,6 @@ second : Relation sub reachable wrap -> Relation ( x, sub ) reachable wrap
 second =
     for1To1
         { description = { structure = "Tuple", focus = "second" }
-        , access = Tuple.second
+        , view = Tuple.second
         , map = Tuple.mapSecond
         }

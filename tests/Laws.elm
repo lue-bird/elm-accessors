@@ -200,9 +200,9 @@ setter_set_set l s a b =
 
 lens_set_get : LensArgument structure attribute -> structure -> Bool
 lens_set_get l s =
-    A.map l (\_ -> A.access l s) s == s
+    A.map l (\_ -> A.view l s) s == s
 
 
 lens_get_set : LensArgument structure attribute -> structure -> attribute -> Bool
 lens_get_set l s a =
-    A.access l (A.map l (\_ -> a) s) == a
+    A.view l (A.map l (\_ -> a) s) == a

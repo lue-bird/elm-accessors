@@ -11,10 +11,10 @@ makeOneToOne_ :
         (Accessor.Relation focus reachable wrap
          -> Accessor.Relation structure reachable wrap
         )
-makeOneToOne_ fieldName access alter =
+makeOneToOne_ fieldName view alter =
     Accessor.for1To1
         { description = { structure = "record", focus = fieldName }
-        , access = access
+        , view = view
         , map = alter
         }
 
