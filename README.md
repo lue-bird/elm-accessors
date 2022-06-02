@@ -1,51 +1,45 @@
-The Accessors library
-=====================
+Describe relations between a structure and its
+content, and use that description to `map`/`view` arbitrary content more easily.
 
-This library provides a way to describe relations between a container and its
-content, and use that description to manipulate arbitrary data more easily.
+## build relations 
 
-# Build your relations 
-
-There are two kinds of relations between a container and its content: 1:1
-relations (e.g. a record and its field) and 1:n relations (e.g. a `List` can
-contain 0-n elements, a `Maybe` can contain 0-1 elements).
-
-For 1:1 relations, the `for1To1` function will let you build an accessor
-by describing how to view the sub-element from the super-element, and how to map
-a function over it. For instance, with a record:
+- 1:1, e.g.
+    - a record and a specific field value
+    - a tuple and the first or second value
+- 1:n, e.g.
+    - a `List` can contain 0-n elements
+    - a `Maybe` can contain 0-1 elements
 
 ```elm
 recordFoo =
-    for1To1
-        ".foo"
-        .foo
-        (\alter record -> { record | foo = record.foo |> alter })
+    Accessor.for1To1
+        { description = { structure = "record", focus = ".foo" }
+        , view = .foo
+        , map = \alter record -> { record | foo = record.foo |> alter }
+        }
 
 recordBar =
-    for1To1
+    Accessor.for1To1
         ".bar"
         .bar
         (\alter record -> { record | bar = record.bar |> alter })
-```
 
-1:n relations are more complex in terms of abstraction, but they are usually
-very easy to implement:
-
-```elm
 elementEach = 
-    for1ToN
-        "List element each"
-        List.map
-        List.map
+    Accessor.for1ToN
+        { description = { structure = "List", focus = "element each" }
+        , view = List.map
+        , map = List.map
+        }
 
 onJust =
-    for1ToN
-        "Maybe.Just"
-        Maybe.map
-        Maybe.map
+    Accessor.for1ToN
+        { description = { structure = "Maybe", focus = "Just" }
+        , view = Maybe.map
+        , map = Maybe.map
+        }
 ```
 
-## combine your relations
+## combine relations
 
 Accessors can be composed easily to describe relations:
 
@@ -58,23 +52,14 @@ fooBars =
         ]
     }
 
-myAccessor = recordFoo << onEach << recordBar
-```
-
-## alter your data easily
-
-Then you use an action function to determine which kind of operation you want to
-do on your data using the accessor
-
-```elm
-fooBars |> view myAccessor
+fooBars |> view (recordFoo << onEach << recordBar)
 --> [ 3, 2, 0 ]
 
-fooBars |> map myAccessor (\n -> n * 2)
+fooBars |> map (recordFoo << onEach << recordBar) (\n -> n * 2)
 --> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 ```
 
-# type-safe, reusable
+## type-safe, reusable
 
 Applying an accessor on non-matching data structures will yield nice
 compile-time errors: 
@@ -98,16 +83,13 @@ Any accessor you make can be composed with any other accessor to match your new
 data structures: 
 
 ```elm
-bar =
-    { bar = Just [ 1, 3, 2 ] }
-
-halfWay =
-    try << onEach
+tryEach =
+    try << elementEach
 
 myOtherAccessor =
-    recordBar << halfWay
+    recordBar << tryEach
 
-bar |> view myOtherAccessor
+{ bar = Just [ 1, 3, 2 ] } |> view myOtherAccessor
 --> Just [ 1, 3, 2 ]
 ```
 
