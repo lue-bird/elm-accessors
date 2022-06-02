@@ -7,6 +7,7 @@ import Dict exposing (Dict)
 import Dict.Accessor as Dict
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer)
+import Linear exposing (DirectionLinear(..))
 import List.Accessor as List
 import Maybe exposing (Maybe)
 import Record
@@ -25,10 +26,10 @@ suite =
         , test
             "description"
             (\() ->
-                (Record.info << Record.stuff << List.elementAt 7 << Record.name)
+                (Record.info << Record.stuff << List.element ( Up, 7 ) << Record.name)
                     |> A.description
                     |> A.descriptionToString
-                    |> Expect.equal "record>.info:record>.stuff:List>element at 7:Maybe>Just:record>.name"
+                    |> Expect.equal "record>.info:record>.stuff:List>element ↑7:Maybe>Just:record>.name"
             )
         ]
 
@@ -51,11 +52,31 @@ settableTest : Test
 settableTest =
     Test.describe
         "setable"
-        [ isSettable (Record.email << A.onJust) personFuzzer stringAlter Fuzz.string
-        , isSettable (Record.stuff << List.elementAt 0) personFuzzer stringAlter Fuzz.string
-        , isSettable (Record.stuff << List.elementEach) personFuzzer stringAlter Fuzz.string
-        , isSettable (Record.things << Array.elementAt 0) personFuzzer stringAlter Fuzz.string
-        , isSettable (Record.things << Array.elementEach) personFuzzer stringAlter Fuzz.string
+        [ isSettable
+            (Record.email << A.onJust)
+            personFuzzer
+            stringAlter
+            Fuzz.string
+        , isSettable
+            (Record.stuff << List.element ( Up, 0 ))
+            personFuzzer
+            stringAlter
+            Fuzz.string
+        , isSettable
+            (Record.stuff << List.elementEach)
+            personFuzzer
+            stringAlter
+            Fuzz.string
+        , isSettable
+            (Record.things << Array.element ( Up, 0 ))
+            personFuzzer
+            stringAlter
+            Fuzz.string
+        , isSettable
+            (Record.things << Array.elementEach)
+            personFuzzer
+            stringAlter
+            Fuzz.string
         ]
 
 
@@ -66,10 +87,14 @@ type alias Alter a =
 stringAlter : Fuzzer (Alter String)
 stringAlter =
     Fuzz.oneOf
-        [ Fuzz.map String.append Fuzz.string
-        , Fuzz.map (\s -> String.append s << String.reverse) Fuzz.string
-        , Fuzz.map (\s -> String.append s << String.toUpper) Fuzz.string
-        , Fuzz.map (\s -> String.append s << String.toLower) Fuzz.string
+        [ Fuzz.map String.append
+            Fuzz.string
+        , Fuzz.map (\s -> String.append s << String.reverse)
+            Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toUpper)
+            Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toLower)
+            Fuzz.string
 
         -- , Fuzz.map String.reverse string
         -- , Fuzz.constant String.toUpper
@@ -80,10 +105,14 @@ stringAlter =
 intAlter : Fuzzer (Alter Int)
 intAlter =
     Fuzz.oneOf
-        [ Fuzz.map (+) Fuzz.int
-        , Fuzz.map (-) Fuzz.int
-        , Fuzz.map (*) Fuzz.int
-        , Fuzz.map (//) Fuzz.int
+        [ Fuzz.map (+)
+            Fuzz.int
+        , Fuzz.map (-)
+            Fuzz.int
+        , Fuzz.map (*)
+            Fuzz.int
+        , Fuzz.map (//)
+            Fuzz.int
         ]
 
 
@@ -143,7 +172,7 @@ isSettable :
     -> Test
 isSettable settable structureFuzzer alterFuzzer focusFuzzer =
     Test.describe
-        ("isSetable: " ++ (settable |> A.description |> A.descriptionToString))
+        ("isSettable: " ++ (settable |> A.description |> A.descriptionToString))
         [ Test.fuzz
             structureFuzzer
             "identity"

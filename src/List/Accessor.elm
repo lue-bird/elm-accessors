@@ -1,12 +1,15 @@
-module List.Accessor exposing (elementAt, elementEach, elementIndexEach)
+module List.Accessor exposing (element, elementEach, elementIndexEach)
 
 {-| Accessors for `List`s.
 
-@docs elementAt, elementEach, elementIndexEach
+@docs element, elementEach, elementIndexEach
 
 -}
 
-import Accessor exposing (Relation, create1To1, create1ToN, onJust)
+import Accessor exposing (Accessor, Lens, Relation, create1To1, create1ToN, onJust)
+import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
+import Linear.Extra as Linear
+import List.Linear
 
 
 {-| This accessor combinator lets you view values inside List.
@@ -30,7 +33,7 @@ import Accessor exposing (Relation, create1To1, create1ToN, onJust)
     --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
 
 -}
-elementEach : Relation attribute built transformed -> Relation (List attribute) built (List transformed)
+elementEach : Accessor (List element) element (List elementFocusView) elementFocus elementFocusView
 elementEach =
     create1ToN
         { description = { structure = "List", focus = "element each" }
@@ -77,7 +80,7 @@ elementEach =
     --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
-elementIndexEach : Relation { index : Int, element : element } reachable built -> Relation (List element) reachable (List built)
+elementIndexEach : Accessor (List element) { index : Int, element : element } (List elementView) elementFocus elementView
 elementIndexEach =
     create1ToN
         { description = { structure = "List", focus = "{ element, index } each" }
@@ -106,44 +109,48 @@ elementIndexEach =
     bars =
         [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> view (List.elementAt 1)
+    bars |> view (List.element 1)
     --> Just { bar = "Things" }
 
-    bars |> view (List.elementAt 9000)
+    bars |> view (List.element 9000)
     --> Nothing
 
-    bars |> view (List.elementAt 0 << Record.bar)
+    bars |> view (List.element 0 << Record.bar)
     --> Just "Stuff"
 
-    bars |> mapOver (List.elementAt 0 << Record.bar) (\_ -> "Whatever")
+    bars |> mapOver (List.element 0 << Record.bar) (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> mapOver (List.elementAt 9000 << Record.bar) (\_ -> "Whatever")
+    bars |> mapOver (List.element 9000 << Record.bar) (\_ -> "Whatever")
     --> bars
 
 -}
-elementAt : Int -> Relation v reachable wrap -> Relation (List v) reachable (Maybe wrap)
-elementAt focusIndex =
+element :
+    ( DirectionLinear, Int )
+    -> Accessor (List element) element (Maybe focusFocusView) focusFocus focusFocusView
+element focusLocation =
     Accessor.create1To1
-        { description = { structure = "List", focus = "element at " ++ (focusIndex |> String.fromInt) }
+        { description =
+            { structure = "List"
+            , focus = "element " ++ (focusLocation |> Linear.locationToString)
+            }
         , view =
-            if focusIndex < 0 then
-                \_ -> Nothing
+            \list ->
+                case list |> List.Linear.element focusLocation of
+                    Err (ExpectedIndexForLength _) ->
+                        Nothing
 
-            else
-                \list -> list |> List.drop focusIndex |> List.head
+                    Ok value ->
+                        value |> Just
         , map =
             \alter list ->
-                -- NOTE: `<< onJust` at the end ensures we can't delete any existing keys
+                -- NOTE: `<< onJust` at the end ensures we can't delete any existing indices
                 -- so `List.filterMap identity` should be safe
                 list
-                    |> List.indexedMap
-                        (\index ->
-                            if index == focusIndex then
-                                \v -> Just v |> alter
-
-                            else
-                                Just
+                    |> List.map Just
+                    |> List.Linear.elementAlter
+                        ( focusLocation
+                        , alter
                         )
                     |> List.filterMap identity
         }

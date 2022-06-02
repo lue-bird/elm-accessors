@@ -1,13 +1,16 @@
-module Array.Accessor exposing (elementEach, elementIndexEach, elementAt)
+module Array.Accessor exposing (elementEach, elementIndexEach, element)
 
 {-| Accessors for `Array`s.
 
-@docs elementEach, elementIndexEach, elementAt
+@docs elementEach, elementIndexEach, element
 
 -}
 
-import Accessor exposing (Relation, create1To1, create1ToN, onJust)
+import Accessor exposing (Accessor, Relation, create1To1, create1ToN, onJust)
 import Array exposing (Array)
+import Array.Linear
+import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
+import Linear.Extra as Linear
 
 
 {-| This accessor combinator lets you view values inside Array.
@@ -100,57 +103,63 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
 
     import Array exposing (Array)
     import Accessors exposing (view)
-    import Array.Accessor exposing (elementAt)
+    import Array.Accessor exposing (element)
     import Record
 
     barray : Array { bar : String }
     barray =
         Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> view (elementAt 1)
+    barray |> view (element 1)
     --> Just { bar = "Things" }
 
-    barray |> view (elementAt 9000)
+    barray |> view (element 9000)
     --> Nothing
 
-    barray |> view (elementAt 0 << Record.bar)
+    barray |> view (element 0 << Record.bar)
     --> Just "Stuff"
 
-    barray |> mapOver (elementAt 0 << Record.bar) (\_ -> "Whatever")
+    barray |> mapOver (element 0 << Record.bar) (\_ -> "Whatever")
     --> Array.fromList [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> mapOver (elementAt 9000 << Record.bar) (\_ -> "Whatever")
+    barray |> mapOver (element 9000 << Record.bar) (\_ -> "Whatever")
     --> barray
 
 -}
-elementAt : Int -> Relation v reachable wrap -> Relation (Array v) reachable (Maybe wrap)
-elementAt index =
+element :
+    ( DirectionLinear, Int )
+    -> Accessor (Array element) element (Maybe focusFocusView) focusFocus focusFocusView
+element location =
     create1To1
-        { description = { structure = "Array", focus = "element at " ++ (index |> String.fromInt) }
-        , view = Array.get index
+        { description =
+            { structure = "Array"
+            , focus = "element " ++ (location |> Linear.locationToString)
+            }
+        , view =
+            \array ->
+                case array |> Array.Linear.element location of
+                    Err (ExpectedIndexForLength _) ->
+                        Nothing
+
+                    Ok value ->
+                        value |> Just
         , map =
-            \alter array ->
-                -- NOTE: `<< onJust` at the end ensures we can't delete any existing keys
-                -- so `List.filterMap identity` should be safe
-                -- TODO: use LinearDirection
-                array
-                    |> Array.indexedMap
-                        (\idx_ v ->
-                            if index == idx_ then
-                                alter (Just v)
-
-                            else
-                                Just v
-                        )
-                    |> Array.foldl
-                        (\element acc ->
-                            case element of
-                                Just v ->
-                                    Array.push v acc
-
-                                Nothing ->
-                                    acc
-                        )
-                        Array.empty
+            \alter ->
+                \array ->
+                    -- `<< onJust` at the end ensures we can't delete any existing keys
+                    -- so `List.filterMap identity` should be safe
+                    array
+                        |> Array.map Just
+                        |> Array.Linear.elementAlter ( location, alter )
+                        |> arrayValues
         }
         << onJust
+
+
+arrayValues : Array (Maybe element) -> Array element
+arrayValues =
+    \arrayMaybe ->
+        arrayMaybe
+            |> Array.toList
+            |> List.filterMap identity
+            |> Array.fromList
