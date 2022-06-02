@@ -1,4 +1,4 @@
-module Laws exposing (..)
+module Laws exposing (suite)
 
 import Accessor as A exposing (Lens)
 import Array exposing (Array)
@@ -17,7 +17,7 @@ import Test exposing (Test, test)
 suite : Test
 suite =
     Test.describe
-        "Laws"
+        "lens laws"
         [ isLens Field.name personFuzzer stringAlter string
         , isLens Field.age personFuzzer intAlter int
         , isSetable (Field.email << A.onJust) personFuzzer stringAlter string
@@ -33,12 +33,12 @@ suite =
             personFuzzer
             maybeStringAlter
             (Fuzz.maybe string)
-        , test "Name compositions output `jq` style String's" <|
+        , test "description" <|
             \() ->
                 (Field.info << Field.stuff << List.elementAt 7 << Field.name)
                     |> A.description
                     |> A.descriptionToString
-                    |> Expect.equal ".info.stuff(7)?.name"
+                    |> Expect.equal "record>.info:record>.stuff:List>element at 7:Maybe>Just:record>.name"
         ]
 
 
