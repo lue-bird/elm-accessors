@@ -1,5 +1,5 @@
 module Accessor exposing
-    ( Relation, Accessor, Lens, LensArgument
+    ( Relation, Lens
     , access, is
     , description, descriptionToString
     , map, mapLazy
@@ -21,7 +21,7 @@ structures without handling the packing and the unpacking.
 
 # Relation
 
-@docs Relation, Accessor, Lens, LensArgument
+@docs Relation, Lens
 
 
 ## scan
@@ -58,50 +58,31 @@ import Dict exposing (Dict)
 import RecordWithoutConstructorFunction exposing (RecordWithoutConstructorFunction)
 
 
-{-| The most general version of this type that everything else specializes
--}
-type alias Accessor structure accessible focus focusAccessible transformedFocus =
-    Relation focus transformedFocus focusAccessible
-    -> Relation structure transformedFocus accessible
-
-
-{-| This is an approximation of Van Laarhoven encoded lenses which enable the
-the callers to use regular function composition to build more complex nested
-updates of more complicated types.
-
-The original "Lens" type looked more like
+{-| Intuitively, a "Lens" type could look like
 
     type alias Lens structure focus =
         { access : structure -> focus
-        , set : structure -> focus -> structure
+        , replace : focus -> (structure -> structure)
         }
 
-Unfortunately, these can't be composed without
-defining custom `composeLens`, `composeIso`, `composePrism` functions.
+Unfortunately, we then need `composeLens`, `composeIso`, `composePrism` functions.
 
-With this approach we're able to make use of `<<`
-to [`access`](#access)/[`map`](#map) deeply nested data.
+With this approach we're able to make use of `>>`
+to [`access`](#access)/[`map`](#map) a nested structure.
+
+Technical note: This is an approximation of [Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/).
 
 -}
-type alias
-    Lens
-        -- Structure Before Action
-        structure
-        -- Structure After Action
-        transformedStructure
-        -- Focus Before action
-        focus
-        -- Focus After action
-        transformedFocus
-    =
-    Relation focus transformedFocus transformedStructure
-    -> Relation structure transformedFocus transformedStructure
+type alias Lens structure focusView focus focusFocus =
+    Relation focus focusFocus focusView
+    -> Relation structure focusFocus focusView
 
 
-{-| Simplified version of Lens but seems to break type inference for more complicated compositions.
+{-| Simplified version of [`Lens`](#Lens)
+which breaks type inference when used in complex compositions.
 -}
-type alias LensArgument structure attribute =
-    Lens structure attribute attribute attribute
+type alias LensFinal structure focus =
+    Lens structure focus focus focus
 
 
 
@@ -300,14 +281,13 @@ for1ToN :
         , focus : String
         }
     , access :
-        (focus -> transformedFocus) -> structure -> transformedStructure
+        (focus -> focusFocusAccessible) -> (structure -> focusView)
     , map :
-        (focus -> focus) -> structure -> structure
+        (focus -> focus) -> (structure -> structure)
     }
     ->
-        (-- What is reachable here?
-         Relation focus reachable transformedFocus
-         -> Relation structure reachable transformedStructure
+        (Relation focus focusFocus focusFocusAccessible
+         -> Relation structure focusFocus focusView
         )
 for1ToN config =
     \(Relation sub) ->
@@ -337,8 +317,10 @@ map (foo << qux) ((+) 1) myRecord
 map :
     (Relation focus focus focus -> Relation structure focus transformed)
     -> (focus -> focus)
-    -> structure
-    -> structure
+    ->
+        (structure
+         -> structure
+        )
 map accessor change =
     let
         (Relation relation) =
@@ -427,23 +409,36 @@ onJust =
 
     import Dict exposing (Dict)
     import Field
+    import Dict.Accessor as Dict
 
     dict : Dict String { bar : Int }
     dict =
         Dict.fromList [ ( "foo", { bar = 2 } ) ]
 
-    access (key "foo" << valueElseOnNothing { bar = 0 }) dict
+    access (Dict.atValueString "foo" << valueElseOnNothing { bar = 0 }) dict
     --> { bar = 2 }
 
-    access (key "baz" << valueElseOnNothing { bar = 0 }) dict
+    access (Dict.atValueString "baz" << valueElseOnNothing { bar = 0 }) dict
     --> { bar = 0 }
 
 TODO: The following do not compile :thinking:
 
-    dict |> access (key "foo" << onJust << Field.bar << valueElseOnNothing 0)
+    dict
+        |> access
+            (Dict.atValueString "foo"
+                << onJust
+                << Field.bar
+                << valueElseOnNothing 0
+            )
     ----> 2
 
-    dict |> access (key "baz" << onJust << Field.bar << valueElseOnNothing 0)
+    dict
+        |> access
+            (Dict.atValueString "baz"
+                << onJust
+                << Field.bar
+                << valueElseOnNothing 0
+            )
     ----> 0
 
 -}
