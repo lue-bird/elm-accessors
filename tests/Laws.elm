@@ -1,6 +1,6 @@
 module Laws exposing (..)
 
-import Accessor as A exposing (LensArgument)
+import Accessor as A exposing (Lens)
 import Array exposing (Array)
 import Array.Accessor as Array
 import Dict exposing (Dict)
@@ -53,9 +53,9 @@ stringAlter =
         -- , String.toUpper
         -- , String.toLower
         [ Fuzz.map String.append string
-        , Fuzz.map (\s -> String.append s >> String.reverse) string
-        , Fuzz.map (\s -> String.append s >> String.toUpper) string
-        , Fuzz.map (\s -> String.append s >> String.toLower) string
+        , Fuzz.map (\s -> String.append s << String.reverse) string
+        , Fuzz.map (\s -> String.append s << String.toUpper) string
+        , Fuzz.map (\s -> String.append s << String.toLower) string
         ]
 
 
@@ -74,8 +74,10 @@ maybeStringAlter =
     Fuzz.oneOf
         [ Fuzz.map
             (\_ ->
-                Maybe.andThen String.toInt
-                    >> Maybe.map String.fromInt
+                \maybe ->
+                    maybe
+                        |> Maybe.andThen String.toInt
+                        |> Maybe.map String.fromInt
             )
             (Fuzz.maybe string)
         ]
@@ -147,8 +149,15 @@ isSetable l fzr fnFzr val =
         ]
 
 
+{-| Simplified version of [`Lens`](#Lens)
+which breaks type inference when used in complex compositions.
+-}
+type alias LensFinal structure focus =
+    Lens structure focus focus focus
+
+
 isLens :
-    LensArgument structure attribute
+    LensFinal structure attribute
     -> Fuzzer structure
     -> Fuzzer (Alter attribute)
     -> Fuzzer attribute
@@ -162,7 +171,11 @@ isLens l fuzzer valFn val =
         , Test.fuzz
             fuzzer
             "lens_set_get"
-            (lens_set_get l >> Expect.true "lens_set_get")
+            (\fuzzed ->
+                fuzzed
+                    |> lens_set_get l
+                    |> Expect.true "lens_set_get"
+            )
         , Test.fuzz
             (Fuzz.tuple ( fuzzer, val ))
             "lens_get_set"
@@ -198,11 +211,11 @@ setter_set_set l s a b =
     A.map l (\_ -> b) (A.map l (\_ -> a) s) == A.map l (\_ -> b) s
 
 
-lens_set_get : LensArgument structure attribute -> structure -> Bool
+lens_set_get : LensFinal structure attribute -> structure -> Bool
 lens_set_get l s =
     A.map l (\_ -> A.view l s) s == s
 
 
-lens_get_set : LensArgument structure attribute -> structure -> attribute -> Bool
+lens_get_set : LensFinal structure attribute -> structure -> attribute -> Bool
 lens_get_set l s a =
     A.view l (A.map l (\_ -> a) s) == a

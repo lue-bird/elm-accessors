@@ -1,11 +1,11 @@
 module Accessor exposing
     ( Relation, Lens
+    , for1To1, for1ToN
     , view, is
-    , description, descriptionToString
+    , Description(..), description, descriptionToString
     , map, mapLazy
     , onJust, valueElseOnNothing
     , onOk, onErr
-    , for1To1, for1ToN
     )
 
 {-| Relations are interfaces to document the relation between two data
@@ -18,16 +18,18 @@ expects a `Relation` and builds a new relation with it. Accessors are
 composable, which means you can build a chain of relations to manipulate nested
 structures without handling the packing and the unpacking.
 
-
-# Relation
-
 @docs Relation, Lens
+
+
+## create
+
+@docs for1To1, for1ToN
 
 
 ## scan
 
 @docs view, is
-@docs description, descriptionToString
+@docs Description, description, descriptionToString
 
 
 ## nested map
@@ -44,18 +46,32 @@ structures without handling the packing and the unpacking.
 
 @docs onOk, onErr
 
-
-# Build your own accessors
-
-Accessors are built using these functions:
-
-@docs for1To1, for1ToN
-
 -}
 
 import Array exposing (Array)
 import Dict exposing (Dict)
 import RecordWithoutConstructorFunction exposing (RecordWithoutConstructorFunction)
+
+
+{-| A `Relation structure focus focusView` describes how to interact with a
+`focus` when given a `structure`.
+
+Sometimes, `view` can't return a `focus`
+For instance, `List focus` may not actually contain 1 `focus`.
+Therefore, `focusView` can be a simple wrapper which, in that example, will be `List focus`
+
+-}
+type Relation structure focus focusView
+    = Relation
+        { view : structure -> focusView
+        , map : (focus -> focus) -> (structure -> structure)
+        , description : List Description
+        }
+
+
+type alias Accessor structure focus focusView focusFocus focusFocusView =
+    Relation focus focusFocus focusFocusView
+    -> Relation structure focusFocus focusView
 
 
 {-| Intuitively, a "Lens" type could look like
@@ -67,47 +83,14 @@ import RecordWithoutConstructorFunction exposing (RecordWithoutConstructorFuncti
 
 Unfortunately, we then need `composeLens`, `composeIso`, `composePrism` functions.
 
-With this approach we're able to make use of `>>`
+With this approach we're able to make use of `<<`
 to [`view`](#view)/[`map`](#map) a nested structure.
 
 Technical note: This is an approximation of [Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/).
 
 -}
-type alias Lens structure focusView focus focusFocus =
-    Relation focus focusFocus focusView
-    -> Relation structure focusFocus focusView
-
-
-{-| Simplified version of [`Lens`](#Lens)
-which breaks type inference when used in complex compositions.
--}
-type alias LensFinal structure focus =
-    Lens structure focus focus focus
-
-
-
--- type alias Getable structure transformed attribute built reachable =
---     Relation attribute built attribute
---     -> Relation structure reachable transformed
--- type alias Watami structure transformed attribute built =
---     Relation attribute (Maybe built) transformed
---     -> Relation structure (Maybe built) (Maybe transformed)
-
-
-{-| A `Relation structure focus accessible` describes how to interact with a
-`focus` when given a `structure`.
-
-Sometimes, `view` can't return a `focus`
-For instance, `List focus` may not actually contain 1 `focus`.
-Therefore, `accessible` can be a simple wrapper which, in that example, will be `List focus`
-
--}
-type Relation structure focus accessible
-    = Relation
-        { view : structure -> accessible
-        , map : (focus -> focus) -> (structure -> structure)
-        , description : List Description
-        }
+type alias Lens structure focus focusFocus focusFocusView =
+    Accessor structure focus focusFocusView focusFocus focusFocusView
 
 
 {-| takes
@@ -123,19 +106,18 @@ and returns the value accessed by that combinator.
 -}
 view :
     (Relation focus focus focus
-     -> Relation structure focus accessible
+     -> Relation structure focus focusView
     )
     ->
         (structure
-         -> accessible
+         -> focusView
         )
 view accessor =
-    \structure ->
-        let
-            (Relation relation) =
-                accessor same
-        in
-        relation.view structure
+    let
+        (Relation relation) =
+            accessor same
+    in
+    relation.view
 
 
 {-| Used with a Prism, think of `!!` boolean coercion in Javascript except type-safe.
@@ -148,18 +130,18 @@ view accessor =
         |> is try
     --> False
 
-    ["Stuff", "things"]
+    [ "Stuff", "things" ]
         |> is (at 2)
     --> False
 
-    ["Stuff", "things"]
+    [ "Stuff", "things" ]
         |> is (at 0)
     --> True
 
 -}
 is :
-    (Relation focus focus focus
-     -> Relation structure focus (Maybe focusTransformed)
+    (Relation (Maybe value) (Maybe value) (Maybe value)
+     -> Relation structure (Maybe value) (Maybe valueView)
     )
     ->
         (structure
@@ -170,9 +152,12 @@ is prism =
         (structure |> view prism) /= Nothing
 
 
+{-| Each `Relation` has a [`description`](#description) to get unique names out of compositions of accessors.
+This is useful when you want type-safe keys for a `Dict` but you still want to use the `elm/core` implementation.
+-}
 description :
     (Relation focus focus focus
-     -> Relation structure focus accessible
+     -> Relation structure focus focusView
     )
     -> List Description
 description accessor =
@@ -219,7 +204,7 @@ descriptionToString =
             |> String.join ":"
 
 
-same : Relation focus focus focus
+same : Relation structure structure structure
 same =
     Relation
         { description = [ Identity ]
@@ -228,9 +213,7 @@ same =
         }
 
 
-{-| This exposes a description field that's necessary for use with the name function
-for getting unique names out of compositions of accessors. This is useful when you
-want type safe keys for a Dictionary but you still want to use elm/core implementation.
+{-| TODO
 
     foo : Relation field sub wrap -> Relation { record | foo : field } sub wrap
     foo =
@@ -247,27 +230,26 @@ for1To1 :
         , focus : String
         }
     , view : structure -> focus
-    , map : (focus -> focus) -> structure -> structure
+    , map : (focus -> focus) -> (structure -> structure)
     }
-    -> (Relation focus reachable wrap -> Relation structure reachable wrap)
-for1To1 config =
-    \(Relation focus) ->
+    -> Lens structure focus focusFocus focusFocusView
+for1To1 focus =
+    \(Relation deeperFocus) ->
         Relation
             { view =
-                \structure -> focus.view (config.view structure)
+                \structure -> structure |> focus.view |> deeperFocus.view
             , map =
-                \change structure -> config.map (focus.map change) structure
+                \change -> focus.map (deeperFocus.map change)
             , description =
-                focus.description |> (::) (FocusDeeper config.description)
+                deeperFocus.description
+                    |> (::) (FocusDeeper focus.description)
             }
 
 
-{-| This exposes a description field that's necessary for use with the name function
-for getting unique names out of compositions of accessors. This is useful when you
-want type safe keys for a Dictionary but you still want to use elm/core implementation.
+{-| TODO
 
-    each : Relation elem sub wrap -> Relation (List elem) sub (List wrap)
-    each =
+    elementEach : Relation elem sub wrap -> Relation (List elem) sub (List wrap)
+    elementEach =
         for1ToN
             { description = { structure = "List", focus = "element each" }
             , view = List.map
@@ -276,28 +258,28 @@ want type safe keys for a Dictionary but you still want to use elm/core implemen
 
 -}
 for1ToN :
-    { description :
-        { structure : String
-        , focus : String
-        }
-    , view :
-        (focus -> focusFocusAccessible) -> (structure -> focusView)
-    , map :
-        (focus -> focus) -> (structure -> structure)
+    { view : (focus -> focusFocusView) -> (structure -> focusView)
+    , map : (focus -> focus) -> (structure -> structure)
+    , description : { structure : String, focus : String }
     }
     ->
-        (Relation focus focusFocus focusFocusAccessible
+        (Relation focus focusFocus focusFocusView
          -> Relation structure focusFocus focusView
         )
-for1ToN config =
-    \(Relation sub) ->
+for1ToN focus =
+    \(Relation deeperFocus) ->
         Relation
             { view =
-                \super -> config.view sub.view super
+                focus.view deeperFocus.view
             , map =
-                \change super -> config.map (sub.map change) super
+                \change ->
+                    focus.map
+                        (deeperFocus.map
+                            change
+                        )
             , description =
-                sub.description |> (::) (FocusDeeper config.description)
+                deeperFocus.description
+                    |> (::) (FocusDeeper focus.description)
             }
 
 
@@ -306,7 +288,7 @@ for1ToN config =
   - An accessor,
   - A function `(sub -> sub)`,
   - A datastructure with type `super`
-    and it returns the data structure, with the accessible field changed by applying
+    and it returns the data structure, with the focusView field changed by applying
     the function to the existing value.
 
 ```
@@ -315,7 +297,9 @@ map (foo << qux) ((+) 1) myRecord
 
 -}
 map :
-    (Relation focus focus focus -> Relation structure focus transformed)
+    (Relation focus focus focus
+     -> Relation structure focus focusView
+    )
     -> (focus -> focus)
     ->
         (structure
@@ -338,19 +322,21 @@ not prevent `Html.lazy` from doing its work.
 
 The map function takes:
 
-  - An accessor,
-  - A function `(sub -> sub)`,
-  - A datastructure with type `super`
+  - An accessor
+  - A function `(focus -> focus)`
+  - A data `structure`
 
-and it returns the data structure, with the accessible field changed by applying
+and it returns the data `structure`, with the focusView field changed by applying
 the function to the existing value.
 The structure is changed only if the new field is different from the old one.
 
-    mapLazy (foo << qux) ((+) 1) myRecord
+    mapLazy (Field.foo << Field.qux) ((+) 1) myRecord
 
 -}
 mapLazy :
-    (Relation focus focus focus -> Relation structure focus wrap)
+    (Relation focus focus focus
+     -> Relation structure focus focusView
+    )
     -> (focus -> focus)
     ->
         (structure
@@ -359,17 +345,21 @@ mapLazy :
 mapLazy accessor change =
     \structure ->
         let
-            newSuper =
-                map accessor change structure
+            changedStructure =
+                structure |> map accessor change
         in
         if
-            view accessor newSuper
-                /= view accessor structure
+            (changedStructure |> view accessor)
+                /= (structure |> view accessor)
         then
-            newSuper
+            changedStructure
 
         else
             structure
+
+
+type alias Prism structure value focusFocus valueView =
+    Relation value focusFocus valueView -> Relation structure focusFocus (Maybe valueView)
 
 
 {-| This accessor combinator lets you view values inside Maybe.
@@ -396,7 +386,7 @@ mapLazy accessor change =
     --> { foo = Just { bar = 2 }, qux = Nothing }
 
 -}
-onJust : Relation attribute built transformed -> Relation (Maybe attribute) built (Maybe transformed)
+onJust : Prism (Maybe value) value focusFocus valueView
 onJust =
     for1ToN
         { description = { structure = "Maybe", focus = "Just" }
@@ -442,11 +432,16 @@ TODO: The following do not compile :thinking:
     ----> 0
 
 -}
-valueElseOnNothing : attribute -> Relation attribute reachable wrap -> Relation (Maybe attribute) reachable wrap
+valueElseOnNothing : value -> Relation value focusFocus focusFocusView -> Relation (Maybe value) focusFocus focusFocusView
 valueElseOnNothing fallback =
     for1ToN
         { description = { structure = "Maybe", focus = "Nothing" }
-        , view = \f -> Maybe.withDefault fallback >> f
+        , view =
+            \valueMap ->
+                \maybe ->
+                    maybe
+                        |> Maybe.withDefault fallback
+                        |> valueMap
         , map = Maybe.map
         }
 
@@ -475,11 +470,19 @@ valueElseOnNothing fallback =
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
 -}
-onOk : Relation attribute built transformed -> Relation (Result x attribute) built (Maybe transformed)
+onOk : Prism (Result error value) value focusFocus focusFocusView
 onOk =
     for1ToN
         { description = { structure = "Result", focus = "Ok" }
-        , view = \fn -> Result.map fn >> Result.toMaybe
+        , view =
+            \okMap ->
+                \result ->
+                    case result of
+                        Err _ ->
+                            Nothing
+
+                        Ok ok ->
+                            ok |> okMap |> Just
         , map = Result.map
         }
 
@@ -508,20 +511,18 @@ onOk =
     --> { foo = Ok { bar = 2 }, qux = Err "NOT AN INT" }
 
 -}
-onErr : Relation attribute built transformed -> Relation (Result attribute x) built (Maybe transformed)
+onErr : Prism (Result error value) error focusFocus focusFocusView
 onErr =
-    let
-        accessing alter =
-            \res ->
-                case res of
-                    Err e ->
-                        e |> alter |> Just
-
-                    _ ->
-                        Nothing
-    in
     for1ToN
         { description = { structure = "Result", focus = "Err" }
-        , view = accessing
+        , view =
+            \errorMap ->
+                \result ->
+                    case result of
+                        Ok _ ->
+                            Nothing
+
+                        Err error ->
+                            error |> errorMap |> Just
         , map = Result.mapError
         }
