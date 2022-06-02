@@ -68,14 +68,14 @@ elementEach =
     --> Array.fromList
     -->     [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
-    arrayRecord |> map (Field.foo << everyIdx) multiplyIfGTOne
+    arrayRecord |> mapOver (Field.foo << everyIdx) multiplyIfGTOne
     --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
     arrayRecord |> view (Field.foo << everyIdx << Tuple.second << Field.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     arrayRecord
-        |> map (Field.foo << everyIdx << Tuple.second << Field.bar) ((+) 1)
+        |> mapOver (Field.foo << everyIdx << Tuple.second << Field.bar) ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ]}
 
 -}
@@ -116,10 +116,10 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     barray |> view (elementAt 0 << Field.bar)
     --> Just "Stuff"
 
-    barray |> map (elementAt 0 << Field.bar) (\_ -> "Whatever")
+    barray |> mapOver (elementAt 0 << Field.bar) (\_ -> "Whatever")
     --> Array.fromList [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> map (elementAt 9000 << Field.bar) (\_ -> "Whatever")
+    barray |> mapOver (elementAt 9000 << Field.bar) (\_ -> "Whatever")
     --> barray
 
 -}
@@ -132,7 +132,7 @@ elementAt index =
             \alter array ->
                 -- NOTE: `<< onJust` at the end ensures we can't delete any existing keys
                 -- so `List.filterMap identity` should be safe
-                -- TODO: there's a better way to write this no doubt
+                -- TODO: use LinearDirection
                 array
                     |> Array.indexedMap
                         (\idx_ v ->

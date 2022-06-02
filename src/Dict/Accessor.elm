@@ -133,10 +133,10 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     dict |> view (Dict.valueAt ( 'b', String.fromChar ) << onJust << Field.bar)
     --> Just 2
 
-    dict |> map (Dict.valueAt ( 'b', String.fromChar )) (\_ -> Nothing)
+    dict |> mapOver (Dict.valueAt ( 'b', String.fromChar )) (\_ -> Nothing)
     --> dict |> Dict.remove 'b'
 
-    dict |> map (Dict.valueAt ( 'x', String.fromChar ) << onJust << Field.bar) (\_ -> 3)
+    dict |> mapOver (Dict.valueAt ( 'x', String.fromChar ) << onJust << Field.bar) (\_ -> 3)
     --> dict
 
 [`valueAtString`](#valueAtString) is short for `Dict.Accessor.valueAt ( stringKey, identity )`.

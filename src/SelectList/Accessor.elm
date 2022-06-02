@@ -6,7 +6,7 @@ module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
 
 -}
 
-import Accessor exposing (Relation, map, view)
+import Accessor exposing (Relation, mapOver, view)
 import SelectList exposing (SelectList)
 
 
@@ -156,13 +156,13 @@ elementIndexEach =
     listRecord |> view (Field.foo << SL.selected << Field.bar)
     --> 2
 
-    listRecord |> map (Field.foo << SL.selected << Field.bar) (\_ -> 37)
+    listRecord |> mapOver (Field.foo << SL.selected << Field.bar) (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
-    listRecord |> map (Field.foo << SL.selected << Field.bar) ((*) 10)
+    listRecord |> mapOver (Field.foo << SL.selected << Field.bar) ((*) 10)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]

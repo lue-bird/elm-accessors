@@ -1,6 +1,6 @@
 module Spec exposing (suite)
 
-import Accessor exposing (Relation, map, mapLazy, onJust, valueElseOnNothing, view)
+import Accessor exposing (Relation, mapOver, mapOverLazy, onJust, valueElseOnNothing, view)
 import Dict exposing (Dict)
 import Dict.Accessor as Dict
 import Expect
@@ -121,7 +121,7 @@ suite =
                     let
                         updatedExample : { foo : number, bar : String, qux : Bool }
                         updatedExample =
-                            simpleRecord |> map Field.qux (\_ -> True)
+                            simpleRecord |> mapOver Field.qux (\_ -> True)
                     in
                     updatedExample.qux
                         |> Expect.equal True
@@ -130,7 +130,7 @@ suite =
                     let
                         updatedExample : { foo : { foo : number, bar : String, qux : Bool } }
                         updatedExample =
-                            nestedRecord |> map (Field.foo << Field.foo) (\_ -> 5)
+                            nestedRecord |> mapOver (Field.foo << Field.foo) (\_ -> 5)
                     in
                     updatedExample.foo.foo
                         |> Expect.equal 5
@@ -139,7 +139,7 @@ suite =
                     let
                         updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
                         updatedExample =
-                            recordWithList |> map (Field.bar << List.elementEach << Field.bar) (\_ -> "Why, hello")
+                            recordWithList |> mapOver (Field.bar << List.elementEach << Field.bar) (\_ -> "Why, hello")
                     in
                     updatedExample
                         |> view (Field.bar << List.elementEach << Field.bar)
@@ -149,7 +149,7 @@ suite =
                     let
                         updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
                         updatedExample =
-                            maybeRecord |> map (Field.bar << onJust << Field.foo) (\_ -> 4)
+                            maybeRecord |> mapOver (Field.bar << onJust << Field.foo) (\_ -> 4)
                     in
                     updatedExample
                         |> view (Field.bar << onJust << Field.foo)
@@ -159,7 +159,7 @@ suite =
                     let
                         -- updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
                         updatedExample =
-                            maybeRecord |> map (Field.foo << onJust << Field.bar) (\_ -> "Nope")
+                            maybeRecord |> mapOver (Field.foo << onJust << Field.bar) (\_ -> "Nope")
                     in
                     updatedExample
                         |> view (Field.foo << onJust << Field.bar)
@@ -171,7 +171,7 @@ suite =
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                dict |> map (Dict.valueAtString "foo") (\_ -> Just 9)
+                                dict |> mapOver (Dict.valueAtString "foo") (\_ -> Just 9)
                         in
                         updatedDict
                             |> view (Dict.valueAtString "foo")
@@ -181,7 +181,7 @@ suite =
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                dict |> map (Dict.valueAtString "bar") (\_ -> Just 9)
+                                dict |> mapOver (Dict.valueAtString "bar") (\_ -> Just 9)
                         in
                         updatedDict
                             |> view (Dict.valueAtString "bar")
@@ -191,7 +191,7 @@ suite =
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                dict |> map (Dict.valueAtString "foo") (\_ -> Nothing)
+                                dict |> mapOver (Dict.valueAtString "foo") (\_ -> Nothing)
                         in
                         updatedDict
                             |> view (Dict.valueAtString "foo")
@@ -201,7 +201,7 @@ suite =
                         let
                             updatedDict : Dict String number
                             updatedDict =
-                                dict |> map (Dict.valueAtString "bar") (\_ -> Nothing)
+                                dict |> mapOver (Dict.valueAtString "bar") (\_ -> Nothing)
                         in
                         updatedDict |> view (Dict.valueAtString "bar") |> Expect.equal Nothing
                 , test "set with try present" <|
@@ -209,7 +209,7 @@ suite =
                         let
                             updatedDict : Dict String { bar : String }
                             updatedDict =
-                                dictWithRecord |> map (Dict.valueAtString "foo" << onJust << Field.bar) (\_ -> "Sup")
+                                dictWithRecord |> mapOver (Dict.valueAtString "foo" << onJust << Field.bar) (\_ -> "Sup")
                         in
                         updatedDict
                             |> view (Dict.valueAtString "foo" << onJust << Field.bar)
@@ -219,7 +219,7 @@ suite =
                         let
                             updatedDict : Dict String { bar : String }
                             updatedDict =
-                                dictWithRecord |> map (Dict.valueAtString "bar" << onJust << Field.bar) (\_ -> "Sup")
+                                dictWithRecord |> mapOver (Dict.valueAtString "bar" << onJust << Field.bar) (\_ -> "Sup")
                         in
                         updatedDict
                             |> view (Dict.valueAtString "bar" << onJust << Field.bar)
@@ -233,7 +233,7 @@ suite =
                     let
                         updatedExample : { foo : number, bar : String, qux : Bool }
                         updatedExample =
-                            simpleRecord |> map Field.bar (\w -> w ++ " lait")
+                            simpleRecord |> mapOver Field.bar (\w -> w ++ " lait")
                     in
                     updatedExample.bar
                         |> Expect.equal "Yop lait"
@@ -242,7 +242,7 @@ suite =
                     let
                         updatedExample : { foo : { foo : number, bar : String, qux : Bool } }
                         updatedExample =
-                            nestedRecord |> map (Field.foo << Field.qux) (\w -> not w)
+                            nestedRecord |> mapOver (Field.foo << Field.qux) (\w -> not w)
                     in
                     updatedExample.foo.qux
                         |> Expect.equal True
@@ -251,7 +251,7 @@ suite =
                     let
                         updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
                         updatedExample =
-                            map (Field.bar << List.elementEach << Field.foo) (\n -> n - 2) recordWithList
+                            mapOver (Field.bar << List.elementEach << Field.foo) (\n -> n - 2) recordWithList
                     in
                     updatedExample
                         |> view (Field.bar << List.elementEach << Field.foo)
@@ -261,7 +261,7 @@ suite =
                     let
                         updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
                         updatedExample =
-                            maybeRecord |> map (Field.bar << onJust << Field.foo) (\n -> n + 3)
+                            maybeRecord |> mapOver (Field.bar << onJust << Field.foo) (\n -> n + 3)
                     in
                     updatedExample
                         |> view (Field.bar << onJust << Field.foo)
@@ -271,7 +271,7 @@ suite =
                     let
                         -- updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
                         updatedExample =
-                            maybeRecord |> map (Field.foo << onJust << Field.bar) (\w -> w ++ "!")
+                            maybeRecord |> mapOver (Field.foo << onJust << Field.bar) (\w -> w ++ "!")
                     in
                     updatedExample
                         |> view (Field.foo << onJust << Field.bar)
@@ -283,7 +283,7 @@ suite =
                 \_ ->
                     let
                         updatedExample =
-                            simpleRecord |> mapLazy Field.bar (\w -> w ++ " lait")
+                            simpleRecord |> mapOverLazy Field.bar (\w -> w ++ " lait")
                     in
                     updatedExample.bar
                         |> Expect.equal "Yop lait"
@@ -291,7 +291,7 @@ suite =
                 \_ ->
                     let
                         updatedExample =
-                            mapLazy (Field.foo << Field.qux) (\w -> not w) nestedRecord
+                            mapOverLazy (Field.foo << Field.qux) (\w -> not w) nestedRecord
                     in
                     updatedExample.foo.qux
                         |> Expect.equal True
@@ -299,7 +299,7 @@ suite =
                 \_ ->
                     let
                         updatedExample =
-                            mapLazy (Field.bar << List.elementEach << Field.foo) (\n -> n - 2) recordWithList
+                            mapOverLazy (Field.bar << List.elementEach << Field.foo) (\n -> n - 2) recordWithList
                     in
                     updatedExample
                         |> view (Field.bar << List.elementEach << Field.foo)
@@ -308,7 +308,7 @@ suite =
                 \_ ->
                     let
                         updatedExample =
-                            maybeRecord |> mapLazy (Field.bar << onJust << Field.foo) (\n -> n + 3)
+                            maybeRecord |> mapOverLazy (Field.bar << onJust << Field.foo) (\n -> n + 3)
                     in
                     updatedExample
                         |> view (Field.bar << onJust << Field.foo)
@@ -317,7 +317,7 @@ suite =
                 \_ ->
                     let
                         updatedExample =
-                            maybeRecord |> mapLazy (Field.foo << onJust << Field.bar) (\w -> w ++ "!")
+                            maybeRecord |> mapOverLazy (Field.foo << onJust << Field.bar) (\w -> w ++ "!")
                     in
                     updatedExample
                         |> view (Field.foo << onJust << Field.bar)
@@ -345,7 +345,7 @@ suite =
                         let
                             updatedRec : { foo : { foo : number, bar : String, qux : Bool } }
                             updatedRec =
-                                nestedRecord |> map (Field.foo << myFoo) (\_ -> 1)
+                                nestedRecord |> mapOver (Field.foo << myFoo) (\_ -> 1)
                         in
                         updatedRec.foo.foo
                             |> Expect.equal 1
@@ -354,7 +354,7 @@ suite =
                         let
                             updatedRec : { foo : { foo : number, bar : String, qux : Bool } }
                             updatedRec =
-                                map (myFoo << myFoo) (\n -> n + 3) nestedRecord
+                                mapOver (myFoo << myFoo) (\n -> n + 3) nestedRecord
                         in
                         updatedRec.foo.foo
                             |> Expect.equal 6
@@ -380,7 +380,7 @@ suite =
                             updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
                             updatedExample =
                                 recordWithList
-                                    |> map (Field.bar << myOnEach << Field.bar) (\_ -> "Greetings")
+                                    |> mapOver (Field.bar << myOnEach << Field.bar) (\_ -> "Greetings")
                         in
                         updatedExample
                             |> view (Field.bar << List.elementEach << Field.bar)
@@ -390,7 +390,7 @@ suite =
                         let
                             updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
                             updatedExample =
-                                map (Field.bar << myOnEach << Field.foo) (\n -> n - 2) recordWithList
+                                mapOver (Field.bar << myOnEach << Field.foo) (\n -> n - 2) recordWithList
                         in
                         updatedExample
                             |> view (Field.bar << List.elementEach << Field.foo)

@@ -22,8 +22,8 @@ suite =
         , isLens Field.age personFuzzer intAlter int
         , isSetable (Field.email << A.onJust) personFuzzer stringAlter string
 
-        -- TODO: How to express laws for "Prism"-ish things elm-monocle calls this Optional.
-        -- , isOptional (Field.email << A.try)
+        -- TODO: How to express laws for Prisms
+        -- , isPrism (Field.email << A.onJust)
         , isSetable (Field.stuff << List.elementAt 0) personFuzzer stringAlter string
         , isSetable (Field.stuff << List.elementEach) personFuzzer stringAlter string
         , isSetable (Field.things << Array.elementAt 0) personFuzzer stringAlter string
@@ -188,7 +188,7 @@ isLens l fuzzer valFn val =
 
 setter_id : Settable structure transformed attribute -> structure -> Bool
 setter_id l s =
-    A.map l identity s == s
+    A.mapOver l identity s == s
 
 
 setter_composition :
@@ -198,7 +198,7 @@ setter_composition :
     -> Alter attribute
     -> Bool
 setter_composition l s f g =
-    A.map l f (A.map l g s) == A.map l (f << g) s
+    A.mapOver l f (A.mapOver l g s) == A.mapOver l (f << g) s
 
 
 setter_set_set :
@@ -208,14 +208,14 @@ setter_set_set :
     -> attribute
     -> Bool
 setter_set_set l s a b =
-    A.map l (\_ -> b) (A.map l (\_ -> a) s) == A.map l (\_ -> b) s
+    A.mapOver l (\_ -> b) (A.mapOver l (\_ -> a) s) == A.mapOver l (\_ -> b) s
 
 
 lens_set_get : LensFinal structure attribute -> structure -> Bool
 lens_set_get l s =
-    A.map l (\_ -> A.view l s) s == s
+    A.mapOver l (\_ -> A.view l s) s == s
 
 
 lens_get_set : LensFinal structure attribute -> structure -> attribute -> Bool
 lens_get_set l s a =
-    A.view l (A.map l (\_ -> a) s) == a
+    A.view l (A.mapOver l (\_ -> a) s) == a

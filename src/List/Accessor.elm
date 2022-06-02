@@ -115,10 +115,10 @@ elementIndexEach =
     bars |> view (List.elementAt 0 << Field.bar)
     --> Just "Stuff"
 
-    bars |> map (List.elementAt 0 << Field.bar) (\_ -> "Whatever")
+    bars |> mapOver (List.elementAt 0 << Field.bar) (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> map (List.elementAt 9000 << Field.bar) (\_ -> "Whatever")
+    bars |> mapOver (List.elementAt 9000 << Field.bar) (\_ -> "Whatever")
     --> bars
 
 -}

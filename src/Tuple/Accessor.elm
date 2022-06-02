@@ -21,11 +21,11 @@ import Accessor exposing (Relation, for1To1)
     charging |> view Tuple.first
     --> "It's over"
 
-    charging |> map Tuple.first (\_ -> "It's map")
+    charging |> mapOver Tuple.first (\_ -> "It's map")
     --> ( "It's over", 1 )
 
     charging
-        |> map Tuple.first (\m -> (m |> String.toUpper) ++ "!!!")
+        |> mapOver Tuple.first (\m -> (m |> String.toUpper) ++ "!!!")
     --> ( "IT'S OVER!!!", 1 )
 
 -}
@@ -50,13 +50,13 @@ first =
     jo |> view Tuple.second
     --> 1
 
-    jo |> map Tuple.second (\_ -> 1125)
+    jo |> mapOver Tuple.second (\_ -> 1125)
     --> ( "Hi there", 1125 )
 
     jo
-        |> map Tuple.second (\_ -> 1125)
-        |> map Tuple.first (\m -> (m |> String.toUpper) ++ "!!!")
-        |> map Tuple.second ((*) 8)
+        |> mapOver Tuple.second (\_ -> 1125)
+        |> mapOver Tuple.first (\m -> (m |> String.toUpper) ++ "!!!")
+        |> mapOver Tuple.second ((*) 8)
     --> ( "HI THERE!!!", 9000 )
 
 -}
