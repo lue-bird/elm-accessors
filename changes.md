@@ -18,10 +18,10 @@
     - `or` remove
         - in favor of `valueElseOnNothing`
     - `def` name → `valueElseOnNothing`
-    - `over` name → `map`
+    - `over` name → `mapOver`
     - `name` → `|> description |> descriptionToString`
     - `Accessors.makeOneToOne_` name → `Accessor.for1To1`
     - `Accessors.makeOneToN_` name → `Accessor.for1ToN`
     - `Accessors.makeOneToOne`, `Accessors.makeOneToN` remove
         - backwards compatibility for just a few users shouldn't affect the existing API this much (-`_`)
-    - `mapLazy` add
+    - `mapOverLazy` add
