@@ -1,6 +1,6 @@
 module Accessor exposing
     ( Relation, Accessor, Prism, Lens
-    , for1To1, for1ToN
+    , create1To1, create1ToN
     , view, is
     , Description(..), description, descriptionToString
     , mapOver, mapOverLazy
@@ -23,7 +23,7 @@ structures without handling the packing and the unpacking.
 
 ## create
 
-@docs for1To1, for1ToN
+@docs create1To1, create1ToN
 
 
 ## scan
@@ -233,7 +233,7 @@ same =
 ```
 foo : Lens { record | foo : foo } foo focusFocus focusFocusView
 foo =
-    for1To1
+    create1To1
         { description = { structure = "record", focus = ".foo" }
         , view = .foo
         , map = \alter record -> { record | foo = record.foo |> alter }
@@ -241,7 +241,7 @@ foo =
 ```
 
 -}
-for1To1 :
+create1To1 :
     { description :
         { structure : String
         , focus : String
@@ -250,7 +250,7 @@ for1To1 :
     , map : (focus -> focus) -> (structure -> structure)
     }
     -> Lens structure focus focusFocus focusFocusView
-for1To1 focus =
+create1To1 focus =
     \(Relation deeperFocus) ->
         Relation
             { view =
@@ -272,7 +272,7 @@ for1To1 focus =
 ```
 elementEach : Relation elem sub wrap -> Relation (List elem) sub (List wrap)
 elementEach =
-    for1ToN
+    create1ToN
         { description = { structure = "List", focus = "element each" }
         , view = List.map
         , map = List.map
@@ -280,13 +280,13 @@ elementEach =
 ```
 
 -}
-for1ToN :
+create1ToN :
     { view : (focus -> focusFocusView) -> (structure -> focusView)
     , map : (focus -> focus) -> (structure -> structure)
     , description : { structure : String, focus : String }
     }
     -> Accessor structure focus focusView focusFocus focusFocusView
-for1ToN focus =
+create1ToN focus =
     \(Relation deeperFocus) ->
         Relation
             { view =
@@ -404,7 +404,7 @@ mapOverLazy accessor change =
 -}
 onJust : Prism (Maybe value) value focusFocus valueView
 onJust =
-    for1ToN
+    create1ToN
         { description = { structure = "Maybe", focus = "Just" }
         , view = Maybe.map
         , map = Maybe.map
@@ -450,7 +450,7 @@ onJust =
 -}
 valueElseOnNothing : value -> Relation value focusFocus focusFocusView -> Relation (Maybe value) focusFocus focusFocusView
 valueElseOnNothing fallback =
-    for1ToN
+    create1ToN
         { description = { structure = "Maybe", focus = "Nothing" }
         , view =
             \valueMap ->
@@ -488,7 +488,7 @@ valueElseOnNothing fallback =
 -}
 onOk : Prism (Result error value) value focusFocus focusFocusView
 onOk =
-    for1ToN
+    create1ToN
         { description = { structure = "Result", focus = "Ok" }
         , view =
             \okMap ->
@@ -529,7 +529,7 @@ onOk =
 -}
 onErr : Prism (Result error value) error focusFocus focusFocusView
 onErr =
-    for1ToN
+    create1ToN
         { description = { structure = "Result", focus = "Err" }
         , view =
             \errorMap ->

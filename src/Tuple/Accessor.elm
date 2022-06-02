@@ -6,7 +6,7 @@ module Tuple.Accessor exposing (first, second)
 
 -}
 
-import Accessor exposing (Relation, for1To1)
+import Accessor exposing (Relation, create1To1)
 
 
 {-| Lens over the first component of a Tuple.
@@ -31,7 +31,7 @@ import Accessor exposing (Relation, for1To1)
 -}
 first : Relation sub reachable wrap -> Relation ( sub, x ) reachable wrap
 first =
-    for1To1
+    create1To1
         { description = { structure = "Tuple", focus = "first" }
         , view = Tuple.first
         , map = Tuple.mapFirst
@@ -62,7 +62,7 @@ first =
 -}
 second : Relation sub reachable wrap -> Relation ( x, sub ) reachable wrap
 second =
-    for1To1
+    create1To1
         { description = { structure = "Tuple", focus = "second" }
         , view = Tuple.second
         , map = Tuple.mapSecond

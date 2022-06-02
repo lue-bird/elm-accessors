@@ -31,7 +31,7 @@ import SelectList exposing (SelectList)
 -}
 elementEach : Relation attribute built transformed -> Relation (SelectList attribute) built (SelectList transformed)
 elementEach =
-    Accessor.for1ToN
+    Accessor.create1ToN
         { description = { structure = "SelectList", focus = "element each" }
         , view = SelectList.map
         , map = SelectList.map
@@ -81,7 +81,7 @@ elementEach =
 -}
 elementIndexEach : Relation { index : Int, element : element } reachable built -> Relation (SelectList element) reachable (SelectList built)
 elementIndexEach =
-    Accessor.for1ToN
+    Accessor.create1ToN
         { description = { structure = "SelectList", focus = "{ element, index } each" }
         , view =
             \alter selectList ->
@@ -171,7 +171,7 @@ elementIndexEach =
 -}
 selected : Relation attribute reachable built -> Relation (SelectList attribute) reachable built
 selected =
-    Accessor.for1To1
+    Accessor.create1To1
         { description = { structure = "SelectList", focus = "selected" }
         , view = SelectList.selected
         , map = SelectList.updateSelected

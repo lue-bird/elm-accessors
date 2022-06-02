@@ -327,14 +327,14 @@ suite =
             "making accessors"
             [ let
                 myFoo =
-                    Accessor.for1To1
+                    Accessor.create1To1
                         { description = { structure = "record", focus = ".foo" }
                         , view = .foo
                         , map = \alter record -> { record | foo = alter record.foo }
                         }
               in
               Test.describe
-                "Accessor.for1To1"
+                "Accessor.create1To1"
                 [ test "view" <|
                     \_ ->
                         nestedRecord
@@ -361,7 +361,7 @@ suite =
                 ]
             , let
                 myOnEach =
-                    Accessor.for1ToN
+                    Accessor.create1ToN
                         { description = { structure = "List", focus = "element List.elementEach" }
                         , view = List.map
                         , map = List.map

@@ -6,7 +6,7 @@ module Array.Accessor exposing (elementEach, elementIndexEach, elementAt)
 
 -}
 
-import Accessor exposing (Relation, for1To1, for1ToN, onJust)
+import Accessor exposing (Relation, create1To1, create1ToN, onJust)
 import Array exposing (Array)
 
 
@@ -31,7 +31,7 @@ import Array exposing (Array)
 -}
 elementEach : Relation attribute built transformed -> Relation (Array attribute) built (Array transformed)
 elementEach =
-    for1ToN
+    create1ToN
         { description = { structure = "Array", focus = "element each" }
         , view = Array.map
         , map = Array.map
@@ -81,7 +81,7 @@ elementEach =
 -}
 elementIndexEach : Relation { element : element, index : Int } reachable built -> Relation (Array element) reachable (Array built)
 elementIndexEach =
-    for1ToN
+    create1ToN
         { description = { structure = "Array", focus = "{ element, index } each" }
         , view =
             \fn ->
@@ -125,7 +125,7 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
 -}
 elementAt : Int -> Relation v reachable wrap -> Relation (Array v) reachable (Maybe wrap)
 elementAt index =
-    for1To1
+    create1To1
         { description = { structure = "Array", focus = "element at " ++ (index |> String.fromInt) }
         , view = Array.get index
         , map =

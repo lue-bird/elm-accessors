@@ -6,7 +6,7 @@ module List.Accessor exposing (elementAt, elementEach, elementIndexEach)
 
 -}
 
-import Accessor exposing (Relation, for1To1, for1ToN, onJust)
+import Accessor exposing (Relation, create1To1, create1ToN, onJust)
 
 
 {-| This accessor combinator lets you view values inside List.
@@ -32,7 +32,7 @@ import Accessor exposing (Relation, for1To1, for1ToN, onJust)
 -}
 elementEach : Relation attribute built transformed -> Relation (List attribute) built (List transformed)
 elementEach =
-    for1ToN
+    create1ToN
         { description = { structure = "List", focus = "element each" }
         , view = List.map
         , map = List.map
@@ -79,7 +79,7 @@ elementEach =
 -}
 elementIndexEach : Relation { index : Int, element : element } reachable built -> Relation (List element) reachable (List built)
 elementIndexEach =
-    for1ToN
+    create1ToN
         { description = { structure = "List", focus = "{ element, index } each" }
         , view =
             \elementAlter ->
@@ -124,7 +124,7 @@ elementIndexEach =
 -}
 elementAt : Int -> Relation v reachable wrap -> Relation (List v) reachable (Maybe wrap)
 elementAt focusIndex =
-    Accessor.for1To1
+    Accessor.create1To1
         { description = { structure = "List", focus = "element at " ++ (focusIndex |> String.fromInt) }
         , view =
             if focusIndex < 0 then

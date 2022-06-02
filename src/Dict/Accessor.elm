@@ -6,7 +6,7 @@ module Dict.Accessor exposing (valueEach, valueKeyEach, valueAt, valueAtString)
 
 -}
 
-import Accessor exposing (Relation, for1To1, for1ToN)
+import Accessor exposing (Relation, create1To1, create1ToN)
 import Dict exposing (Dict)
 
 
@@ -48,7 +48,7 @@ import Dict exposing (Dict)
 -}
 valueEach : Relation attribute reachable built -> Relation (Dict comparable attribute) reachable (Dict comparable built)
 valueEach =
-    for1ToN
+    create1ToN
         { description = { structure = "Dict", focus = "value each" }
         , view = \fn -> Dict.map (\_ -> fn)
         , map = \map -> Dict.map (\_ -> map)
@@ -102,7 +102,7 @@ valueEach =
 -}
 valueKeyEach : Relation { key : comparableKey, value : value } reachable built -> Relation (Dict comparableKey value) reachable (Dict comparableKey built)
 valueKeyEach =
-    for1ToN
+    create1ToN
         { description = { structure = "Dict", focus = "{ key, value } each" }
         , view =
             \fn -> Dict.map (\key value -> { key = key, value = value } |> fn)
@@ -147,7 +147,7 @@ valueAt :
     -> Relation (Maybe value) reachable wrap
     -> Relation (Dict comparableKey value) reachable wrap
 valueAt ( key, keyToString ) =
-    Accessor.for1To1
+    Accessor.create1To1
         { description = { structure = "Dict", focus = "value at " ++ (key |> keyToString) }
         , view = Dict.get key
         , map = Dict.update key
