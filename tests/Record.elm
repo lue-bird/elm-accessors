@@ -1,4 +1,4 @@
-module Field exposing (..)
+module Record exposing (..)
 
 import Accessor exposing (Lens)
 

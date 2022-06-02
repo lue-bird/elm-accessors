@@ -193,9 +193,9 @@ similar to the way you'd use a Sum type's constructors to key a dictionary for a
 
     import Accessors exposing (name)
     import Dict.Accessor as Dict
-    import Field
+    import Record
 
-    name (Field.email << onJust << Field.info << Dict.valueAtString "subject")
+    name (Record.email << onJust << Record.info << Dict.valueAtString "subject")
     --> ".email>Maybe.Just>.info>Dict value at \"subject\""
 
 -}
@@ -350,7 +350,7 @@ and it returns the data `structure`, with the focusView field changed by applyin
 the function to the existing value.
 The structure is changed only if the new field is different from the old one.
 
-    mapLazy (Field.foo << Field.qux) ((+) 1) myRecord
+    mapLazy (Record.foo << Record.qux) ((+) 1) myRecord
 
 -}
 mapOverLazy :
@@ -381,7 +381,7 @@ mapOverLazy accessor change =
 {-| This accessor combinator lets you view values inside Maybe.
 
     import Accessors exposing (view, map, try)
-    import Field
+    import Record
 
     maybeRecord : { foo : Maybe { bar : Int }, qux : Maybe { bar : Int } }
     maybeRecord =
@@ -389,16 +389,16 @@ mapOverLazy accessor change =
         , qux = Nothing
         }
 
-    view (Field.foo << onJust << Field.bar) maybeRecord
+    view (Record.foo << onJust << Record.bar) maybeRecord
     --> Just 2
 
-    view (Field.qux << onJust << Field.bar) maybeRecord
+    view (Record.qux << onJust << Record.bar) maybeRecord
     --> Nothing
 
-    map (Field.foo << onJust << Field.bar) ((+) 1) maybeRecord
+    map (Record.foo << onJust << Record.bar) ((+) 1) maybeRecord
     --> { foo = Just { bar = 3 }, qux = Nothing }
 
-    map (Field.qux << onJust << Field.bar) ((+) 1) maybeRecord
+    map (Record.qux << onJust << Record.bar) ((+) 1) maybeRecord
     --> { foo = Just { bar = 2 }, qux = Nothing }
 
 -}
@@ -414,7 +414,7 @@ onJust =
 {-| Provide a default value for otherwise fallible compositions
 
     import Dict exposing (Dict)
-    import Field
+    import Record
     import Dict.Accessor as Dict
 
     dict : Dict String { bar : Int }
@@ -431,7 +431,7 @@ onJust =
         |> view
             (Dict.atValueString "foo"
                 << onJust
-                << Field.bar
+                << Record.bar
                 << onJust
                 << valueElseOnNothing 0
             )
@@ -441,7 +441,7 @@ onJust =
         |> view
             (Dict.atValueString "baz"
                 << onJust
-                << Field.bar
+                << Record.bar
                 << onJust
                 << valueElseOnNothing 0
             )
@@ -465,7 +465,7 @@ valueElseOnNothing fallback =
 {-| This accessor lets you view values inside the Ok variant of a Result.
 
     import Accessors exposing (view, map, onOk)
-    import Field
+    import Record
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
     maybeRecord =
@@ -473,16 +473,16 @@ valueElseOnNothing fallback =
         , qux = Err "Not an Int"
         }
 
-    maybeRecord |> view (Field.foo << onOk << Field.bar)
+    maybeRecord |> view (Record.foo << onOk << Record.bar)
     --> Just 2
 
-    maybeRecord |> view (Field.qux << onOk << Field.bar)
+    maybeRecord |> view (Record.qux << onOk << Record.bar)
     --> Nothing
 
-    maybeRecord |> mapOver (Field.foo << onOk << Field.bar) ((+) 1)
+    maybeRecord |> mapOver (Record.foo << onOk << Record.bar) ((+) 1)
     --> { foo = Ok { bar = 3 }, qux = Err "Not an Int" }
 
-    maybeRecord |> mapOver (Field.qux << onOk << Field.bar) ((+) 1)
+    maybeRecord |> mapOver (Record.qux << onOk << Record.bar) ((+) 1)
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
 -}
@@ -506,7 +506,7 @@ onOk =
 {-| This accessor lets you view values inside the Err variant of a Result.
 
     import Accessors exposing (view, map, onErr)
-    import Field
+    import Record
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
     maybeRecord =
@@ -514,16 +514,16 @@ onOk =
         , qux = Err "Not an Int"
         }
 
-    maybeRecord |> view (Field.foo << onErr)
+    maybeRecord |> view (Record.foo << onErr)
     --> Nothing
 
-    maybeRecord |> view (Field.qux << onErr)
+    maybeRecord |> view (Record.qux << onErr)
     --> Just "Not an Int"
 
-    maybeRecord |> mapOver (Field.foo << onErr) String.toUpper
+    maybeRecord |> mapOver (Record.foo << onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
-    maybeRecord |> mapOver (Field.qux << onErr) String.toUpper
+    maybeRecord |> mapOver (Record.qux << onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "NOT AN INT" }
 
 -}

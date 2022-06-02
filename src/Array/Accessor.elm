@@ -14,7 +14,7 @@ import Array exposing (Array)
 
     import Array exposing (Array)
     import Accessors exposing (every, view, map)
-    import Field
+    import Record
 
     arrayRecord : { foo : Array { bar : Int } }
     arrayRecord =
@@ -22,10 +22,10 @@ import Array exposing (Array)
             Array.fromList [ { bar = 2 }, { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Field.foo << every << Field.bar) arrayRecord
+    view (Record.foo << every << Record.bar) arrayRecord
     --> Array.fromList [ 2, 3, 4 ]
 
-    map (Field.foo << every << Field.bar) ((+) 1) arrayRecord
+    map (Record.foo << every << Record.bar) ((+) 1) arrayRecord
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -42,7 +42,7 @@ elementEach =
 
     import Accessors exposing (everyIdx, view, map)
     import Tuple.Accessor as Tuple
-    import Field
+    import Record
     import Array exposing (Array)
 
     arrayRecord : { foo : Array { bar : Int } }
@@ -64,18 +64,18 @@ elementEach =
             ( idx, record )
 
 
-    arrayRecord |> view (Field.foo << everyIdx)
+    arrayRecord |> view (Record.foo << everyIdx)
     --> Array.fromList
     -->     [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
-    arrayRecord |> mapOver (Field.foo << everyIdx) multiplyIfGTOne
+    arrayRecord |> mapOver (Record.foo << everyIdx) multiplyIfGTOne
     --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
-    arrayRecord |> view (Field.foo << everyIdx << Tuple.second << Field.bar)
+    arrayRecord |> view (Record.foo << everyIdx << Tuple.second << Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     arrayRecord
-        |> mapOver (Field.foo << everyIdx << Tuple.second << Field.bar) ((+) 1)
+        |> mapOver (Record.foo << everyIdx << Tuple.second << Record.bar) ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ]}
 
 -}
@@ -101,7 +101,7 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     import Array exposing (Array)
     import Accessors exposing (view)
     import Array.Accessor exposing (elementAt)
-    import Field
+    import Record
 
     barray : Array { bar : String }
     barray =
@@ -113,13 +113,13 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     barray |> view (elementAt 9000)
     --> Nothing
 
-    barray |> view (elementAt 0 << Field.bar)
+    barray |> view (elementAt 0 << Record.bar)
     --> Just "Stuff"
 
-    barray |> mapOver (elementAt 0 << Field.bar) (\_ -> "Whatever")
+    barray |> mapOver (elementAt 0 << Record.bar) (\_ -> "Whatever")
     --> Array.fromList [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> mapOver (elementAt 9000 << Field.bar) (\_ -> "Whatever")
+    barray |> mapOver (elementAt 9000 << Record.bar) (\_ -> "Whatever")
     --> barray
 
 -}

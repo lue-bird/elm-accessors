@@ -12,7 +12,7 @@ import Accessor exposing (Relation, create1To1, create1ToN, onJust)
 {-| This accessor combinator lets you view values inside List.
 
     import Accessors exposing (each, view, map)
-    import Field
+    import Record
 
     listRecord : { foo : List { bar : Int } }
     listRecord =
@@ -23,10 +23,10 @@ import Accessor exposing (Relation, create1To1, create1ToN, onJust)
             ]
         }
 
-    view (Field.foo << each << Field.bar) listRecord
+    view (Record.foo << each << Record.bar) listRecord
     --> [2, 3, 4]
 
-    map (Field.foo << each << Field.bar) ((+) 1) listRecord
+    map (Record.foo << each << Record.bar) ((+) 1) listRecord
     --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
 
 -}
@@ -44,7 +44,7 @@ elementEach =
     import Accessors exposing (view, map)
     import List.Accessor as List
     import Tuple.Accessor as Tuple
-    import Field
+    import Record
 
     listRecord : { foo : List { bar : Int } }
     listRecord =
@@ -64,16 +64,16 @@ elementEach =
             ( idx, record )
 
 
-    view (Field.foo << List.elementIndexEach) listRecord
+    view (Record.foo << List.elementIndexEach) listRecord
     --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
-    map (Field.foo << List.elementIndexEach) multiplyIfGTOne listRecord
+    map (Record.foo << List.elementIndexEach) multiplyIfGTOne listRecord
     --> { foo = [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
-    view (Field.foo << List.elementIndexEach << Field.element << Field.bar) listRecord
+    view (Record.foo << List.elementIndexEach << Record.element << Record.bar) listRecord
     --> [2, 3, 4]
 
-    map (Field.foo << List.elementIndexEach << Field.element << Field.bar) ((+) 1) listRecord
+    map (Record.foo << List.elementIndexEach << Record.element << Record.bar) ((+) 1) listRecord
     --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -100,7 +100,7 @@ elementIndexEach =
 
     import Accessors exposing (view)
     import List.Accessor as List
-    import Field
+    import Record
 
     bars : List { bar : String }
     bars =
@@ -112,13 +112,13 @@ elementIndexEach =
     bars |> view (List.elementAt 9000)
     --> Nothing
 
-    bars |> view (List.elementAt 0 << Field.bar)
+    bars |> view (List.elementAt 0 << Record.bar)
     --> Just "Stuff"
 
-    bars |> mapOver (List.elementAt 0 << Field.bar) (\_ -> "Whatever")
+    bars |> mapOver (List.elementAt 0 << Record.bar) (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> mapOver (List.elementAt 9000 << Field.bar) (\_ -> "Whatever")
+    bars |> mapOver (List.elementAt 9000 << Record.bar) (\_ -> "Whatever")
     --> bars
 
 -}

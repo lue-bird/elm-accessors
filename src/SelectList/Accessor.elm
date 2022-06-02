@@ -14,7 +14,7 @@ import SelectList exposing (SelectList)
 
     import Accessors exposing (..)
     import Accessors.SelectList as SL
-    import Field
+    import Record
     import SelectList exposing (SelectList)
 
     listRecord : { foo : SelectList { bar : Int } }
@@ -22,10 +22,10 @@ import SelectList exposing (SelectList)
         { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Field.foo << SL.each << Field.bar) listRecord
+    view (Record.foo << SL.each << Record.bar) listRecord
     --> SelectList.fromLists [1] 2 [3, 4]
 
-    map (Field.foo << SL.each << Field.bar) ((+) 1) listRecord
+    map (Record.foo << SL.each << Record.bar) ((+) 1) listRecord
     --> { foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -43,7 +43,7 @@ elementEach =
     import Accessors exposing (view, map)
     import Tuple.Accessor as Tuple
     import Accessors.SelectList as SelectList
-    import Field
+    import Record
     import SelectList exposing (SelectList)
 
     listRecord : { foo : SelectList { bar : Int } }
@@ -63,19 +63,19 @@ elementEach =
             ( idx, record )
 
 
-    view (Field.foo << SelectList.elementIndexEach) listRecord
+    view (Record.foo << SelectList.elementIndexEach) listRecord
     --> SelectList.fromLists
     -->     [ ( 0, { bar = 1 } ) ]
     -->     ( 1, { bar = 2 } )
     -->     [ ( 2, { bar = 3 } ), ( 3, { bar = 4 } ) ]
 
-    map (Field.foo << SelectList.elementIndexEach) multiplyIfGTOne listRecord
+    map (Record.foo << SelectList.elementIndexEach) multiplyIfGTOne listRecord
     --> { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 20 } [ { bar = 30 }, { bar = 40 } ] }
 
-    view (Field.foo << SelectList.elementIndexEach << Field.element << Field.bar) listRecord
+    view (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar) listRecord
     --> SelectList.fromLists [1] 2 [3, 4]
 
-    map (Field.foo << SelectList.elementIndexEach << Field.element << Field.bar) ((+) 1) listRecord
+    map (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar) ((+) 1) listRecord
     --> { foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -136,7 +136,7 @@ elementIndexEach =
 
     import Accessors exposing (..)
     import Accessors.SelectList as SL
-    import Field
+    import Record
     import SelectList exposing (SelectList)
 
     listRecord : { foo : SelectList { bar : Int } }
@@ -153,16 +153,16 @@ elementIndexEach =
         else
             ( idx, record )
 
-    listRecord |> view (Field.foo << SL.selected << Field.bar)
+    listRecord |> view (Record.foo << SL.selected << Record.bar)
     --> 2
 
-    listRecord |> mapOver (Field.foo << SL.selected << Field.bar) (\_ -> 37)
+    listRecord |> mapOver (Record.foo << SL.selected << Record.bar) (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
-    listRecord |> mapOver (Field.foo << SL.selected << Field.bar) ((*) 10)
+    listRecord |> mapOver (Record.foo << SL.selected << Record.bar) ((*) 10)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]
