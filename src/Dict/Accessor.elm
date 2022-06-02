@@ -13,7 +13,7 @@ import Dict exposing (Dict)
 {-| values: This accessor lets you traverse a Dict including the index of each element
 
     import Accessors exposing (values, map, access)
-    import Lens as L
+    import Field
     import Dict exposing (Dict)
 
     dictRecord : { foo : Dict String { bar : Int } }
@@ -26,20 +26,20 @@ import Dict exposing (Dict)
                 ]
         }
 
-    access (L.foo << values) dictRecord
+    access (Field.foo << values) dictRecord
     --> Dict.fromList
     -->     [ ( "a", { bar = 2 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
 
-    map (L.foo << values << L.bar) ((*) 10) dictRecord
+    map (Field.foo << values << Field.bar) ((*) 10) dictRecord
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 30 } ), ( "c", { bar = 40 } ) ]
     --> }
 
-    access (L.foo << values << L.bar) dictRecord
+    access (Field.foo << values << Field.bar) dictRecord
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
-    map (L.foo << values << L.bar) ((+) 1) dictRecord
+    map (Field.foo << values << Field.bar) ((+) 1) dictRecord
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
@@ -59,7 +59,7 @@ valueEach =
 
     import Accessors exposing (access, map, keyed)
     import Tuple.Accessor as Tuple
-    import Lens as L
+    import Field
     import Dict exposing (Dict)
 
     dictRecord : { foo : Dict String { bar : Int } }
@@ -80,20 +80,20 @@ valueEach =
             ( key, record )
 
 
-    access (L.foo << keyed) dictRecord
+    access (Field.foo << keyed) dictRecord
     --> Dict.fromList
     -->     [ ( "a", ( "a", { bar = 2 } ) ), ( "b", ( "b", { bar = 3 } ) ), ( "c", ( "c", { bar = 4 } ) ) ]
 
-    map (L.foo << keyed) multiplyIfA dictRecord
+    map (Field.foo << keyed) multiplyIfA dictRecord
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
     --> }
 
-    access (L.foo << keyed << Tuple.second << L.bar) dictRecord
+    access (Field.foo << keyed << Tuple.second << Field.bar) dictRecord
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
-    map (L.foo << keyed << Tuple.second << L.bar) ((+) 1) dictRecord
+    map (Field.foo << keyed << Tuple.second << Field.bar) ((+) 1) dictRecord
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
@@ -118,7 +118,7 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     import Dict exposing (Dict)
     import Accessors exposing (access, try)
     import Dict.Accessors as Dict
-    import Lens as L
+    import Field
 
     dict : Dict String { bar : Int }
     dict =
@@ -130,13 +130,13 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     dict |> access (Dict.valueAt ( 'b', String.fromChar ))
     --> Nothing
 
-    dict |> access (Dict.valueAt ( 'b', String.fromChar ) << onJust << L.bar)
+    dict |> access (Dict.valueAt ( 'b', String.fromChar ) << onJust << Field.bar)
     --> Just 2
 
     dict |> map (Dict.valueAt ( 'b', String.fromChar )) (\_ -> Nothing)
     --> dict |> Dict.remove 'b'
 
-    dict |> map (Dict.valueAt ( 'x', String.fromChar ) << onJust << L.bar) (\_ -> 3)
+    dict |> map (Dict.valueAt ( 'x', String.fromChar ) << onJust << Field.bar) (\_ -> 3)
     --> dict
 
 [`valueAtString`](#valueAtString) is short for `Dict.Accessor.valueAt ( stringKey, identity )`.

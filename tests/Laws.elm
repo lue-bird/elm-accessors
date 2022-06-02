@@ -6,8 +6,8 @@ import Array.Accessor as Array
 import Dict exposing (Dict)
 import Dict.Accessor as Dict
 import Expect exposing (Expectation)
+import Field
 import Fuzz exposing (Fuzzer, int, string)
-import Lens as L
 import List.Accessor as List
 import Maybe exposing (Maybe)
 import String
@@ -18,24 +18,24 @@ suite : Test
 suite =
     Test.describe
         "Laws"
-        [ isLens L.name personFuzzer stringAlter string
-        , isLens L.age personFuzzer intAlter int
-        , isSetable (L.email << A.onJust) personFuzzer stringAlter string
+        [ isLens Field.name personFuzzer stringAlter string
+        , isLens Field.age personFuzzer intAlter int
+        , isSetable (Field.email << A.onJust) personFuzzer stringAlter string
 
         -- TODO: How to express laws for "Prism"-ish things elm-monocle calls this Optional.
-        -- , isOptional (L.email << A.try)
-        , isSetable (L.stuff << List.elementAt 0) personFuzzer stringAlter string
-        , isSetable (L.stuff << List.elementEach) personFuzzer stringAlter string
-        , isSetable (L.things << Array.elementAt 0) personFuzzer stringAlter string
-        , isSetable (L.things << Array.elementEach) personFuzzer stringAlter string
+        -- , isOptional (Field.email << A.try)
+        , isSetable (Field.stuff << List.elementAt 0) personFuzzer stringAlter string
+        , isSetable (Field.stuff << List.elementEach) personFuzzer stringAlter string
+        , isSetable (Field.things << Array.elementAt 0) personFuzzer stringAlter string
+        , isSetable (Field.things << Array.elementEach) personFuzzer stringAlter string
         , isLens
-            (L.info << Dict.valueAt ( "stuff", identity ))
+            (Field.info << Dict.valueAt ( "stuff", identity ))
             personFuzzer
             maybeStringAlter
             (Fuzz.maybe string)
         , test "Name compositions output `jq` style String's" <|
             \() ->
-                (L.info << L.stuff << List.elementAt 7 << L.name)
+                (Field.info << Field.stuff << List.elementAt 7 << Field.name)
                     |> A.description
                     |> A.descriptionToString
                     |> Expect.equal ".info.stuff(7)?.name"

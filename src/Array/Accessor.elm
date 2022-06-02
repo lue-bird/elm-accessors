@@ -14,7 +14,7 @@ import Array exposing (Array)
 
     import Array exposing (Array)
     import Accessors exposing (every, access, map)
-    import Lens as L
+    import Field
 
     arrayRecord : { foo : Array { bar : Int } }
     arrayRecord =
@@ -22,10 +22,10 @@ import Array exposing (Array)
             Array.fromList [ { bar = 2 }, { bar = 3 }, { bar = 4 } ]
         }
 
-    access (L.foo << every << L.bar) arrayRecord
+    access (Field.foo << every << Field.bar) arrayRecord
     --> Array.fromList [ 2, 3, 4 ]
 
-    map (L.foo << every << L.bar) ((+) 1) arrayRecord
+    map (Field.foo << every << Field.bar) ((+) 1) arrayRecord
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -42,7 +42,7 @@ elementEach =
 
     import Accessors exposing (everyIdx, access, map)
     import Tuple.Accessor as Tuple
-    import Lens as L
+    import Field
     import Array exposing (Array)
 
     arrayRecord : { foo : Array { bar : Int } }
@@ -64,18 +64,18 @@ elementEach =
             ( idx, record )
 
 
-    arrayRecord |> access (L.foo << everyIdx)
+    arrayRecord |> access (Field.foo << everyIdx)
     --> Array.fromList
     -->     [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
-    arrayRecord |> map (L.foo << everyIdx) multiplyIfGTOne
+    arrayRecord |> map (Field.foo << everyIdx) multiplyIfGTOne
     --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
-    arrayRecord |> access (L.foo << everyIdx << Tuple.second << L.bar)
+    arrayRecord |> access (Field.foo << everyIdx << Tuple.second << Field.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     arrayRecord
-        |> map (L.foo << everyIdx << Tuple.second << L.bar) ((+) 1)
+        |> map (Field.foo << everyIdx << Tuple.second << Field.bar) ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ]}
 
 -}
@@ -101,7 +101,7 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     import Array exposing (Array)
     import Accessors exposing (access)
     import Array.Accessor exposing (elementAt)
-    import Lens as L
+    import Field
 
     barray : Array { bar : String }
     barray =
@@ -113,13 +113,13 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     barray |> access (elementAt 9000)
     --> Nothing
 
-    barray |> access (elementAt 0 << L.bar)
+    barray |> access (elementAt 0 << Field.bar)
     --> Just "Stuff"
 
-    barray |> map (elementAt 0 << L.bar) (\_ -> "Whatever")
+    barray |> map (elementAt 0 << Field.bar) (\_ -> "Whatever")
     --> Array.fromList [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> map (elementAt 9000 << L.bar) (\_ -> "Whatever")
+    barray |> map (elementAt 9000 << Field.bar) (\_ -> "Whatever")
     --> barray
 
 -}

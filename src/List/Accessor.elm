@@ -12,7 +12,7 @@ import Accessor exposing (Relation, for1To1, for1ToN, onJust)
 {-| This accessor combinator lets you access values inside List.
 
     import Accessors exposing (each, access, map)
-    import Lens as L
+    import Field
 
     listRecord : { foo : List { bar : Int } }
     listRecord =
@@ -23,10 +23,10 @@ import Accessor exposing (Relation, for1To1, for1ToN, onJust)
             ]
         }
 
-    access (L.foo << each << L.bar) listRecord
+    access (Field.foo << each << Field.bar) listRecord
     --> [2, 3, 4]
 
-    map (L.foo << each << L.bar) ((+) 1) listRecord
+    map (Field.foo << each << Field.bar) ((+) 1) listRecord
     --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
 
 -}
@@ -44,7 +44,7 @@ elementEach =
     import Accessors exposing (access, map)
     import List.Accessor as List
     import Tuple.Accessor as Tuple
-    import Lens as L
+    import Field
 
     listRecord : { foo : List { bar : Int } }
     listRecord =
@@ -64,16 +64,16 @@ elementEach =
             ( idx, record )
 
 
-    access (L.foo << List.elementIndexEach) listRecord
+    access (Field.foo << List.elementIndexEach) listRecord
     --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
-    map (L.foo << List.elementIndexEach) multiplyIfGTOne listRecord
+    map (Field.foo << List.elementIndexEach) multiplyIfGTOne listRecord
     --> { foo = [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
-    access (L.foo << List.elementIndexEach << L.element << L.bar) listRecord
+    access (Field.foo << List.elementIndexEach << Field.element << Field.bar) listRecord
     --> [2, 3, 4]
 
-    map (L.foo << List.elementIndexEach << L.element << L.bar) ((+) 1) listRecord
+    map (Field.foo << List.elementIndexEach << Field.element << Field.bar) ((+) 1) listRecord
     --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -100,7 +100,7 @@ elementIndexEach =
 
     import Accessors exposing (access)
     import List.Accessor as List
-    import Lens as L
+    import Field
 
     bars : List { bar : String }
     bars =
@@ -112,13 +112,13 @@ elementIndexEach =
     bars |> access (List.elementAt 9000)
     --> Nothing
 
-    bars |> access (List.elementAt 0 << L.bar)
+    bars |> access (List.elementAt 0 << Field.bar)
     --> Just "Stuff"
 
-    bars |> map (List.elementAt 0 << L.bar) (\_ -> "Whatever")
+    bars |> map (List.elementAt 0 << Field.bar) (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> map (List.elementAt 9000 << L.bar) (\_ -> "Whatever")
+    bars |> map (List.elementAt 9000 << Field.bar) (\_ -> "Whatever")
     --> bars
 
 -}

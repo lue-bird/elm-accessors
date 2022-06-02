@@ -1,9 +1,9 @@
 module Spec exposing (suite)
 
-import Accessor exposing (Relation, access, map, overLazy)
+import Accessor exposing (Relation, access, map, mapLazy)
 import Dict exposing (Dict)
 import Expect
-import Lens as L
+import Field
 import List.Accessor as List
 import Test exposing (Test, test)
 
@@ -57,27 +57,27 @@ suite =
             [ test "simple" <|
                 \_ ->
                     simpleRecord
-                        |> access L.foo
+                        |> access Field.foo
                         |> Expect.equal 3
             , test "nested" <|
                 \_ ->
                     nestedRecord
-                        |> access (L.foo << L.bar)
+                        |> access (Field.foo << Field.bar)
                         |> Expect.equal "Yop"
             , test "in list" <|
                 \_ ->
                     recordWithList
-                        |> access (L.bar << List.elementEach << L.foo)
+                        |> access (Field.bar << List.elementEach << Field.foo)
                         |> Expect.equal [ 3, 5 ]
             , test "in Just" <|
                 \_ ->
                     maybeRecord
-                        |> access (L.bar << onJust << L.qux)
+                        |> access (Field.bar << onJust << Field.qux)
                         |> Expect.equal (Just False)
             , test "in Nothing" <|
                 \_ ->
                     maybeRecord
-                        |> access (L.foo << onJust << L.bar)
+                        |> access (Field.foo << onJust << Field.bar)
                         |> Expect.equal Nothing
             , Test.describe
                 "dict"
@@ -94,27 +94,27 @@ suite =
                 , test "nested present" <|
                     \_ ->
                         recordWithDict
-                            |> access (L.bar << key "foo")
+                            |> access (Field.bar << key "foo")
                             |> Expect.equal (Just 7)
                 , test "nested absent" <|
                     \_ ->
                         recordWithDict
-                            |> access (L.bar << key "bar")
+                            |> access (Field.bar << key "bar")
                             |> Expect.equal Nothing
                 , test "with try" <|
                     \_ ->
                         dictWithRecord
-                            |> access (key "foo" << onJust << L.bar)
+                            |> access (key "foo" << onJust << Field.bar)
                             |> Expect.equal (Just "Yop")
-                , test "with def" <|
+                , test "with valueElseOnNothing" <|
                     \_ ->
                         dictWithRecord
-                            |> access (key "not_it" << def { bar = "Stuff" } << L.bar)
+                            |> access (key "not_it" << valueElseOnNothing { bar = "Stuff" } << Field.bar)
                             |> Expect.equal "Stuff"
                 , test "with or" <|
                     \_ ->
                         dictWithRecord
-                            |> access ((key "not_it" << onJust << L.bar) |> or "Stuff")
+                            |> access ((key "not_it" << onJust << Field.bar) |> or "Stuff")
                             |> Expect.equal "Stuff"
                 ]
             ]
@@ -125,7 +125,7 @@ suite =
                     let
                         updatedExample : { foo : number, bar : String, qux : Bool }
                         updatedExample =
-                            simpleRecord |> map L.qux (\_ -> True)
+                            simpleRecord |> map Field.qux (\_ -> True)
                     in
                     updatedExample.qux
                         |> Expect.equal True
@@ -134,7 +134,7 @@ suite =
                     let
                         updatedExample : { foo : { foo : number, bar : String, qux : Bool } }
                         updatedExample =
-                            nestedRecord |> map (L.foo << L.foo) (\_ -> 5)
+                            nestedRecord |> map (Field.foo << Field.foo) (\_ -> 5)
                     in
                     updatedExample.foo.foo
                         |> Expect.equal 5
@@ -143,30 +143,30 @@ suite =
                     let
                         updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
                         updatedExample =
-                            recordWithList |> map (L.bar << List.elementEach << L.bar) (\_ -> "Why, hello")
+                            recordWithList |> map (Field.bar << List.elementEach << Field.bar) (\_ -> "Why, hello")
                     in
                     updatedExample
-                        |> access (L.bar << List.elementEach << L.bar)
+                        |> access (Field.bar << List.elementEach << Field.bar)
                         |> Expect.equal [ "Why, hello", "Why, hello" ]
             , test "in Just" <|
                 \_ ->
                     let
                         updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
                         updatedExample =
-                            maybeRecord |> map (L.bar << onJust << L.foo) (\_ -> 4)
+                            maybeRecord |> map (Field.bar << onJust << Field.foo) (\_ -> 4)
                     in
                     updatedExample
-                        |> access (L.bar << onJust << L.foo)
+                        |> access (Field.bar << onJust << Field.foo)
                         |> Expect.equal (Just 4)
             , test "in Nothing" <|
                 \_ ->
                     let
                         -- updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
                         updatedExample =
-                            maybeRecord |> map (L.foo << onJust << L.bar) (\_ -> "Nope")
+                            maybeRecord |> map (Field.foo << onJust << Field.bar) (\_ -> "Nope")
                     in
                     updatedExample
-                        |> access (L.foo << onJust << L.bar)
+                        |> access (Field.foo << onJust << Field.bar)
                         |> Expect.equal Nothing
             , Test.describe
                 "dict"
@@ -213,20 +213,20 @@ suite =
                         let
                             updatedDict : Dict String { bar : String }
                             updatedDict =
-                                dictWithRecord |> map (key "foo" << onJust << L.bar) (\_ -> "Sup")
+                                dictWithRecord |> map (key "foo" << onJust << Field.bar) (\_ -> "Sup")
                         in
                         updatedDict
-                            |> access (key "foo" << onJust << L.bar)
+                            |> access (key "foo" << onJust << Field.bar)
                             |> Expect.equal (Just "Sup")
                 , test "set with try absent" <|
                     \_ ->
                         let
                             updatedDict : Dict String { bar : String }
                             updatedDict =
-                                dictWithRecord |> map (key "bar" << onJust << L.bar) (\_ -> "Sup")
+                                dictWithRecord |> map (key "bar" << onJust << Field.bar) (\_ -> "Sup")
                         in
                         updatedDict
-                            |> access (key "bar" << onJust << L.bar)
+                            |> access (key "bar" << onJust << Field.bar)
                             |> Expect.equal Nothing
                 ]
             ]
@@ -237,7 +237,7 @@ suite =
                     let
                         updatedExample : { foo : number, bar : String, qux : Bool }
                         updatedExample =
-                            simpleRecord |> map L.bar (\w -> w ++ " lait")
+                            simpleRecord |> map Field.bar (\w -> w ++ " lait")
                     in
                     updatedExample.bar
                         |> Expect.equal "Yop lait"
@@ -246,7 +246,7 @@ suite =
                     let
                         updatedExample : { foo : { foo : number, bar : String, qux : Bool } }
                         updatedExample =
-                            nestedRecord |> map (L.foo << L.qux) (\w -> not w)
+                            nestedRecord |> map (Field.foo << Field.qux) (\w -> not w)
                     in
                     updatedExample.foo.qux
                         |> Expect.equal True
@@ -255,39 +255,39 @@ suite =
                     let
                         updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
                         updatedExample =
-                            map (L.bar << List.elementEach << L.foo) (\n -> n - 2) recordWithList
+                            map (Field.bar << List.elementEach << Field.foo) (\n -> n - 2) recordWithList
                     in
                     updatedExample
-                        |> access (L.bar << List.elementEach << L.foo)
+                        |> access (Field.bar << List.elementEach << Field.foo)
                         |> Expect.equal [ 1, 3 ]
             , test "through Just" <|
                 \_ ->
                     let
                         updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
                         updatedExample =
-                            maybeRecord |> map (L.bar << onJust << L.foo) (\n -> n + 3)
+                            maybeRecord |> map (Field.bar << onJust << Field.foo) (\n -> n + 3)
                     in
                     updatedExample
-                        |> access (L.bar << onJust << L.foo)
+                        |> access (Field.bar << onJust << Field.foo)
                         |> Expect.equal (Just 6)
             , test "through Nothing" <|
                 \_ ->
                     let
                         -- updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
                         updatedExample =
-                            maybeRecord |> map (L.foo << onJust << L.bar) (\w -> w ++ "!")
+                            maybeRecord |> map (Field.foo << onJust << Field.bar) (\w -> w ++ "!")
                     in
                     updatedExample
-                        |> access (L.foo << onJust << L.bar)
+                        |> access (Field.foo << onJust << Field.bar)
                         |> Expect.equal Nothing
             ]
         , Test.describe
-            "overLazy"
+            "mapLazy"
             [ test "simple" <|
                 \_ ->
                     let
                         updatedExample =
-                            simpleRecord |> overLazy L.bar (\w -> w ++ " lait")
+                            simpleRecord |> mapLazy Field.bar (\w -> w ++ " lait")
                     in
                     updatedExample.bar
                         |> Expect.equal "Yop lait"
@@ -295,7 +295,7 @@ suite =
                 \_ ->
                     let
                         updatedExample =
-                            overLazy (L.foo << L.qux) (\w -> not w) nestedRecord
+                            mapLazy (Field.foo << Field.qux) (\w -> not w) nestedRecord
                     in
                     updatedExample.foo.qux
                         |> Expect.equal True
@@ -303,28 +303,28 @@ suite =
                 \_ ->
                     let
                         updatedExample =
-                            overLazy (L.bar << List.elementEach << L.foo) (\n -> n - 2) recordWithList
+                            mapLazy (Field.bar << List.elementEach << Field.foo) (\n -> n - 2) recordWithList
                     in
                     updatedExample
-                        |> access (L.bar << List.elementEach << L.foo)
+                        |> access (Field.bar << List.elementEach << Field.foo)
                         |> Expect.equal [ 1, 3 ]
             , test "through Just" <|
                 \_ ->
                     let
                         updatedExample =
-                            maybeRecord |> overLazy (L.bar << onJust << L.foo) (\n -> n + 3)
+                            maybeRecord |> mapLazy (Field.bar << onJust << Field.foo) (\n -> n + 3)
                     in
                     updatedExample
-                        |> access (L.bar << onJust << L.foo)
+                        |> access (Field.bar << onJust << Field.foo)
                         |> Expect.equal (Just 6)
             , test "through Nothing" <|
                 \_ ->
                     let
                         updatedExample =
-                            maybeRecord |> overLazy (L.foo << onJust << L.bar) (\w -> w ++ "!")
+                            maybeRecord |> mapLazy (Field.foo << onJust << Field.bar) (\w -> w ++ "!")
                     in
                     updatedExample
-                        |> access (L.foo << onJust << L.bar)
+                        |> access (Field.foo << onJust << Field.bar)
                         |> Expect.equal Nothing
             ]
         , Test.describe
@@ -341,14 +341,14 @@ suite =
                 [ test "access" <|
                     \_ ->
                         nestedRecord
-                            |> access (myFoo << L.bar)
+                            |> access (myFoo << Field.bar)
                             |> Expect.equal "Yop"
                 , test "set" <|
                     \_ ->
                         let
                             updatedRec : { foo : { foo : number, bar : String, qux : Bool } }
                             updatedRec =
-                                nestedRecord |> map (L.foo << myFoo) (\_ -> 1)
+                                nestedRecord |> map (Field.foo << myFoo) (\_ -> 1)
                         in
                         updatedRec.foo.foo
                             |> Expect.equal 1
@@ -374,7 +374,7 @@ suite =
                 [ test "access" <|
                     \_ ->
                         recordWithList
-                            |> access (L.bar << myOnEach << L.foo)
+                            |> access (Field.bar << myOnEach << Field.foo)
                             |> Expect.equal [ 3, 5 ]
                 , test "set" <|
                     \_ ->
@@ -382,20 +382,20 @@ suite =
                             updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
                             updatedExample =
                                 recordWithList
-                                    |> map (L.bar << myOnEach << L.bar) (\_ -> "Greetings")
+                                    |> map (Field.bar << myOnEach << Field.bar) (\_ -> "Greetings")
                         in
                         updatedExample
-                            |> access (L.bar << List.elementEach << L.bar)
+                            |> access (Field.bar << List.elementEach << Field.bar)
                             |> Expect.equal [ "Greetings", "Greetings" ]
                 , test "map" <|
                     \_ ->
                         let
                             updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
                             updatedExample =
-                                map (L.bar << myOnEach << L.foo) (\n -> n - 2) recordWithList
+                                map (Field.bar << myOnEach << Field.foo) (\n -> n - 2) recordWithList
                         in
                         updatedExample
-                            |> access (L.bar << List.elementEach << L.foo)
+                            |> access (Field.bar << List.elementEach << Field.foo)
                             |> Expect.equal [ 1, 3 ]
                 ]
             ]

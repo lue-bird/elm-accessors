@@ -2,8 +2,8 @@ module Accessor exposing
     ( Relation, Accessor, Lens, LensArgument
     , access, is
     , description, descriptionToString
-    , map, overLazy
-    , onJust, def, or
+    , map, mapLazy
+    , onJust, valueElseOnNothing
     , onOk, onErr
     , for1To1, for1ToN
     )
@@ -32,12 +32,12 @@ structures without handling the packing and the unpacking.
 
 ## nested map
 
-@docs map, overLazy
+@docs map, mapLazy
 
 
 ## for `Maybe`
 
-@docs onJust, def, or
+@docs onJust, valueElseOnNothing
 
 
 ## for `Result`
@@ -172,9 +172,9 @@ similar to the way you'd use a Sum type's constructors to key a dictionary for a
 
     import Accessors exposing (name)
     import Dict.Accessor as Dict
-    import Lens as L
+    import Field
 
-    name (L.email << onJust << L.info << Dict.valueAtString "subject")
+    name (Field.email << onJust << Field.info << Dict.valueAtString "subject")
     --> ".email>Maybe.Just>.info>Dict value at \"subject\""
 
 -}
@@ -243,15 +243,17 @@ and it returns the data structure, with the accessible field changed by applying
 the function to the existing value.
 The structure is changed only if the new field is different from the old one.
 
-    overLazy (foo << qux) ((+) 1) myRecord
+    mapLazy (foo << qux) ((+) 1) myRecord
 
 -}
-overLazy :
-    (Relation sub sub sub -> Relation super sub wrap)
-    -> (sub -> sub)
-    -> super
-    -> super
-overLazy accessor change =
+mapLazy :
+    (Relation focus focus focus -> Relation structure focus wrap)
+    -> (focus -> focus)
+    ->
+        (structure
+         -> structure
+        )
+mapLazy accessor change =
     \structure ->
         let
             newSuper =
@@ -363,7 +365,7 @@ type alias Description =
 {-| This accessor combinator lets you access values inside Maybe.
 
     import Accessors exposing (access, map, try)
-    import Lens as L
+    import Field
 
     maybeRecord : { foo : Maybe { bar : Int }, qux : Maybe { bar : Int } }
     maybeRecord =
@@ -371,16 +373,16 @@ type alias Description =
         , qux = Nothing
         }
 
-    access (L.foo << onJust << L.bar) maybeRecord
+    access (Field.foo << onJust << Field.bar) maybeRecord
     --> Just 2
 
-    access (L.qux << onJust << L.bar) maybeRecord
+    access (Field.qux << onJust << Field.bar) maybeRecord
     --> Nothing
 
-    map (L.foo << onJust << L.bar) ((+) 1) maybeRecord
+    map (Field.foo << onJust << Field.bar) ((+) 1) maybeRecord
     --> { foo = Just { bar = 3 }, qux = Nothing }
 
-    map (L.qux << onJust << L.bar) ((+) 1) maybeRecord
+    map (Field.qux << onJust << Field.bar) ((+) 1) maybeRecord
     --> { foo = Just { bar = 2 }, qux = Nothing }
 
 -}
@@ -396,29 +398,29 @@ onJust =
 {-| Provide a default value for otherwise fallible compositions
 
     import Dict exposing (Dict)
-    import Lens as L
+    import Field
 
     dict : Dict String { bar : Int }
     dict =
         Dict.fromList [ ( "foo", { bar = 2 } ) ]
 
-    access (key "foo" << def { bar = 0 }) dict
+    access (key "foo" << valueElseOnNothing { bar = 0 }) dict
     --> { bar = 2 }
 
-    access (key "baz" << def { bar = 0 }) dict
+    access (key "baz" << valueElseOnNothing { bar = 0 }) dict
     --> { bar = 0 }
 
 TODO: The following do not compile :thinking:
 
-    dict |> access (key "foo" << onJust << L.bar << def 0)
+    dict |> access (key "foo" << onJust << Field.bar << valueElseOnNothing 0)
     ----> 2
 
-    dict |> access (key "baz" << onJust << L.bar << def 0)
+    dict |> access (key "baz" << onJust << Field.bar << valueElseOnNothing 0)
     ----> 0
 
 -}
-def : attribute -> Relation attribute reachable wrap -> Relation (Maybe attribute) reachable wrap
-def fallback =
+valueElseOnNothing : attribute -> Relation attribute reachable wrap -> Relation (Maybe attribute) reachable wrap
+valueElseOnNothing fallback =
     for1ToN
         { description = { structure = "Maybe", focus = "Nothing" }
         , access = \f -> Maybe.withDefault fallback >> f
@@ -426,47 +428,10 @@ def fallback =
         }
 
 
-{-| This accessor combinator lets you provide a fallback value for fallible compositions
-
-    import Dict exposing (Dict)
-    import Lens as L
-
-    dict : Dict String { bar : Int }
-    dict =
-        Dict.fromList [ ( "foo", { bar = 2 } ) ]
-
-NOTE: Use `def` for this
-
-    dict |> access (key "foo" << or { bar = 0 })
-    ----> { bar = 2 }
-
-    dict |> access (key "baz" << or { bar = 0 })
-    ----> { bar = 0 }
-
-    dict |> access ((key "foo" << onJust << L.bar) |> or 0)
-    --> 2
-
-    dict |> access ((key "baz" << onJust << L.bar) |> or 0)
-    --> 0
-
--}
-or :
-    attribute
-    -> (Relation attribute attribute attribute -> Relation structure attribute (Maybe attribute))
-    -> (Relation attribute other attribute -> Relation structure other attribute)
-or fallback =
-    \l ->
-        for1To1
-            { description = { structure = "Maybe", focus = "Nothing" }
-            , access = access l >> Maybe.withDefault fallback
-            , map = map l
-            }
-
-
 {-| This accessor lets you access values inside the Ok variant of a Result.
 
     import Accessors exposing (access, map, onOk)
-    import Lens as L
+    import Field
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
     maybeRecord =
@@ -474,16 +439,16 @@ or fallback =
         , qux = Err "Not an Int"
         }
 
-    maybeRecord |> access (L.foo << onOk << L.bar)
+    maybeRecord |> access (Field.foo << onOk << Field.bar)
     --> Just 2
 
-    maybeRecord |> access (L.qux << onOk << L.bar)
+    maybeRecord |> access (Field.qux << onOk << Field.bar)
     --> Nothing
 
-    maybeRecord |> map (L.foo << onOk << L.bar) ((+) 1)
+    maybeRecord |> map (Field.foo << onOk << Field.bar) ((+) 1)
     --> { foo = Ok { bar = 3 }, qux = Err "Not an Int" }
 
-    maybeRecord |> map (L.qux << onOk << L.bar) ((+) 1)
+    maybeRecord |> map (Field.qux << onOk << Field.bar) ((+) 1)
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
 -}
@@ -499,7 +464,7 @@ onOk =
 {-| This accessor lets you access values inside the Err variant of a Result.
 
     import Accessors exposing (access, map, onErr)
-    import Lens as L
+    import Field
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
     maybeRecord =
@@ -507,16 +472,16 @@ onOk =
         , qux = Err "Not an Int"
         }
 
-    maybeRecord |> access (L.foo << onErr)
+    maybeRecord |> access (Field.foo << onErr)
     --> Nothing
 
-    maybeRecord |> access (L.qux << onErr)
+    maybeRecord |> access (Field.qux << onErr)
     --> Just "Not an Int"
 
-    maybeRecord |> map (L.foo << onErr) String.toUpper
+    maybeRecord |> map (Field.foo << onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
-    maybeRecord |> map (L.qux << onErr) String.toUpper
+    maybeRecord |> map (Field.qux << onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "NOT AN INT" }
 
 -}
