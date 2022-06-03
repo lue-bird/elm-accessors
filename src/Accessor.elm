@@ -1,5 +1,7 @@
 module Accessor exposing
-    ( Lens, Prism, Traversal, Relation
+    ( Relation
+    , Lens, Prism, Traversal
+    , TraversalConsume
     , lens, prism, traversal
     , view, is
     , Description(..), description, descriptionToString
@@ -18,7 +20,9 @@ expects a `Relation` and builds a new relation with it. Accessors are
 composable, which means you can build a chain of relations to manipulate nested
 structures without handling the packing and the unpacking.
 
-@docs Lens, Prism, Traversal, Relation
+@docs Relation
+@docs Lens, Prism, Traversal
+@docs TraversalConsume
 
 
 ## create
@@ -125,6 +129,35 @@ type alias Prism structure focus focusFocus focusFocusView =
     Traversal structure focus (Maybe focusFocusView) focusFocus focusFocusView
 
 
+{-| Only use `TraversalConsume` for accessor arguments that are **consumed** – used and then discarded:
+
+    description :
+        TraversalConsume structure focus focusView
+        -> List Description
+
+    view :
+        TraversalConsume structure focus focusView
+        -> (structure -> focusView)
+
+    is :
+        TraversalConsume structure value (Maybe valueView)
+        -> (structure -> Bool)
+
+    mapOver :
+        TraversalConsume structure focus focusView
+        ->
+            ((focus -> focus)
+             -> (structure -> structure)
+            )
+
+Use [`LensConsume`](#LensConsume) in the same context.
+
+-}
+type alias TraversalConsume structure focus focusView =
+    Relation focus focus focus
+    -> Relation structure focus focusView
+
+
 {-| takes
 
   - An accessor
@@ -137,13 +170,8 @@ and returns the value accessed by that combinator.
 
 -}
 view :
-    (Relation focus focus focus
-     -> Relation structure focus focusView
-    )
-    ->
-        (structure
-         -> focusView
-        )
+    TraversalConsume structure focus focusView
+    -> (structure -> focusView)
 view accessor =
     let
         (Relation relation) =
@@ -172,13 +200,8 @@ view accessor =
 
 -}
 is :
-    (Relation (Maybe value) (Maybe value) (Maybe value)
-     -> Relation structure (Maybe value) (Maybe valueView)
-    )
-    ->
-        (structure
-         -> Bool
-        )
+    TraversalConsume structure value (Maybe valueView)
+    -> (structure -> Bool)
 is prism_ =
     \structure ->
         (structure |> view prism_) /= Nothing
@@ -188,9 +211,7 @@ is prism_ =
 This is useful when you want type-safe keys for a `Dict` but you still want to use the `elm/core` implementation.
 -}
 description :
-    (Relation focus focus focus
-     -> Relation structure focus focusView
-    )
+    TraversalConsume structure focus focusView
     -> List Description
 description accessor =
     let
@@ -384,13 +405,10 @@ the function to the existing value.
 
 -}
 mapOver :
-    (Relation focus focus focus
-     -> Relation structure focus focusView
-    )
-    -> (focus -> focus)
+    TraversalConsume structure focus focusView
     ->
-        (structure
-         -> structure
+        ((focus -> focus)
+         -> (structure -> structure)
         )
 mapOver accessor change =
     let
@@ -421,13 +439,10 @@ The structure is changed only if the new field is different from the old one.
 
 -}
 mapOverLazy :
-    (Relation focus focus focus
-     -> Relation structure focus focusView
-    )
-    -> (focus -> focus)
+    TraversalConsume structure focus focusView
     ->
-        (structure
-         -> structure
+        ((focus -> focus)
+         -> (structure -> structure)
         )
 mapOverLazy accessor change =
     \structure ->
@@ -443,6 +458,10 @@ mapOverLazy accessor change =
 
         else
             structure
+
+
+
+-- Maybe
 
 
 {-| This accessor combinator lets you view values inside Maybe.
@@ -529,6 +548,10 @@ valueElseOnNothing fallback =
                         |> valueMap
         , map = Maybe.map
         }
+
+
+
+-- Result
 
 
 {-| This accessor lets you view values inside the Ok variant of a Result.

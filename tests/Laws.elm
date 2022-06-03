@@ -1,6 +1,6 @@
 module Laws exposing (suite)
 
-import Accessor as A exposing (Lens)
+import Accessor exposing (Lens, TraversalConsume, mapOver)
 import Array exposing (Array)
 import Array.Accessor as Array
 import Dict exposing (Dict)
@@ -20,16 +20,16 @@ suite =
     Test.describe
         "lens laws"
         [ -- TODO: How to express laws for Prisms
-          -- , isPrism (Record.email << A.onJust)
+          -- , isPrism (Record.email << Accessor.onJust)
           settableTest
         , lens
         , test
             "description"
             (\() ->
                 (Record.info << Record.stuff << List.element ( Up, 7 ) << Record.name)
-                    |> A.description
-                    |> A.descriptionToString
-                    |> Expect.equal "record>.info:record>.stuff:List>element ↑7:Maybe>Just:record>.name"
+                    |> Accessor.description
+                    |> Accessor.descriptionToString
+                    |> Expect.equal "record>.info:record>.stuff:List>element ↑7:record>.name"
             )
         ]
 
@@ -53,7 +53,7 @@ settableTest =
     Test.describe
         "setable"
         [ isSettable
-            (Record.email << A.onJust)
+            (Record.email << Accessor.onJust)
             personFuzzer
             stringAlter
             Fuzz.string
@@ -159,20 +159,15 @@ personFuzzer =
         |> Fuzz.andMap (Fuzz.array Fuzz.string)
 
 
-type alias TraversalFinal structure transformedStructure focus =
-    A.Relation focus focus focus
-    -> A.Relation structure focus transformedStructure
-
-
 isSettable :
-    TraversalFinal structure transformed attribute
+    TraversalConsume structure attribute transformed
     -> Fuzzer structure
     -> Fuzzer (Alter attribute)
     -> Fuzzer attribute
     -> Test
 isSettable settable structureFuzzer alterFuzzer focusFuzzer =
     Test.describe
-        ("isSettable: " ++ (settable |> A.description |> A.descriptionToString))
+        ("isSettable: " ++ (settable |> Accessor.description |> Accessor.descriptionToString))
         [ Test.fuzz
             structureFuzzer
             "identity"
@@ -198,22 +193,21 @@ isSettable settable structureFuzzer alterFuzzer focusFuzzer =
         ]
 
 
-{-| Simplified version of [`Lens`](#Lens)
-which breaks type inference when used in complex compositions.
+{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
 -}
-type alias LensFinal structure focus =
-    Lens structure focus focus focus
+type alias LensConsume structure focus =
+    TraversalConsume structure focus focus
 
 
 isLens :
-    LensFinal structure attribute
+    LensConsume structure attribute
     -> Fuzzer structure
     -> Fuzzer (Alter attribute)
     -> Fuzzer attribute
     -> Test
 isLens settable structureFuzzer alterFuzzer focusFuzzer =
     Test.describe
-        ("isLens: " ++ (settable |> A.description |> A.descriptionToString))
+        ("isLens: " ++ (settable |> Accessor.description |> Accessor.descriptionToString))
         [ isSettable settable structureFuzzer alterFuzzer focusFuzzer
 
         -- there's Traversal laws in here somewhere but not sure they're expressible in elm
@@ -236,55 +230,55 @@ isLens settable structureFuzzer alterFuzzer focusFuzzer =
 
 
 setter_identity :
-    TraversalFinal structure transformed attribute
+    TraversalConsume structure attribute transformed
     -> structure
     -> Bool
 setter_identity settable structure =
-    (structure |> A.mapOver settable identity) == structure
+    (structure |> Accessor.mapOver settable identity) == structure
 
 
 setter_composition :
-    TraversalFinal structure transformed attribute
+    TraversalConsume structure attribute transformed
     -> structure
     -> Alter attribute
     -> Alter attribute
     -> Bool
 setter_composition settable structure alter0 alter1 =
     (structure
-        |> A.mapOver settable alter1
-        |> A.mapOver settable alter0
+        |> Accessor.mapOver settable alter1
+        |> Accessor.mapOver settable alter0
     )
-        == (structure |> A.mapOver settable (alter0 << alter1))
+        == (structure |> Accessor.mapOver settable (alter0 << alter1))
 
 
 setter_set_set :
-    TraversalFinal structure transformed focus
+    TraversalConsume structure focus transformed
     -> structure
     -> focus
     -> focus
     -> Bool
 setter_set_set settable structure a b =
     (structure
-        |> A.mapOver settable (\_ -> a)
-        |> A.mapOver settable (\_ -> b)
+        |> Accessor.mapOver settable (\_ -> a)
+        |> Accessor.mapOver settable (\_ -> b)
     )
-        == (structure |> A.mapOver settable (\_ -> b))
+        == (structure |> Accessor.mapOver settable (\_ -> b))
 
 
-lens_set_get : LensFinal structure attribute -> structure -> Bool
+lens_set_get : LensConsume structure attribute -> structure -> Bool
 lens_set_get lens_ structure =
     (structure
-        |> A.mapOver lens_
-            (\_ -> structure |> A.view lens_)
+        |> Accessor.mapOver lens_
+            (\_ -> structure |> Accessor.view lens_)
     )
         == structure
 
 
-lens_get_set : LensFinal structure focus -> structure -> focus -> Bool
+lens_get_set : LensConsume structure focus -> structure -> focus -> Bool
 lens_get_set lens_ structure focus =
     (structure
-        |> A.mapOver lens_ (\_ -> focus)
-        |> A.view lens_
+        |> Accessor.mapOver lens_ (\_ -> focus)
+        |> Accessor.view lens_
     )
         == focus
 
