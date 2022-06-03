@@ -161,8 +161,5 @@ element focusLocation =
                         elementFound |> Just
         , map =
             \alter ->
-                List.Linear.elementAlter
-                    ( focusLocation
-                    , alter
-                    )
+                List.Linear.elementAlter ( focusLocation, alter )
         }
