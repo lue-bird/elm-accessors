@@ -161,11 +161,13 @@ type alias TraversalConsume structure focus focusView =
 {-| takes
 
   - An accessor
-  - A datastructure with type `super`
+  - A data `structure`
 
 and returns the value accessed by that combinator.
 
-    { foo = { bar = "filling } } |> view (foo << bar)
+    import Record
+
+    { foo = { bar = "filling } } |> view (Record.foo << Record.bar)
     --→ "filling"
 
 -}
