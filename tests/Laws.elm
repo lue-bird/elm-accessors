@@ -159,13 +159,13 @@ personFuzzer =
         |> Fuzz.andMap (Fuzz.array Fuzz.string)
 
 
-type alias Settable structure transformedStructure focus =
+type alias TraversalFinal structure transformedStructure focus =
     A.Relation focus focus focus
     -> A.Relation structure focus transformedStructure
 
 
 isSettable :
-    Settable structure transformed attribute
+    TraversalFinal structure transformed attribute
     -> Fuzzer structure
     -> Fuzzer (Alter attribute)
     -> Fuzzer attribute
@@ -236,7 +236,7 @@ isLens settable structureFuzzer alterFuzzer focusFuzzer =
 
 
 setter_identity :
-    Settable structure transformed attribute
+    TraversalFinal structure transformed attribute
     -> structure
     -> Bool
 setter_identity settable structure =
@@ -244,7 +244,7 @@ setter_identity settable structure =
 
 
 setter_composition :
-    Settable structure transformed attribute
+    TraversalFinal structure transformed attribute
     -> structure
     -> Alter attribute
     -> Alter attribute
@@ -258,7 +258,7 @@ setter_composition settable structure alter0 alter1 =
 
 
 setter_set_set :
-    Settable structure transformed focus
+    TraversalFinal structure transformed focus
     -> structure
     -> focus
     -> focus

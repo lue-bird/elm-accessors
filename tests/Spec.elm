@@ -1,6 +1,6 @@
 module Spec exposing (suite)
 
-import Accessor exposing (Relation, mapOver, mapOverLazy, onJust, valueElseOnNothing, view)
+import Accessor exposing (mapOver, mapOverLazy, onJust, valueElseOnNothing, view)
 import Dict exposing (Dict)
 import Dict.Accessor as Dict
 import Expect
@@ -277,14 +277,14 @@ suite =
             "making accessors"
             [ let
                 myRecordFoo =
-                    Accessor.create1To1
+                    Accessor.lens
                         { description = { structure = "record", focus = ".foo" }
                         , view = .foo
                         , map = \alter record -> { record | foo = alter record.foo }
                         }
               in
               Test.describe
-                "Accessor.create1To1"
+                "Accessor.lens"
                 [ test "view" <|
                     \_ ->
                         nestedRecord
@@ -307,7 +307,7 @@ suite =
                 ]
             , let
                 myOnEach =
-                    Accessor.create1ToN
+                    Accessor.traversal
                         { description = { structure = "List", focus = "element List.elementEach" }
                         , view = List.map
                         , map = List.map

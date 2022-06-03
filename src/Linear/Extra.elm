@@ -4,13 +4,14 @@ import Linear exposing (DirectionLinear)
 
 
 directionToArrowString : DirectionLinear -> String
-directionToArrowString direction =
-    case direction of
-        Linear.Up ->
-            "↑"
+directionToArrowString =
+    \direction ->
+        case direction of
+            Linear.Up ->
+                "↑"
 
-        Linear.Down ->
-            "↓"
+            Linear.Down ->
+                "↓"
 
 
 locationToString : ( DirectionLinear, Int ) -> String

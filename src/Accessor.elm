@@ -1,6 +1,6 @@
 module Accessor exposing
-    ( Relation, Accessor, Prism, Lens
-    , create1To1, create1ToN
+    ( Lens, Prism, Traversal, Relation
+    , lens, prism, traversal
     , view, is
     , Description(..), description, descriptionToString
     , mapOver, mapOverLazy
@@ -18,12 +18,12 @@ expects a `Relation` and builds a new relation with it. Accessors are
 composable, which means you can build a chain of relations to manipulate nested
 structures without handling the packing and the unpacking.
 
-@docs Relation, Accessor, Prism, Lens
+@docs Lens, Prism, Traversal, Relation
 
 
 ## create
 
-@docs create1To1, create1ToN
+@docs lens, prism, traversal
 
 
 ## scan
@@ -69,12 +69,28 @@ type Relation structure focus focusView
         }
 
 
-type alias Accessor structure focus focusView focusFocus focusFocusView =
+{-| Every accessor defined using `Relation`s is a traversal of some kind.
+
+  - [`Lens`](#Lens): 1:1
+      - e.g. the selected element in a `SelectList`
+  - [`Prism`](#Prism): 1:Maybe
+      - e.g. the value of one of many variants
+  - 1:n
+      - e.g. each array element
+
+-}
+type alias Traversal structure focus focusView focusFocus focusFocusView =
     Relation focus focusFocus focusFocusView
     -> Relation structure focusFocus focusView
 
 
-{-| Intuitively, a "Lens" type could look like
+{-| [`Traversal`](#Traversal) over a single value: 1:1. Examples
+
+  - [`Tuple.Accessor.first`](Tuple#first)
+  - [`SelectList.Accessor.selected`](SelectList-Accessor#selected)
+  - record .field value
+
+Intuitively, a "Lens" type could look like
 
     type alias Lens structure focus =
         { view : structure -> focus
@@ -83,25 +99,30 @@ type alias Accessor structure focus focusView focusFocus focusFocusView =
 
 Unfortunately, we then need `composeLens`, `composeIso`, `composePrism` functions.
 
-With this approach we're able to make use of `<<`
+Defining "Lens" in terms of `Relation`s:
+
+    Relation focus focusFocus focusFocusView
+    -> Relation structure focusFocus focusFocusView
+
+we're able to make use of `<<`
 to [`view`](#view)/[`map`](#map) a nested structure.
 
 Technical note: This is an approximation of [Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/).
 
 -}
 type alias Lens structure focus focusFocus focusFocusView =
-    Accessor structure focus focusFocusView focusFocus focusFocusView
+    Traversal structure focus focusFocusView focusFocus focusFocusView
 
 
-{-| Traversal over a single value that might or might not exist. Examples
+{-| [`Traversal`](#Traversal) over a single value that might or might not exist: 1:Maybe. Examples
 
   - [`onJust`](#onJust)
   - [`onOk`](#onOk)
   - [`onErr`](#onErr)
 
 -}
-type alias Prism structure value focusFocus valueView =
-    Relation value focusFocus valueView -> Relation structure focusFocus (Maybe valueView)
+type alias Prism structure focus focusFocus focusFocusView =
+    Traversal structure focus (Maybe focusFocusView) focusFocus focusFocusView
 
 
 {-| takes
@@ -158,9 +179,9 @@ is :
         (structure
          -> Bool
         )
-is prism =
+is prism_ =
     \structure ->
-        (structure |> view prism) /= Nothing
+        (structure |> view prism_) /= Nothing
 
 
 {-| Each `Relation` has a [`description`](#description) to get unique names out of compositions of accessors.
@@ -224,7 +245,7 @@ same =
         }
 
 
-{-| Create a [`Lens`](#Lens) from
+{-| Create a 1:1 [`Lens`](#Lens) from
 
   - describing the structure and the targeted focus
   - a function to [access](#view) the structure's targeted focus
@@ -233,7 +254,7 @@ same =
 ```
 foo : Lens { record | foo : foo } foo focusFocus focusFocusView
 foo =
-    create1To1
+    lens
         { description = { structure = "record", focus = ".foo" }
         , view = .foo
         , map = \alter record -> { record | foo = record.foo |> alter }
@@ -241,7 +262,7 @@ foo =
 ```
 
 -}
-create1To1 :
+lens :
     { description :
         { structure : String
         , focus : String
@@ -250,7 +271,7 @@ create1To1 :
     , map : (focus -> focus) -> (structure -> structure)
     }
     -> Lens structure focus focusFocus focusFocusView
-create1To1 focus =
+lens focus =
     \(Relation deeperFocus) ->
         Relation
             { view =
@@ -263,16 +284,61 @@ create1To1 focus =
             }
 
 
-{-| Create a traversal [`Accessor`](#Accessor) from
+{-| Create a 1:Maybe [`Prism`](#Prism) from
+
+  - describing the structure and the targeted focus
+  - a function to [access](#view) the structure's targeted `Maybe` focus
+  - a function on the structure for mapping the targeted focus
+
+```
+onOk : Prism (Result error value) value focusFocus focusFocusView
+onOk =
+    prism
+        { description = { structure = "Result", focus = "Ok" }
+        , view = Result.toMaybe
+        , map = Result.map
+        }
+```
+
+-}
+prism :
+    { description :
+        { structure : String
+        , focus : String
+        }
+    , view : structure -> Maybe focus
+    , map : (focus -> focus) -> (structure -> structure)
+    }
+    -> Prism structure focus focusFocus focusFocusView
+prism focus =
+    \(Relation deeperFocus) ->
+        Relation
+            { view =
+                \structure -> structure |> focus.view |> Maybe.map deeperFocus.view
+            , map =
+                \change -> focus.map (deeperFocus.map change)
+            , description =
+                deeperFocus.description
+                    |> (::) (FocusDeeper focus.description)
+            }
+
+
+{-| Create a 1:n traversal [`Accessor`](#Accessor) from
 
   - describing the structure and the targeted focus
   - a function on the structure for mapping the targeted focus [`view`](#view)
   - a function on the structure for mapping the targeted focus
 
 ```
-elementEach : Relation elem sub wrap -> Relation (List elem) sub (List wrap)
+elementEach :
+    Traversal
+        (List element)
+        element
+        (List elementFocusView)
+        elementFocus
+        elementFocusView
 elementEach =
-    create1ToN
+    traversal
         { description = { structure = "List", focus = "element each" }
         , view = List.map
         , map = List.map
@@ -280,13 +346,13 @@ elementEach =
 ```
 
 -}
-create1ToN :
+traversal :
     { view : (focus -> focusFocusView) -> (structure -> focusView)
     , map : (focus -> focus) -> (structure -> structure)
     , description : { structure : String, focus : String }
     }
-    -> Accessor structure focus focusView focusFocus focusFocusView
-create1ToN focus =
+    -> Traversal structure focus focusView focusFocus focusFocusView
+traversal focus =
     \(Relation deeperFocus) ->
         Relation
             { view =
@@ -305,15 +371,16 @@ create1ToN focus =
 
 {-| The map function takes:
 
-  - An accessor,
-  - A function `(sub -> sub)`,
-  - A datastructure with type `super`
-    and it returns the data structure, with the focusView field changed by applying
-    the function to the existing value.
+  - Any accessor
+  - A function `focus -> focus`
+  - A data `structure`
 
-```
-map (foo << qux) ((+) 1) myRecord
-```
+and returns the data `structure` with the focusView field changed by applying
+the function to the existing value.
+
+    { foo = { qux = 0 } }
+        |> mapOver (Record.foo << Record.qux) ((+) 1)
+    --> { foo = { qux = 1 } }
 
 -}
 mapOver :
@@ -333,7 +400,7 @@ mapOver accessor change =
     relation.map change
 
 
-{-| Lazy versions of [`map`](#map).
+{-| Lazy version of [`mapOver`](#mapOver).
 
 These actions check that the old and the new version are different before writing.
 They are useful when used together with `Html.lazy`, because it uses reference
@@ -404,7 +471,7 @@ mapOverLazy accessor change =
 -}
 onJust : Prism (Maybe value) value focusFocus valueView
 onJust =
-    create1ToN
+    traversal
         { description = { structure = "Maybe", focus = "Just" }
         , view = Maybe.map
         , map = Maybe.map
@@ -448,9 +515,11 @@ onJust =
     ---> 0
 
 -}
-valueElseOnNothing : value -> Relation value focusFocus focusFocusView -> Relation (Maybe value) focusFocus focusFocusView
+valueElseOnNothing :
+    value
+    -> Traversal (Maybe value) value focusFocusView focusFocus focusFocusView
 valueElseOnNothing fallback =
-    create1ToN
+    traversal
         { description = { structure = "Maybe", focus = "Nothing" }
         , view =
             \valueMap ->
@@ -488,17 +557,9 @@ valueElseOnNothing fallback =
 -}
 onOk : Prism (Result error value) value focusFocus focusFocusView
 onOk =
-    create1ToN
+    prism
         { description = { structure = "Result", focus = "Ok" }
-        , view =
-            \okMap ->
-                \result ->
-                    case result of
-                        Err _ ->
-                            Nothing
-
-                        Ok ok ->
-                            ok |> okMap |> Just
+        , view = Result.toMaybe
         , map = Result.map
         }
 
@@ -529,16 +590,15 @@ onOk =
 -}
 onErr : Prism (Result error value) error focusFocus focusFocusView
 onErr =
-    create1ToN
+    prism
         { description = { structure = "Result", focus = "Err" }
         , view =
-            \errorMap ->
-                \result ->
-                    case result of
-                        Ok _ ->
-                            Nothing
+            \result ->
+                case result of
+                    Ok _ ->
+                        Nothing
 
-                        Err error ->
-                            error |> errorMap |> Just
+                    Err error ->
+                        error |> Just
         , map = Result.mapError
         }

@@ -6,7 +6,7 @@ module Array.Accessor exposing (elementEach, elementIndexEach, element)
 
 -}
 
-import Accessor exposing (Accessor, Relation, create1To1, create1ToN, onJust)
+import Accessor exposing (Prism, Traversal, lens, onJust, prism, traversal)
 import Array exposing (Array)
 import Array.Linear
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
@@ -32,9 +32,15 @@ import Linear.Extra as Linear
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
-elementEach : Relation attribute built transformed -> Relation (Array attribute) built (Array transformed)
+elementEach :
+    Traversal
+        (Array element)
+        element
+        (Array elementFocusView)
+        elementFocus
+        elementFocusView
 elementEach =
-    create1ToN
+    traversal
         { description = { structure = "Array", focus = "element each" }
         , view = Array.map
         , map = Array.map
@@ -43,9 +49,10 @@ elementEach =
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (everyIdx, view, map)
+    import Accessors exposing (view, mapOver)
     import Tuple.Accessor as Tuple
     import Record
+    import Array.Accessor as Array
     import Array exposing (Array)
 
     fooBarray : { foo : Array { bar : Int } }
@@ -58,7 +65,7 @@ elementEach =
                 ]
         }
 
-    fooBarray |> view (Record.foo << everyIdx)
+    fooBarray |> view (Record.foo << Array.elementEach)
     --> Array.fromList
     -->     [ { index = 0, element = { bar = 2 } }
     -->     , { index = 1, element = { bar = 3 } }
@@ -67,7 +74,7 @@ elementEach =
 
     fooBarray
         |> mapOver
-            (Record.foo << everyIdx)
+            (Record.foo << Array.elementEach)
             (\{ index, element } ->
                 case index of
                     0 ->
@@ -79,19 +86,25 @@ elementEach =
     --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
     fooBarray
-        |> view (Record.foo << everyIdx << Tuple.second << Record.bar)
+        |> view (Record.foo << Array.elementEach << Tuple.second << Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     fooBarray
         |> mapOver
-            (Record.foo << everyIdx << Tuple.second << Record.bar)
+            (Record.foo << Array.elementEach << Tuple.second << Record.bar)
             ((+) 1)
-    --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ]}
+    --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
-elementIndexEach : Relation { element : element, index : Int } reachable built -> Relation (Array element) reachable (Array built)
+elementIndexEach :
+    Traversal
+        (Array element)
+        { element : element, index : Int }
+        (Array elementFocusView)
+        elementFocus
+        elementFocusView
 elementIndexEach =
-    create1ToN
+    Accessor.traversal
         { description = { structure = "Array", focus = "{element,index} each" }
         , view =
             \elementView ->
@@ -108,40 +121,42 @@ elementIndexEach =
         }
 
 
-{-| This accessor combinator lets you view Array indices.
+{-| Focus `Array` elements plus their indices.
 
 In terms of accessors, think of Dicts as records where each field is a Maybe.
 
     import Array exposing (Array)
     import Accessors exposing (view)
-    import Array.Accessor exposing (element)
+    import Array.Accessor as Array
     import Record
 
     barray : Array { bar : String }
     barray =
         Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> view (element 1)
+    barray |> view (Array.element 1)
     --> Just { bar = "Things" }
 
-    barray |> view (element 9000)
+    barray |> view (Array.element 9000)
     --> Nothing
 
-    barray |> view (element 0 << Record.bar)
+    barray |> view (Array.element 0 << Record.bar)
     --> Just "Stuff"
 
-    barray |> mapOver (element 0 << Record.bar) (\_ -> "Whatever")
-    --> Array.fromList [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
+    barray
+        |> mapOver (Array.element 0 << Record.bar) (\_ -> "Whatever")
+    --> Array.fromList
+    -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> mapOver (element 9000 << Record.bar) (\_ -> "Whatever")
+    barray |> mapOver (Array.element 9000 << Record.bar) (\_ -> "Whatever")
     --> barray
 
 -}
 element :
     ( DirectionLinear, Int )
-    -> Accessor (Array element) element (Maybe focusFocusView) focusFocus focusFocusView
+    -> Prism (Array element) element focusFocus focusFocusView
 element location =
-    create1To1
+    prism
         { description =
             { structure = "Array"
             , focus = "element " ++ (location |> Linear.locationToString)
@@ -156,21 +171,5 @@ element location =
                         value |> Just
         , map =
             \alter ->
-                \array ->
-                    -- `<< onJust` at the end ensures we can't delete any existing keys
-                    -- so `List.filterMap identity` should be safe
-                    array
-                        |> Array.map Just
-                        |> Array.Linear.elementAlter ( location, alter )
-                        |> arrayValues
+                Array.Linear.elementAlter ( location, alter )
         }
-        << onJust
-
-
-arrayValues : Array (Maybe element) -> Array element
-arrayValues =
-    \arrayMaybe ->
-        arrayMaybe
-            |> Array.toList
-            |> List.filterMap identity
-            |> Array.fromList

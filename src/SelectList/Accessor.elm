@@ -6,7 +6,7 @@ module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
 
 -}
 
-import Accessor exposing (Accessor, Lens, Relation, mapOver, view)
+import Accessor exposing (Lens, Traversal, mapOver, view)
 import SelectList exposing (SelectList)
 
 
@@ -30,14 +30,14 @@ import SelectList exposing (SelectList)
 
 -}
 elementEach :
-    Accessor
+    Traversal
         (SelectList element)
         element
         (SelectList elementFocusView)
         elementFocus
         elementFocusView
 elementEach =
-    Accessor.create1ToN
+    Accessor.traversal
         { description = { structure = "SelectList", focus = "element each" }
         , view = SelectList.map
         , map = SelectList.map
@@ -46,7 +46,7 @@ elementEach =
 
 {-| Traverse a `SelectList` including the absolute index of each element
 
-    import Accessors exposing (view, map)
+    import Accessors exposing (view, mapOver)
     import Tuple.Accessor as Tuple
     import Accessors.SelectList as SelectList
     import Record
@@ -98,14 +98,14 @@ elementEach =
 
 -}
 elementIndexEach :
-    Accessor
+    Traversal
         (SelectList element)
         { index : Int, element : element }
         (SelectList elementFocusView)
         elementFocus
         elementFocusView
 elementIndexEach =
-    Accessor.create1ToN
+    Accessor.traversal
         { description = { structure = "SelectList", focus = "{element,index} each" }
         , view =
             \alter selectList ->
@@ -188,7 +188,7 @@ elementIndexEach =
 -}
 selected : Lens (SelectList element) element elementFocus elementFocusView
 selected =
-    Accessor.create1To1
+    Accessor.lens
         { description = { structure = "SelectList", focus = "selected" }
         , view = SelectList.selected
         , map = SelectList.updateSelected

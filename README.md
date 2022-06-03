@@ -12,27 +12,27 @@ content, and use that description to `map`/`view` arbitrary content more easily.
 
 ```elm
 recordFoo =
-    Accessor.create1To1
+    Accessor.lens
         { description = { structure = "record", focus = ".foo" }
         , view = .foo
         , map = \alter record -> { record | foo = record.foo |> alter }
         }
 
 recordBar =
-    Accessor.create1To1
+    Accessor.lens
         ".bar"
         .bar
         (\alter record -> { record | bar = record.bar |> alter })
 
 elementEach = 
-    Accessor.create1ToN
+    Accessor.traversal
         { description = { structure = "List", focus = "element each" }
         , view = List.map
         , map = List.map
         }
 
 onJust =
-    Accessor.create1ToN
+    Accessor.traversal
         { description = { structure = "Maybe", focus = "Just" }
         , view = Maybe.map
         , map = Maybe.map

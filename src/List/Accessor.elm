@@ -6,7 +6,7 @@ module List.Accessor exposing (element, elementEach, elementIndexEach)
 
 -}
 
-import Accessor exposing (Accessor, Lens, Relation, create1To1, create1ToN, onJust)
+import Accessor exposing (Lens, Prism, Traversal, lens, onJust, traversal)
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
 import Linear.Extra as Linear
 import List.Linear
@@ -33,9 +33,15 @@ import List.Linear
     --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
 
 -}
-elementEach : Accessor (List element) element (List elementFocusView) elementFocus elementFocusView
+elementEach :
+    Traversal
+        (List element)
+        element
+        (List elementFocusView)
+        elementFocus
+        elementFocusView
 elementEach =
-    create1ToN
+    traversal
         { description = { structure = "List", focus = "element each" }
         , view = List.map
         , map = List.map
@@ -44,7 +50,7 @@ elementEach =
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (view, map)
+    import Accessors exposing (view, mapOver)
     import List.Accessor as List
     import Tuple.Accessor as Tuple
     import Record
@@ -86,14 +92,14 @@ elementEach =
 
 -}
 elementIndexEach :
-    Accessor
+    Traversal
         (List element)
         { index : Int, element : element }
         (List elementView)
         elementFocus
         elementView
 elementIndexEach =
-    create1ToN
+    traversal
         { description = { structure = "List", focus = "{element,index} each" }
         , view =
             \elementAlter ->
@@ -138,9 +144,9 @@ elementIndexEach =
 -}
 element :
     ( DirectionLinear, Int )
-    -> Accessor (List element) element (Maybe focusFocusView) focusFocus focusFocusView
+    -> Prism (List element) element focusFocus focusFocusView
 element focusLocation =
-    Accessor.create1To1
+    Accessor.prism
         { description =
             { structure = "List"
             , focus = "element " ++ (focusLocation |> Linear.locationToString)
@@ -151,18 +157,12 @@ element focusLocation =
                     Err (ExpectedIndexForLength _) ->
                         Nothing
 
-                    Ok value ->
-                        value |> Just
+                    Ok elementFound ->
+                        elementFound |> Just
         , map =
-            \alter list ->
-                -- NOTE: `<< onJust` at the end ensures we can't delete any existing indices
-                -- so `List.filterMap identity` should be safe
-                list
-                    |> List.map Just
-                    |> List.Linear.elementAlter
-                        ( focusLocation
-                        , alter
-                        )
-                    |> List.filterMap identity
+            \alter ->
+                List.Linear.elementAlter
+                    ( focusLocation
+                    , alter
+                    )
         }
-        << onJust

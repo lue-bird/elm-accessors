@@ -6,7 +6,7 @@ module Dict.Accessor exposing (valueEach, valueKeyEach, valueAt, valueAtString)
 
 -}
 
-import Accessor exposing (Relation, create1To1, create1ToN)
+import Accessor exposing (Lens, Traversal, lens, traversal)
 import Dict exposing (Dict)
 
 
@@ -16,8 +16,8 @@ import Dict exposing (Dict)
     import Record
     import Dict exposing (Dict)
 
-    dictRecord : { foo : Dict String { bar : Int } }
-    dictRecord =
+    recordDictStringBar : { foo : Dict String { bar : Int } }
+    recordDictStringBar =
         { foo =
             Dict.fromList
                 [ ( "a", { bar = 2 } )
@@ -26,44 +26,50 @@ import Dict exposing (Dict)
                 ]
         }
 
-    view (Record.foo << values) dictRecord
+    view (Record.foo << values) recordDictStringBar
     --> Dict.fromList
     -->     [ ( "a", { bar = 2 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
 
-    map (Record.foo << values << Record.bar) ((*) 10) dictRecord
+    map (Record.foo << values << Record.bar) ((*) 10) recordDictStringBar
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 30 } ), ( "c", { bar = 40 } ) ]
     --> }
 
-    view (Record.foo << values << Record.bar) dictRecord
+    view (Record.foo << values << Record.bar) recordDictStringBar
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
-    map (Record.foo << values << Record.bar) ((+) 1) dictRecord
+    map (Record.foo << values << Record.bar) ((+) 1) recordDictStringBar
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
     --> }
 
 -}
-valueEach : Relation attribute reachable built -> Relation (Dict comparable attribute) reachable (Dict comparable built)
+valueEach :
+    Traversal
+        (Dict comparableKey value)
+        value
+        (Dict comparableKey valueFocusView)
+        valueFocus
+        valueFocusView
 valueEach =
-    create1ToN
+    traversal
         { description = { structure = "Dict", focus = "value each" }
-        , view = \fn -> Dict.map (\_ -> fn)
-        , map = \map -> Dict.map (\_ -> map)
+        , view = \valueView -> Dict.map (\_ -> valueView)
+        , map = \valueMap -> Dict.map (\_ -> valueMap)
         }
 
 
-{-| keyed: This accessor lets you traverse a Dict including the index of each element
+{-| Traverse each `Dict` entry containing its `key` and `value`.
 
-    import Accessors exposing (view, map, keyed)
-    import Tuple.Accessor as Tuple
+    import Accessors exposing (view, map)
+    import Dict.Accessors as Dict
     import Record
     import Dict exposing (Dict)
 
-    dictRecord : { foo : Dict String { bar : Int } }
-    dictRecord =
+    recordDictStringBar : { foo : Dict String { bar : Int } }
+    recordDictStringBar =
         { foo =
             Dict.fromList
                 [ ( "a", { bar = 2 } )
@@ -72,42 +78,68 @@ valueEach =
                 ]
         }
 
-    multiplyIfA : ( String, { bar : Int } ) -> ( String, { bar : Int } )
-    multiplyIfA ( key, ({ bar } as record) ) =
-        if key == "a" then
-            ( key, { bar = bar * 10 } )
-        else
-            ( key, record )
-
-
-    view (Record.foo << keyed) dictRecord
+    recordDictStringBar |> view (Record.foo << Dict.valueKeyEach)
     --> Dict.fromList
-    -->     [ ( "a", ( "a", { bar = 2 } ) ), ( "b", ( "b", { bar = 3 } ) ), ( "c", ( "c", { bar = 4 } ) ) ]
+    -->     [ ( "a", ( "a", { bar = 2 } ) )
+    -->     , ( "b", ( "b", { bar = 3 } ) )
+    -->     , ( "c", ( "c", { bar = 4 } ) )
+    -->     ]
 
-    map (Record.foo << keyed) multiplyIfA dictRecord
+    recordDictStringBar
+        |> mapOver
+            (Record.foo << Dict.valueKeyEach)
+            (\entry ->
+                { entry
+                    | value =
+                        case key of
+                            "a" ->
+                                { bar = entry.value.bar * 10 }
+
+                            _ ->
+                                entry
+                }
+            )
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
     --> }
 
-    view (Record.foo << keyed << Tuple.second << Record.bar) dictRecord
+    recordDictStringBar
+        |> view (Record.foo << Dict.valueKeyEach << Record.value << Record.bar)
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
-    map (Record.foo << keyed << Tuple.second << Record.bar) ((+) 1) dictRecord
+    recordDictStringBar
+        |> mapOver
+            (Record.foo << Dict.valueKeyEach << Record.value << Record.bar)
+            ((+) 1)
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
     --> }
 
 -}
-valueKeyEach : Relation { key : comparableKey, value : value } reachable built -> Relation (Dict comparableKey value) reachable (Dict comparableKey built)
+valueKeyEach :
+    Traversal
+        (Dict comparableKey value)
+        { key : comparableKey, value : value }
+        (Dict comparableKey valueFocusView)
+        valueFocus
+        valueFocusView
 valueKeyEach =
-    create1ToN
+    traversal
         { description = { structure = "Dict", focus = "{ key, value } each" }
         , view =
-            \fn -> Dict.map (\key value -> { key = key, value = value } |> fn)
+            \valueKeyView ->
+                Dict.map
+                    (\key value ->
+                        { key = key, value = value } |> valueKeyView
+                    )
         , map =
-            \fn -> Dict.map (\key value -> { key = key, value = value } |> fn |> .value)
+            \valueKeyMap ->
+                Dict.map
+                    (\key value ->
+                        { key = key, value = value } |> valueKeyMap |> .value
+                    )
         }
 
 
@@ -136,7 +168,10 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     dict |> mapOver (Dict.valueAt ( 'b', String.fromChar )) (\_ -> Nothing)
     --> dict |> Dict.remove 'b'
 
-    dict |> mapOver (Dict.valueAt ( 'x', String.fromChar ) << onJust << Record.bar) (\_ -> 3)
+    dict
+        |> mapOver
+            (Dict.valueAt ( 'x', String.fromChar ) << onJust << Record.bar)
+            (\_ -> 3)
     --> dict
 
 [`valueAtString`](#valueAtString) is short for `Dict.Accessor.valueAt ( stringKey, identity )`.
@@ -144,21 +179,22 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
 -}
 valueAt :
     ( comparableKey, comparableKey -> String )
-    -> Relation (Maybe value) reachable wrap
-    -> Relation (Dict comparableKey value) reachable wrap
+    -> Lens (Dict comparableKey value) (Maybe value) valueFocus valueFocusView
 valueAt ( key, keyToString ) =
-    Accessor.create1To1
-        { description = { structure = "Dict", focus = "value at " ++ (key |> keyToString) }
+    Accessor.lens
+        { description =
+            { structure = "Dict"
+            , focus = "value at " ++ (key |> keyToString)
+            }
         , view = Dict.get key
         , map = Dict.update key
         }
 
 
-{-| Short for [`Dict.Accessor.valueAt ( stringKey, identity )`](#valueAt).
+{-| Shorthand for [`Dict.Accessor.valueAt ( "key String", identity )`](#valueAt).
 -}
 valueAtString :
     String
-    -> Relation (Maybe value) reachable wrap
-    -> Relation (Dict String value) reachable wrap
+    -> Lens (Dict String value) (Maybe value) valueFocus valueFocusView
 valueAtString key =
     valueAt ( key, identity )

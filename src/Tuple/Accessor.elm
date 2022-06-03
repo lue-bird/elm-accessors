@@ -6,12 +6,12 @@ module Tuple.Accessor exposing (first, second)
 
 -}
 
-import Accessor exposing (Relation, create1To1)
+import Accessor exposing (Lens, lens)
 
 
 {-| Lens over the first component of a Tuple.
 
-    import Accessors exposing (view, map)
+    import Accessors exposing (view, mapOver)
     import Tuple.Accessor as Tuple
 
     charging : ( String, Int )
@@ -29,9 +29,9 @@ import Accessor exposing (Relation, create1To1)
     --> ( "IT'S OVER!!!", 1 )
 
 -}
-first : Relation sub reachable wrap -> Relation ( sub, x ) reachable wrap
+first : Lens ( partFirst, partSecond ) partFirst partFirstFocus partFirstFocusView
 first =
-    create1To1
+    lens
         { description = { structure = "Tuple", focus = "first" }
         , view = Tuple.first
         , map = Tuple.mapFirst
@@ -40,7 +40,7 @@ first =
 
 {-| Lens map the second component of a Tuple.
 
-    import Accessors exposing (view, map)
+    import Accessors exposing (view, mapOver)
     import Tuple.Accessor as Tuple
 
     jo : ( String, Int )
@@ -60,9 +60,9 @@ first =
     --> ( "HI THERE!!!", 9000 )
 
 -}
-second : Relation sub reachable wrap -> Relation ( x, sub ) reachable wrap
+second : Lens ( partFirst, partSecond ) partSecond partSecondFocus partSecondFocusView
 second =
-    create1To1
+    lens
         { description = { structure = "Tuple", focus = "second" }
         , view = Tuple.second
         , map = Tuple.mapSecond
