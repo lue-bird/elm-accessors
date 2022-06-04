@@ -135,7 +135,18 @@ type alias Traversal structure focus structureMapped focusMapped focusNamed focu
 
 -}
 type alias TraversalKeepingFocusType structure focus focusNamed focusView focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
-    Traversal structure focus structure focus focusNamed focusView focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed
+    Traversal
+        structure
+        focus
+        structure
+        focus
+        focusNamed
+        focusView
+        focusFocus
+        focusFocusMapped
+        focusFocusNamed
+        focusFocusView
+        focusFocusFocusNamed
 
 
 {-| [`Traversal`](#Traversal) over a focusName value: 1:1. Examples
@@ -186,7 +197,17 @@ type alias Lens structure focus structureMapped focusMapped focusNamed focusFocu
 
 -}
 type alias LensKeepingFocusType structure focus focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
-    Lens structure focus structure focus focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed
+    Lens
+        structure
+        focus
+        structure
+        focus
+        focusNamed
+        focusFocus
+        focusFocusMapped
+        focusFocusNamed
+        focusFocusView
+        focusFocusFocusNamed
 
 
 {-| [`Traversal`](#Traversal) over a focus value that might or might not exist: 1:Maybe. Examples
@@ -220,7 +241,17 @@ type alias Prism structure focus structureMapped focusMapped focusNamed focusFoc
 
 -}
 type alias PrismKeepingFocusType structure focus focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
-    Prism structure focus structure focus focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed
+    Prism
+        structure
+        focus
+        structure
+        focus
+        focusNamed
+        focusFocus
+        focusFocusMapped
+        focusFocusNamed
+        focusFocusView
+        focusFocusFocusNamed
 
 
 {-| Only use `TraversalConsume` for accessor arguments that are **consumed** – used and then discarded:
