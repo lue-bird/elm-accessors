@@ -125,6 +125,7 @@ elementIndexEach =
 
 In terms of accessors, think of Dicts as records where each field is a Maybe.
 
+    import Linear exposing (DirectionLinear(..))
     import Array exposing (Array)
     import Accessors exposing (view)
     import Array.Accessor as Array
@@ -134,21 +135,21 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     barray =
         Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> view (Array.element 1)
+    barray |> view (Array.element ( Down, 1 ))
     --> Just { bar = "Things" }
 
-    barray |> view (Array.element 9000)
+    barray |> view (Array.element ( Up, 9000 ))
     --> Nothing
 
-    barray |> view (Array.element 0 << Record.bar)
+    barray |> view (Array.element ( Up, 0 ) << Record.bar)
     --> Just "Stuff"
 
     barray
-        |> mapOver (Array.element 0 << Record.bar) (\_ -> "Whatever")
+        |> mapOver (Array.element ( Up, 0 ) << Record.bar) (\_ -> "Whatever")
     --> Array.fromList
     -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> mapOver (Array.element 9000 << Record.bar) (\_ -> "Whatever")
+    barray |> mapOver (Array.element ( Up, 9000 ) << Record.bar) (\_ -> "Whatever")
     --> barray
 
 -}
