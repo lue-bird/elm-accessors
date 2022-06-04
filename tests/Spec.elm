@@ -278,7 +278,7 @@ suite =
             [ let
                 myRecordFoo =
                     Accessor.lens
-                        { description = { structure = "record", focus = ".foo" }
+                        { description = ".foo"
                         , view = .foo
                         , map = \alter record -> { record | foo = alter record.foo }
                         }
@@ -308,7 +308,7 @@ suite =
             , let
                 myOnEach =
                     Accessor.traversal
-                        { description = { structure = "List", focus = "element List.elementEach" }
+                        { description = "element each"
                         , view = List.map
                         , map = List.map
                         }

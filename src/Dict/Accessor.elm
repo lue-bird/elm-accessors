@@ -55,7 +55,7 @@ valueEach :
         valueFocusView
 valueEach =
     traversal
-        { description = { structure = "Dict", focus = "value each" }
+        { description = "value each"
         , view = \valueView -> Dict.map (\_ -> valueView)
         , map = \valueMap -> Dict.map (\_ -> valueMap)
         }
@@ -127,7 +127,7 @@ valueKeyEach :
         valueFocusView
 valueKeyEach =
     traversal
-        { description = { structure = "Dict", focus = "{ key, value } each" }
+        { description = "{key,value} each"
         , view =
             \valueKeyView ->
                 Dict.map
@@ -182,12 +182,9 @@ valueAt :
     -> Lens (Dict comparableKey value) (Maybe value) valueFocus valueFocusView
 valueAt ( key, keyToString ) =
     Accessor.lens
-        { description =
-            { structure = "Dict"
-            , focus = "value at " ++ (key |> keyToString)
-            }
-        , view = Dict.get key
+        { view = Dict.get key
         , map = Dict.update key
+        , description = "value at " ++ (key |> keyToString)
         }
 
 

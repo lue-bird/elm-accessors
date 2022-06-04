@@ -5,7 +5,7 @@ import Accessor exposing (Lens)
 
 makeOneToOne_ fieldName view alter =
     Accessor.lens
-        { description = { structure = "record", focus = fieldName }
+        { description = fieldName
         , view = view
         , map = alter
         }

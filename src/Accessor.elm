@@ -225,10 +225,7 @@ description accessor =
 
 type Description
     = Identity
-    | FocusDeeper
-        { structure : String
-        , focus : String
-        }
+    | FocusDeeper String
 
 
 {-| This function gives the name of the composition of accessors as a string.
@@ -248,15 +245,15 @@ descriptionToString =
     \descriptionsNested ->
         descriptionsNested
             |> List.filterMap
-                (\description_ ->
-                    case description_ of
+                (\stepDescription ->
+                    case stepDescription of
                         Identity ->
                             Nothing
 
-                        FocusDeeper accessing ->
-                            (accessing.structure ++ ">" ++ accessing.focus) |> Just
+                        FocusDeeper focusDeeper ->
+                            focusDeeper |> Just
                 )
-            |> String.join ":"
+            |> String.join ">"
 
 
 same : Relation structure structure structure
@@ -286,10 +283,7 @@ foo =
 
 -}
 lens :
-    { description :
-        { structure : String
-        , focus : String
-        }
+    { description : String
     , view : structure -> focus
     , map : (focus -> focus) -> (structure -> structure)
     }
@@ -325,10 +319,7 @@ onOk =
 
 -}
 prism :
-    { description :
-        { structure : String
-        , focus : String
-        }
+    { description : String
     , view : structure -> Maybe focus
     , map : (focus -> focus) -> (structure -> structure)
     }
@@ -372,7 +363,7 @@ elementEach =
 traversal :
     { view : (focus -> focusFocusView) -> (structure -> focusView)
     , map : (focus -> focus) -> (structure -> structure)
-    , description : { structure : String, focus : String }
+    , description : String
     }
     -> Traversal structure focus focusView focusFocus focusFocusView
 traversal focus =
@@ -493,7 +484,7 @@ mapOverLazy accessor change =
 onJust : Prism (Maybe value) value focusFocus valueView
 onJust =
     traversal
-        { description = { structure = "Maybe", focus = "Just" }
+        { description = "Just"
         , view = Maybe.map
         , map = Maybe.map
         }
@@ -541,7 +532,7 @@ valueElseOnNothing :
     -> Traversal (Maybe value) value focusFocusView focusFocus focusFocusView
 valueElseOnNothing fallback =
     traversal
-        { description = { structure = "Maybe", focus = "Nothing" }
+        { description = "Nothing"
         , view =
             \valueMap ->
                 \maybe ->
@@ -583,7 +574,7 @@ valueElseOnNothing fallback =
 onOk : Prism (Result error value) value focusFocus focusFocusView
 onOk =
     prism
-        { description = { structure = "Result", focus = "Ok" }
+        { description = "Ok"
         , view = Result.toMaybe
         , map = Result.map
         }
@@ -616,7 +607,7 @@ onOk =
 onErr : Prism (Result error value) error focusFocus focusFocusView
 onErr =
     prism
-        { description = { structure = "Result", focus = "Err" }
+        { description = "Err"
         , view =
             \result ->
                 case result of

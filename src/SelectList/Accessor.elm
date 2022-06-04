@@ -38,9 +38,9 @@ elementEach :
         elementFocusView
 elementEach =
     Accessor.traversal
-        { description = { structure = "SelectList", focus = "element each" }
-        , view = SelectList.map
+        { view = SelectList.map
         , map = SelectList.map
+        , description = "element each"
         }
 
 
@@ -106,7 +106,7 @@ elementIndexEach :
         elementFocusView
 elementIndexEach =
     Accessor.traversal
-        { description = { structure = "SelectList", focus = "{element,index} each" }
+        { description = "{element,index} each"
         , view =
             \alter selectList ->
                 let
@@ -189,7 +189,7 @@ elementIndexEach =
 selected : Lens (SelectList element) element elementFocus elementFocusView
 selected =
     Accessor.lens
-        { description = { structure = "SelectList", focus = "selected" }
-        , view = SelectList.selected
+        { view = SelectList.selected
         , map = SelectList.updateSelected
+        , description = "selected"
         }

@@ -42,7 +42,7 @@ elementEach :
         elementFocusView
 elementEach =
     traversal
-        { description = { structure = "List", focus = "element each" }
+        { description = "element each"
         , view = List.map
         , map = List.map
         }
@@ -100,7 +100,7 @@ elementIndexEach :
         elementView
 elementIndexEach =
     traversal
-        { description = { structure = "List", focus = "{element,index} each" }
+        { description = "{element,index} each"
         , view =
             \elementAlter ->
                 List.indexedMap
@@ -148,9 +148,7 @@ element :
 element focusLocation =
     Accessor.prism
         { description =
-            { structure = "List"
-            , focus = "element " ++ (focusLocation |> Linear.locationToString)
-            }
+            "element " ++ (focusLocation |> Linear.locationToString)
         , view =
             \list ->
                 case list |> List.Linear.element focusLocation of
