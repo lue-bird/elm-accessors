@@ -2,9 +2,12 @@ module Accessor exposing
     ( Relation
     , Lens, Prism, Traversal
     , TraversalConsume
+    , LensKeepingFocusType, PrismKeepingFocusType, TraversalKeepingFocusType
     , lens, prism, traversal
     , view, is
     , Description(..), description, descriptionToString
+    , viewNamed, named
+    , nameFocus
     , mapOver, mapOverLazy
     , onJust, valueElseOnNothing
     , onOk, onErr
@@ -25,6 +28,11 @@ structures without handling the packing and the unpacking.
 @docs TraversalConsume
 
 
+## keeping focus type
+
+@docs LensKeepingFocusType, PrismKeepingFocusType, TraversalKeepingFocusType
+
+
 ## create
 
 @docs lens, prism, traversal
@@ -32,8 +40,25 @@ structures without handling the packing and the unpacking.
 
 ## scan
 
+
+### viewing
+
 @docs view, is
+
+
+### description
+
 @docs Description, description, descriptionToString
+
+
+### naming
+
+@docs viewNamed, named
+
+
+## change
+
+@docs nameFocus
 
 
 ## nested map
@@ -65,10 +90,10 @@ For instance, `List focus` may not actually contain 1 `focus`.
 Therefore, `focusView` can be a simple wrapper which, in that example, will be `List focus`
 
 -}
-type Relation structure focus focusView focusNaming
+type Relation structure focus structureMapped focusMapped focusView focusNaming
     = Relation
         { view : structure -> focusView
-        , map : (focus -> focus) -> (structure -> structure)
+        , map : (focus -> focusMapped) -> (structure -> structureMapped)
         , focusName : focusNaming
         , description : List Description
         }
@@ -84,9 +109,33 @@ type Relation structure focus focusView focusNaming
       - e.g. each array element
 
 -}
-type alias Traversal structure focus focusNamed focusView focusFocus focusFocusNamed focusFocusView focusFocusFocusNamed =
-    Relation focus focusFocus focusFocusView (focusFocusFocusNamed -> focusFocusNamed)
-    -> Relation structure focusFocus focusView (focusFocusFocusNamed -> focusNamed)
+type alias Traversal structure focus structureMapped focusMapped focusNamed focusView focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
+    Relation
+        focus
+        focusFocus
+        focusMapped
+        focusFocusMapped
+        focusFocusView
+        (focusFocusFocusNamed -> focusFocusNamed)
+    ->
+        Relation
+            structure
+            focusFocus
+            structureMapped
+            focusFocusMapped
+            focusView
+            (focusFocusFocusNamed -> focusNamed)
+
+
+{-| A [`Traversal`](#Traversal) where the focus can't `map` to a different type. Examples
+
+  - traverse every even index
+  - [`LensKeepingFocusType`](#LensKeepingFocusType)
+  - [`PrismKeepingFocusType`](#PrismKeepingFocusType)
+
+-}
+type alias TraversalKeepingFocusType structure focus focusNamed focusView focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
+    Traversal structure focus structure focus focusNamed focusView focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed
 
 
 {-| [`Traversal`](#Traversal) over a focusName value: 1:1. Examples
@@ -115,19 +164,63 @@ to [`view`](#view)/[`map`](#map) a nested structure.
 Technical note: This is an approximation of [Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/).
 
 -}
-type alias Lens structure focus focusNamed focusFocus focusFocusNamed focusFocusView focusFocusFocusNamed =
-    Traversal structure focus focusNamed focusFocusView focusFocus focusFocusNamed focusFocusView focusFocusFocusNamed
+type alias Lens structure focus structureMapped focusMapped focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
+    Traversal
+        structure
+        focus
+        structureMapped
+        focusMapped
+        focusNamed
+        focusFocusView
+        focusFocus
+        focusFocusMapped
+        focusFocusNamed
+        focusFocusView
+        focusFocusFocusNamed
 
 
-{-| [`Traversal`](#Traversal) over a focusName value that might or might not exist: 1:Maybe. Examples
+{-| A [`Lens`](#Lens) where the focus can't `map` to a different type. Examples
+
+  - [`Dict.Accessor.valueAt`](Dict-Accessor#valueAt)
+  - `Record.field`. for `\r map -> { r | field = r.field |> map }`, `map` can't change the field's type
+
+-}
+type alias LensKeepingFocusType structure focus focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
+    Lens structure focus structure focus focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed
+
+
+{-| [`Traversal`](#Traversal) over a focus value that might or might not exist: 1:Maybe. Examples
 
   - [`onJust`](#onJust)
   - [`onOk`](#onOk)
   - [`onErr`](#onErr)
 
 -}
-type alias Prism structure focus focusNamed focusFocus focusFocusNamed focusFocusView focusFocusFocusNamed =
-    Traversal structure focus focusNamed (Maybe focusFocusView) focusFocus focusFocusNamed focusFocusView focusFocusFocusNamed
+type alias Prism structure focus structureMapped focusMapped focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
+    Traversal
+        structure
+        focus
+        structureMapped
+        focusMapped
+        focusNamed
+        (Maybe focusFocusView)
+        focusFocus
+        focusFocusMapped
+        focusFocusNamed
+        focusFocusView
+        focusFocusFocusNamed
+
+
+{-| A [`Prism`](#Prism) where the focus can't `map` to a different type. Examples
+
+  - [`List.Accessor.element`](List-Accessor#element)
+  - [`Array.Accessor.element`](Array-Accessor#element)
+  - [`Dict.Accessor.valueAt`](Dict-Accessor#valueAt)
+  - `on[Variant]` where the variant values' types aren't exclusively `type` variables
+
+-}
+type alias PrismKeepingFocusType structure focus focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed =
+    Prism structure focus structure focus focusNamed focusFocus focusFocusMapped focusFocusNamed focusFocusView focusFocusFocusNamed
 
 
 {-| Only use `TraversalConsume` for accessor arguments that are **consumed** – used and then discarded:
@@ -154,9 +247,9 @@ type alias Prism structure focus focusNamed focusFocus focusFocusNamed focusFocu
 Use [`LensConsume`](#LensConsume) in the same context.
 
 -}
-type alias TraversalConsume structure focus focusView unnamed focusNamed =
-    Relation focus focus focus (unnamed -> unnamed)
-    -> Relation structure focus focusView (unnamed -> focusNamed)
+type alias TraversalConsume structure focus structureMapped focusMapped focusView unnamed focusNamed =
+    Relation focus focus focusMapped focusMapped focus (unnamed -> unnamed)
+    -> Relation structure focus structureMapped focusMapped focusView (unnamed -> focusNamed)
 
 
 {-| takes
@@ -164,16 +257,17 @@ type alias TraversalConsume structure focus focusView unnamed focusNamed =
   - An accessor
   - A data `structure`
 
-and returns the value accessed by that combinator.
+and returns the focussed parts accessed by that combinator.
 
     import Record
 
-    { foo = { bar = "filling } } |> view (Record.foo << Record.bar)
+    { foo = { bar = "filling } }
+        |> view (Record.foo << Record.bar)
     --→ "filling"
 
 -}
 view :
-    TraversalConsume structure focus focusView unnamed focusNamed
+    TraversalConsume structure focus structureMapped focusMapped focusView unnamed focusNamed
     -> (structure -> focusView)
 view accessor =
     let
@@ -203,24 +297,58 @@ view accessor =
 
 -}
 is :
-    TraversalConsume structure value (Maybe valueView) unnamed focusNamed
+    TraversalConsume
+        structure
+        value
+        structureMapped
+        valueMapped
+        (Maybe valueView)
+        unnamed
+        focusNamed
     -> (structure -> Bool)
 is prism_ =
     \structure ->
         (structure |> view prism_) /= Nothing
 
 
+{-| [`view`](#view) the focus wrapped with a name describing the focus.
+
+See also [`named`](#named) to wrap any value with a name describing the focus.
+
+-}
 viewNamed :
-    TraversalConsume structure focus focusFocusView focusFocusView focusNamed
+    TraversalConsume
+        structure
+        focus
+        structureMapped
+        focusMapped
+        focusFocusView
+        focusFocusView
+        focusNamed
     -> (structure -> focusNamed)
 viewNamed traversal_ =
-    view traversal_ >> focusName traversal_
+    \structure ->
+        structure
+            |> view traversal_
+            |> named traversal_
 
 
-focusName :
-    TraversalConsume structure focus focusFocusView unnamed focusNamed
+{-| Wrap a value with a name describing the focus.
+
+See also [`viewNamed`](#viewNamed) to [`view`](#view) the focus wrapped with a name describing the focus.
+
+-}
+named :
+    TraversalConsume
+        structure
+        focus
+        structureMapped
+        focusMapped
+        focusFocusView
+        unnamed
+        focusNamed
     -> (unnamed -> focusNamed)
-focusName traversal_ =
+named traversal_ =
     let
         (Relation relation) =
             traversal_ same
@@ -232,7 +360,7 @@ focusName traversal_ =
 This is useful when you want type-safe keys for a `Dict` but you still want to use the `elm/core` implementation.
 -}
 description :
-    TraversalConsume structure focus focusView focusName focusNamed
+    TraversalConsume structure focus structureMapped focusMapped focusView focusName focusNamed
     -> List Description
 description accessor =
     let
@@ -278,7 +406,7 @@ descriptionToString =
             |> String.join ":"
 
 
-same : Relation structure structure structure (focus -> focus)
+same : Relation structure structure structureMapped structureMapped structure (focus -> focus)
 same =
     Relation
         { description = [ Identity ]
@@ -311,26 +439,30 @@ lens :
         , focus : String
         }
     , view : structure -> focus
-    , map : (focus -> focus) -> (structure -> structure)
+    , map : (focus -> focusMapped) -> (structure -> structureMapped)
     , focusName : focusFocusNamed -> focusNamed
     }
-    -> Lens structure focus focusNamed focusFocus focusFocusNamed focusFocusView focusFocusFocusNamed
+    ->
+        Lens
+            structure
+            focus
+            structureMapped
+            focusMapped
+            focusNamed
+            focusFocus
+            focusFocusMapped
+            focusFocusNamed
+            focusFocusView
+            focusFocusFocusNamed
 lens focus =
-    \(Relation deeperFocus) ->
-        Relation
-            { view =
-                \structure -> structure |> focus.view |> deeperFocus.view
-            , map =
-                \change -> focus.map (deeperFocus.map change)
-            , description =
-                deeperFocus.description
-                    |> (::) (FocusDeeper focus.description)
-            , focusName =
-                \deeperFocus_ ->
-                    deeperFocus_
-                        |> deeperFocus.focusName
-                        |> focus.focusName
-            }
+    traversal
+        { description = focus.description
+        , view =
+            \focusFocusView structure ->
+                structure |> focus.view |> focusFocusView
+        , map = focus.map
+        , focusName = focus.focusName
+        }
 
 
 {-| Create a 1:Maybe [`Prism`](#Prism) from
@@ -356,29 +488,80 @@ prism :
         , focus : String
         }
     , view : structure -> Maybe focus
-    , map : (focus -> focus) -> (structure -> structure)
+    , map : (focus -> focusMapped) -> (structure -> structureMapped)
     , focusName : focusFocusNamed -> focusNamed
     }
-    -> Prism structure focus focusNamed focusFocus focusFocusNamed focusFocusView focusFocusFocusNamed
+    ->
+        Prism
+            structure
+            focus
+            structureMapped
+            focusMapped
+            focusNamed
+            focusFocus
+            focusFocusMapped
+            focusFocusNamed
+            focusFocusView
+            focusFocusFocusNamed
 prism focus =
-    \(Relation deeperFocus) ->
-        Relation
-            { view =
-                \structure ->
-                    structure
-                        |> focus.view
-                        |> Maybe.map deeperFocus.view
-            , map =
-                \change -> focus.map (deeperFocus.map change)
-            , description =
-                deeperFocus.description
-                    |> (::) (FocusDeeper focus.description)
-            , focusName =
-                \deeperFocus_ ->
-                    deeperFocus_
-                        |> deeperFocus.focusName
-                        |> focus.focusName
-            }
+    traversal
+        { description = focus.description
+        , view =
+            \focusFocusView structure ->
+                structure |> focus.view |> Maybe.map focusFocusView
+        , map = focus.map
+        , focusName = focus.focusName
+        }
+
+
+{-| Provide a more detailed name of the focus.
+-}
+nameFocus :
+    (focusNamed -> focusNamedMoreDetailed)
+    ->
+        (Traversal
+            structure
+            focus
+            structureMapped
+            focusMapped
+            focusNamed
+            focusView
+            focusFocus
+            focusFocusMapped
+            focusFocusNamed
+            focusFocusView
+            focusFocusFocusNamed
+         ->
+            Traversal
+                structure
+                focus
+                structureMapped
+                focusMapped
+                focusNamedMoreDetailed
+                focusView
+                focusFocus
+                focusFocusMapped
+                focusFocusNamed
+                focusFocusView
+                focusFocusFocusNamed
+        )
+nameFocus nameFocusDetailed =
+    \traversalLessDetailed ->
+        \focusFocus ->
+            let
+                (Relation focusRelation) =
+                    traversalLessDetailed focusFocus
+            in
+            Relation
+                { view = focusRelation.view
+                , map = focusRelation.map
+                , description = focusRelation.description
+                , focusName =
+                    \focusFocusNamed ->
+                        focusFocusNamed
+                            |> focusRelation.focusName
+                            |> nameFocusDetailed
+                }
 
 
 {-| Create a 1:n traversal [`Accessor`](#Accessor) from
@@ -406,11 +589,23 @@ elementEach =
 -}
 traversal :
     { view : (focus -> focusFocusView) -> (structure -> focusView)
-    , map : (focus -> focus) -> (structure -> structure)
+    , map : (focus -> focusMapped) -> (structure -> structureMapped)
     , description : { structure : String, focus : String }
     , focusName : focusFocusNamed -> focusNamed
     }
-    -> Traversal structure focus focusNamed focusView focusFocus focusFocusNamed focusFocusView focusFocusFocusNamed
+    ->
+        Traversal
+            structure
+            focus
+            structureMapped
+            focusMapped
+            focusNamed
+            focusView
+            focusFocus
+            focusFocusMapped
+            focusFocusNamed
+            focusFocusView
+            focusFocusFocusNamed
 traversal focus =
     \(Relation deeperFocus) ->
         Relation
@@ -448,10 +643,17 @@ the function to the existing value.
 
 -}
 mapOver :
-    TraversalConsume structure focus focusView focusName focusNamed
+    TraversalConsume
+        structure
+        focus
+        structureMapped
+        focusMapped
+        focusView
+        focusName
+        focusNamed
     ->
-        ((focus -> focus)
-         -> (structure -> structure)
+        ((focus -> focusMapped)
+         -> (structure -> structureMapped)
         )
 mapOver accessor change =
     let
@@ -482,7 +684,7 @@ The structure is changed only if the new field is different from the old one.
 
 -}
 mapOverLazy :
-    TraversalConsume structure focus focusView focusName focusNamed
+    TraversalConsume structure focus structure focus focusView focusName focusNamed
     ->
         ((focus -> focus)
          -> (structure -> structure)
@@ -532,19 +734,21 @@ mapOverLazy accessor change =
 
 -}
 onJust :
-    Traversal
+    Prism
         (Maybe value)
         value
-        { just : valueView }
-        (Maybe valueFocusNamed)
+        (Maybe valueMapped)
+        valueMapped
+        { just : valueFocusNamed }
         valueFocus
-        valueView
+        focusFocusMapped
         valueFocusNamed
+        valueFocusView
         valueFocusFocusNamed
 onJust =
-    traversal
+    prism
         { description = { structure = "Maybe", focus = "Just" }
-        , view = Maybe.map
+        , view = identity
         , map = Maybe.map
         , focusName =
             \valueFocusNamed -> { just = valueFocusNamed }
@@ -575,7 +779,7 @@ onJust =
                 << onJust
                 << valueElseOnNothing 0
             )
-    ---> 2
+    --> 2
 
     dict
         |> view
@@ -585,10 +789,24 @@ onJust =
                 << onJust
                 << valueElseOnNothing 0
             )
-    ---> 0
+    --> 0
 
 -}
-valueElseOnNothing : b -> Relation b focusFocus a (focusFocusFocusNamed -> c) -> Relation (Maybe b) focusFocus a (focusFocusFocusNamed -> { maybe : c })
+valueElseOnNothing :
+    value
+    ->
+        Traversal
+            (Maybe value)
+            value
+            (Maybe valueMapped)
+            valueMapped
+            { value : valueFocusNamed }
+            valueFocusView
+            valueFocus
+            valueFocusMapped
+            valueFocusNamed
+            valueFocusView
+            valueFocusFocusNamed
 valueElseOnNothing fallback =
     traversal
         { description = { structure = "Maybe", focus = "Nothing" }
@@ -600,7 +818,7 @@ valueElseOnNothing fallback =
                         |> valueMap
         , map = Maybe.map
         , focusName =
-            \focusFocusNamed -> { maybe = focusFocusNamed }
+            \focusFocusNamed -> { value = focusFocusNamed }
         }
 
 
@@ -636,11 +854,14 @@ onOk :
     Prism
         (Result error value)
         value
-        { ok : valueFocusNamed }
-        valueFocusView
-        valueFocusNamed
+        (Result error valueMapped)
+        valueMapped
+        { ok : valueFocusView }
         valueFocusNamed
         (Result errorFocusNamed valueFocusNamed)
+        valueFocusView
+        valueFocusView
+        valueFocusFocusNamed
 onOk =
     prism
         { description = { structure = "Result", focus = "Ok" }
@@ -678,11 +899,14 @@ onErr :
     Prism
         (Result error value)
         error
-        { err : errorFocusNamed }
-        errorFocusView
-        errorFocusNamed
+        (Result errorMapped value)
+        errorMapped
+        { err : errorFocusView }
         errorFocusNamed
         (Result errorFocusNamed valueFocusNamed)
+        errorFocusView
+        errorFocusView
+        errorFocusFocusNamed
 onErr =
     prism
         { description = { structure = "Result", focus = "Err" }

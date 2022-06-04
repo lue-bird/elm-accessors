@@ -6,7 +6,7 @@ module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
 
 -}
 
-import Accessor exposing (Lens, Traversal, mapOver, view)
+import Accessor exposing (Lens, LensKeepingFocusType, Traversal, mapOver, view)
 import SelectList exposing (SelectList)
 
 
@@ -33,9 +33,12 @@ elementEach :
     Traversal
         (SelectList element)
         element
+        (SelectList elementMapped)
+        elementMapped
         { selectList : focusFocusNamed }
         (SelectList elementView)
         elementFocusView
+        elementFocusMapped
         focusFocusNamed
         elementView
         focusFocusFocusNamed
@@ -106,11 +109,14 @@ elementIndexEach :
     Traversal
         (SelectList element)
         { element : element, index : Int }
+        (SelectList elementMapped)
+        { element : elementMapped, index : Int }
         { selectList : focusFocusNamed }
-        (SelectList focusFocusView)
+        (SelectList elementFocusView)
         elementFocusView
+        elementFocusMapped
         focusFocusNamed
-        focusFocusView
+        elementFocusView
         focusFocusFocusNamed
 elementIndexEach =
     Accessor.traversal
@@ -197,10 +203,11 @@ elementIndexEach =
 
 -}
 selected :
-    Lens
+    LensKeepingFocusType
         (SelectList element)
         element
         { selected : focusFocusNamed }
+        elementFocusMapped
         elementFocusView
         focusFocusNamed
         focusFocusView

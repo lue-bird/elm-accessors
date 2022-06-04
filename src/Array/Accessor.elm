@@ -6,7 +6,7 @@ module Array.Accessor exposing (elementEach, elementIndexEach, element)
 
 -}
 
-import Accessor exposing (Prism, Traversal, lens, onJust, prism, traversal)
+import Accessor exposing (Prism, PrismKeepingFocusType, Traversal, lens, onJust, prism, traversal)
 import Array exposing (Array)
 import Array.Linear
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
@@ -36,19 +36,21 @@ elementEach :
     Traversal
         (Array element)
         element
-        { array : focusFocusNamed }
-        (Array elementView)
-        elementFocusView
+        (Array elementMapped)
+        elementMapped
         focusFocusNamed
-        elementView
+        (Array elementFocusView)
+        elementFocus
+        elementFocusMapped
+        focusFocusNamed
+        elementFocusView
         focusFocusFocusNamed
 elementEach =
     traversal
         { description = { structure = "Array", focus = "element each" }
         , view = Array.map
         , map = Array.map
-        , focusName =
-            \focusFocusNamed -> { array = focusFocusNamed }
+        , focusName = identity
         }
 
 
@@ -105,12 +107,15 @@ elementIndexEach :
     Traversal
         (Array element)
         { element : element, index : Int }
-        { array : element }
-        (Array elementView)
+        (Array elementMapped)
+        { element : elementMapped, index : Int }
+        focusFocusNamed
+        (Array elementFocusView)
         elementView
-        element
-        elementView
-        elementFocusNamed
+        elementFocus
+        focusFocusNamed
+        elementFocusView
+        focusFocusFocusNamed
 elementIndexEach =
     Accessor.traversal
         { description = { structure = "Array", focus = "{element,index} each" }
@@ -126,8 +131,7 @@ elementIndexEach =
                     (\index element_ ->
                         { element = element_, index = index } |> elementMap |> .element
                     )
-        , focusName =
-            \focusFocusNamed -> { array = focusFocusNamed }
+        , focusName = identity
         }
 
 
@@ -165,14 +169,15 @@ elementIndexEach =
 element :
     ( DirectionLinear, Int )
     ->
-        Prism
+        PrismKeepingFocusType
             (Array element)
             element
-            { element : elementFocusNamed }
+            { element : focusFocusNamed }
             focusFocus
-            elementFocusNamed
+            focusFocusMapped
+            focusFocusNamed
             focusFocusView
-            elementFocusFocusNamed
+            focusFocusFocusNamed
 element location =
     prism
         { description =

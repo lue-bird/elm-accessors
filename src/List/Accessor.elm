@@ -6,7 +6,7 @@ module List.Accessor exposing (element, elementEach, elementIndexEach)
 
 -}
 
-import Accessor exposing (Lens, Prism, Traversal, lens, onJust, traversal)
+import Accessor exposing (Lens, Prism, PrismKeepingFocusType, Traversal, lens, onJust, traversal)
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
 import Linear.Extra as Linear
 import List.Linear
@@ -37,11 +37,14 @@ elementEach :
     Traversal
         (List element)
         element
+        (List elementMapped)
+        elementMapped
         focusFocusNamed
-        (List elementView)
+        (List elementFocusView)
+        elementFocus
+        elementFocusMapped
+        focusFocusNamed
         elementFocusView
-        focusFocusNamed
-        elementView
         focusFocusFocusNamed
 elementEach =
     traversal
@@ -99,11 +102,14 @@ elementIndexEach :
     Traversal
         (List element)
         { element : element, index : Int }
+        (List elementMapped)
+        { element : elementMapped, index : Int }
         focusFocusNamed
-        (List elementView)
+        (List elementFocusView)
         elementFocus
+        elementFocusMapped
         focusFocusNamed
-        elementView
+        elementFocusView
         focusFocusFocusNamed
 elementIndexEach =
     traversal
@@ -154,13 +160,14 @@ elementIndexEach =
 element :
     ( DirectionLinear, Int )
     ->
-        Prism
+        PrismKeepingFocusType
             (List element)
             element
             { element : elementFocusNamed }
-            focusFocus
+            elementView
+            elementFocus
             elementFocusNamed
-            focusFocusView
+            elementFocusView
             elementFocusFocusNamed
 element focusLocation =
     Accessor.prism

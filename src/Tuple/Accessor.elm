@@ -33,8 +33,11 @@ first :
     Lens
         ( first, second )
         first
+        ( firstMapped, second )
+        firstMapped
         { first : firstFocusNamed }
         firstFocus
+        firstFocusMapped
         firstFocusNamed
         firstFocusView
         focusFocusFocusNamed
@@ -74,8 +77,11 @@ second :
     Lens
         ( first, second )
         second
+        ( first, secondMapped )
+        secondMapped
         { second : secondFocusNamed }
         secondFocus
+        secondFocusMapped
         secondFocusNamed
         secondFocusView
         focusFocusFocusNamed

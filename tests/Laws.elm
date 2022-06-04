@@ -1,6 +1,6 @@
 module Laws exposing (suite)
 
-import Accessor exposing (Lens, TraversalConsume, mapOver)
+import Accessor exposing (Lens, TraversalConsume, mapOver, onJust)
 import Array exposing (Array)
 import Array.Accessor as Array
 import Dict exposing (Dict)
@@ -53,7 +53,7 @@ settableTest =
     Test.describe
         "setable"
         [ isSettable
-            (Record.email << Accessor.onJust)
+            (Record.email << onJust)
             personFuzzer
             stringAlter
             Fuzz.string
@@ -160,7 +160,7 @@ personFuzzer =
 
 
 isSettable :
-    TraversalConsume structure focus focusView focusView focusViewNamed
+    TraversalConsume structure focus structure focus focusView focusView focusViewNamed
     -> Fuzzer structure
     -> Fuzzer (Alter focus)
     -> Fuzzer focus
@@ -195,12 +195,12 @@ isSettable settable structureFuzzer alterFuzzer focusFuzzer =
 
 {-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
 -}
-type alias LensConsume structure focus focusNamed =
-    TraversalConsume structure focus focus focus focusNamed
+type alias LensConsume structure focus structureMapped focusMapped focusNamed =
+    TraversalConsume structure focus structureMapped focusMapped focus focus focusNamed
 
 
 isLens :
-    LensConsume structure focus focusNamed
+    LensConsume structure focus structure focus focusNamed
     -> Fuzzer structure
     -> Fuzzer (Alter focus)
     -> Fuzzer focus
@@ -230,7 +230,7 @@ isLens settable structureFuzzer alterFuzzer focusFuzzer =
 
 
 setter_identity :
-    TraversalConsume structure attribute focusView focusView focusViewNamed
+    TraversalConsume structure focus structure focus focusView focusView focusViewNamed
     -> structure
     -> Bool
 setter_identity settable structure =
@@ -238,10 +238,10 @@ setter_identity settable structure =
 
 
 setter_composition :
-    TraversalConsume structure attribute focusView focusView focusViewNamed
+    TraversalConsume structure focus structure focus focusView focusView focusViewNamed
     -> structure
-    -> Alter attribute
-    -> Alter attribute
+    -> Alter focus
+    -> Alter focus
     -> Bool
 setter_composition settable structure alter0 alter1 =
     (structure
@@ -252,7 +252,7 @@ setter_composition settable structure alter0 alter1 =
 
 
 setter_set_set :
-    TraversalConsume structure focus focusView focusView focusViewNamed
+    TraversalConsume structure focus structure focus focusView focusView focusViewNamed
     -> structure
     -> focus
     -> focus
@@ -265,7 +265,7 @@ setter_set_set settable structure a b =
         == (structure |> Accessor.mapOver settable (\_ -> b))
 
 
-lens_set_get : LensConsume structure attribute focusNamed -> structure -> Bool
+lens_set_get : LensConsume structure focus structure focus focusNamed -> structure -> Bool
 lens_set_get lens_ structure =
     (structure
         |> Accessor.mapOver lens_
@@ -274,7 +274,7 @@ lens_set_get lens_ structure =
         == structure
 
 
-lens_get_set : LensConsume structure focus focusNamed -> structure -> focus -> Bool
+lens_get_set : LensConsume structure focus structure focus focusNamed -> structure -> focus -> Bool
 lens_get_set lens_ structure focus =
     (structure
         |> Accessor.mapOver lens_ (\_ -> focus)
