@@ -119,7 +119,7 @@ suite =
                 ]
             ]
         , Test.describe
-            "map (\\_ -> ...)"
+            "mapOver (\\_ -> ...)"
             [ test "simple" <|
                 \_ ->
                     simpleRecord
@@ -281,6 +281,8 @@ suite =
                         { description = { structure = "record", focus = ".foo" }
                         , view = .foo
                         , map = \alter record -> { record | foo = alter record.foo }
+                        , focusName =
+                            \focusFocusNamed -> { foo = focusFocusNamed }
                         }
               in
               Test.describe
@@ -311,6 +313,7 @@ suite =
                         { description = { structure = "List", focus = "element List.elementEach" }
                         , view = List.map
                         , map = List.map
+                        , focusName = identity
                         }
               in
               Test.describe

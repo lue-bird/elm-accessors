@@ -160,10 +160,10 @@ personFuzzer =
 
 
 isSettable :
-    TraversalConsume structure attribute transformed
+    TraversalConsume structure focus focusView focusView focusViewNamed
     -> Fuzzer structure
-    -> Fuzzer (Alter attribute)
-    -> Fuzzer attribute
+    -> Fuzzer (Alter focus)
+    -> Fuzzer focus
     -> Test
 isSettable settable structureFuzzer alterFuzzer focusFuzzer =
     Test.describe
@@ -195,15 +195,15 @@ isSettable settable structureFuzzer alterFuzzer focusFuzzer =
 
 {-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
 -}
-type alias LensConsume structure focus =
-    TraversalConsume structure focus focus
+type alias LensConsume structure focus focusNamed =
+    TraversalConsume structure focus focus focus focusNamed
 
 
 isLens :
-    LensConsume structure attribute
+    LensConsume structure focus focusNamed
     -> Fuzzer structure
-    -> Fuzzer (Alter attribute)
-    -> Fuzzer attribute
+    -> Fuzzer (Alter focus)
+    -> Fuzzer focus
     -> Test
 isLens settable structureFuzzer alterFuzzer focusFuzzer =
     Test.describe
@@ -230,7 +230,7 @@ isLens settable structureFuzzer alterFuzzer focusFuzzer =
 
 
 setter_identity :
-    TraversalConsume structure attribute transformed
+    TraversalConsume structure attribute focusView focusView focusViewNamed
     -> structure
     -> Bool
 setter_identity settable structure =
@@ -238,7 +238,7 @@ setter_identity settable structure =
 
 
 setter_composition :
-    TraversalConsume structure attribute transformed
+    TraversalConsume structure attribute focusView focusView focusViewNamed
     -> structure
     -> Alter attribute
     -> Alter attribute
@@ -252,7 +252,7 @@ setter_composition settable structure alter0 alter1 =
 
 
 setter_set_set :
-    TraversalConsume structure focus transformed
+    TraversalConsume structure focus focusView focusView focusViewNamed
     -> structure
     -> focus
     -> focus
@@ -265,7 +265,7 @@ setter_set_set settable structure a b =
         == (structure |> Accessor.mapOver settable (\_ -> b))
 
 
-lens_set_get : LensConsume structure attribute -> structure -> Bool
+lens_set_get : LensConsume structure attribute focusNamed -> structure -> Bool
 lens_set_get lens_ structure =
     (structure
         |> Accessor.mapOver lens_
@@ -274,7 +274,7 @@ lens_set_get lens_ structure =
         == structure
 
 
-lens_get_set : LensConsume structure focus -> structure -> focus -> Bool
+lens_get_set : LensConsume structure focus focusNamed -> structure -> focus -> Bool
 lens_get_set lens_ structure focus =
     (structure
         |> Accessor.mapOver lens_ (\_ -> focus)

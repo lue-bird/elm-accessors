@@ -29,12 +29,22 @@ import Accessor exposing (Lens, lens)
     --> ( "IT'S OVER!!!", 1 )
 
 -}
-first : Lens ( partFirst, partSecond ) partFirst partFirstFocus partFirstFocusView
+first :
+    Lens
+        ( first, second )
+        first
+        { first : firstFocusNamed }
+        firstFocus
+        firstFocusNamed
+        firstFocusView
+        focusFocusFocusNamed
 first =
     lens
         { description = { structure = "Tuple", focus = "first" }
         , view = Tuple.first
         , map = Tuple.mapFirst
+        , focusName =
+            \focusFocusNamed -> { first = focusFocusNamed }
         }
 
 
@@ -60,10 +70,20 @@ first =
     --> ( "HI THERE!!!", 9000 )
 
 -}
-second : Lens ( partFirst, partSecond ) partSecond partSecondFocus partSecondFocusView
+second :
+    Lens
+        ( first, second )
+        second
+        { second : secondFocusNamed }
+        secondFocus
+        secondFocusNamed
+        secondFocusView
+        focusFocusFocusNamed
 second =
     lens
         { description = { structure = "Tuple", focus = "second" }
         , view = Tuple.second
         , map = Tuple.mapSecond
+        , focusName =
+            \focusFocusNamed -> { second = focusFocusNamed }
         }

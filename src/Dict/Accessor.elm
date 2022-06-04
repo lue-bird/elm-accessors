@@ -48,16 +48,21 @@ import Dict exposing (Dict)
 -}
 valueEach :
     Traversal
-        (Dict comparableKey value)
+        (Dict key value)
         value
-        (Dict comparableKey valueFocusView)
-        valueFocus
-        valueFocusView
+        { dict : focusFocusNamed }
+        (Dict key valueView)
+        elementFocusView
+        focusFocusNamed
+        valueView
+        focusFocusFocusNamed
 valueEach =
     traversal
         { description = { structure = "Dict", focus = "value each" }
         , view = \valueView -> Dict.map (\_ -> valueView)
         , map = \valueMap -> Dict.map (\_ -> valueMap)
+        , focusName =
+            \focusFocusNamed -> { dict = focusFocusNamed }
         }
 
 
@@ -122,12 +127,15 @@ valueKeyEach :
     Traversal
         (Dict comparableKey value)
         { key : comparableKey, value : value }
-        (Dict comparableKey valueFocusView)
-        valueFocus
+        { dict : focusFocusNamed }
+        (Dict comparableKey valueView)
         valueFocusView
+        focusFocusNamed
+        valueView
+        focusFocusFocusNamed
 valueKeyEach =
     traversal
-        { description = { structure = "Dict", focus = "{ key, value } each" }
+        { description = { structure = "Dict", focus = "{key,value} each" }
         , view =
             \valueKeyView ->
                 Dict.map
@@ -140,6 +148,8 @@ valueKeyEach =
                     (\key value ->
                         { key = key, value = value } |> valueKeyMap |> .value
                     )
+        , focusName =
+            \focusFocusNamed -> { dict = focusFocusNamed }
         }
 
 
@@ -179,7 +189,15 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
 -}
 valueAt :
     ( comparableKey, comparableKey -> String )
-    -> Lens (Dict comparableKey value) (Maybe value) valueFocus valueFocusView
+    ->
+        Lens
+            (Dict comparableKey value)
+            (Maybe value)
+            { value : valueFocus }
+            valueFocusView
+            valueFocus
+            focusFocusView
+            focusFocusFocusNamed
 valueAt ( key, keyToString ) =
     Accessor.lens
         { description =
@@ -188,6 +206,8 @@ valueAt ( key, keyToString ) =
             }
         , view = Dict.get key
         , map = Dict.update key
+        , focusName =
+            \focusFocusNamed -> { value = focusFocusNamed }
         }
 
 
@@ -195,6 +215,14 @@ valueAt ( key, keyToString ) =
 -}
 valueAtString :
     String
-    -> Lens (Dict String value) (Maybe value) valueFocus valueFocusView
+    ->
+        Lens
+            (Dict String value)
+            (Maybe value)
+            { value : valueFocus }
+            valueFocusView
+            valueFocus
+            focusFocusView
+            focusFocusFocusNamed
 valueAtString key =
     valueAt ( key, identity )

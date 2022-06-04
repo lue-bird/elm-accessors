@@ -37,14 +37,18 @@ elementEach :
     Traversal
         (List element)
         element
-        (List elementFocusView)
-        elementFocus
+        focusFocusNamed
+        (List elementView)
         elementFocusView
+        focusFocusNamed
+        elementView
+        focusFocusFocusNamed
 elementEach =
     traversal
         { description = { structure = "List", focus = "element each" }
         , view = List.map
         , map = List.map
+        , focusName = identity
         }
 
 
@@ -94,30 +98,35 @@ elementEach =
 elementIndexEach :
     Traversal
         (List element)
-        { index : Int, element : element }
+        { element : element, index : Int }
+        focusFocusNamed
         (List elementView)
         elementFocus
+        focusFocusNamed
         elementView
+        focusFocusFocusNamed
 elementIndexEach =
     traversal
         { description = { structure = "List", focus = "{element,index} each" }
         , view =
-            \elementAlter ->
+            \elementIndexFocusView ->
                 List.indexedMap
                     (\index element_ ->
-                        { element = element_, index = index } |> elementAlter
+                        { element = element_, index = index } |> elementIndexFocusView
                     )
         , map =
-            \elementAlter ->
+            \elementIndexMap ->
                 List.indexedMap
                     (\index element_ ->
-                        { element = element_, index = index } |> elementAlter |> .element
+                        { element = element_, index = index } |> elementIndexMap |> .element
                     )
+        , focusName = identity
         }
 
 
-{-| at: Structure Preserving accessor over List members.
+{-| Focus a `List` element at a given index in a [direction](https://dark.elm.dmy.fr/packages/lue-bird/elm-linear-direction/latest/).
 
+    import Linear exposing (DirectionLinear(..))
     import Accessors exposing (view)
     import List.Accessor as List
     import Record
@@ -144,7 +153,15 @@ elementIndexEach =
 -}
 element :
     ( DirectionLinear, Int )
-    -> Prism (List element) element focusFocus focusFocusView
+    ->
+        Prism
+            (List element)
+            element
+            { element : elementFocusNamed }
+            focusFocus
+            elementFocusNamed
+            focusFocusView
+            elementFocusFocusNamed
 element focusLocation =
     Accessor.prism
         { description =
@@ -160,6 +177,8 @@ element focusLocation =
                     Ok elementFound ->
                         elementFound |> Just
         , map =
-            \alter ->
-                List.Linear.elementAlter ( focusLocation, alter )
+            \elementMap ->
+                List.Linear.elementAlter ( focusLocation, elementMap )
+        , focusName =
+            \focusFocusNamed -> { element = focusFocusNamed }
         }

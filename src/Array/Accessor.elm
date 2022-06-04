@@ -36,14 +36,19 @@ elementEach :
     Traversal
         (Array element)
         element
-        (Array elementFocusView)
-        elementFocus
+        { array : focusFocusNamed }
+        (Array elementView)
         elementFocusView
+        focusFocusNamed
+        elementView
+        focusFocusFocusNamed
 elementEach =
     traversal
         { description = { structure = "Array", focus = "element each" }
         , view = Array.map
         , map = Array.map
+        , focusName =
+            \focusFocusNamed -> { array = focusFocusNamed }
         }
 
 
@@ -100,17 +105,20 @@ elementIndexEach :
     Traversal
         (Array element)
         { element : element, index : Int }
-        (Array elementFocusView)
-        elementFocus
-        elementFocusView
+        { array : element }
+        (Array elementView)
+        elementView
+        element
+        elementView
+        elementFocusNamed
 elementIndexEach =
     Accessor.traversal
         { description = { structure = "Array", focus = "{element,index} each" }
         , view =
-            \elementView ->
+            \elementFocusView ->
                 Array.indexedMap
                     (\index element_ ->
-                        { element = element_, index = index } |> elementView
+                        { element = element_, index = index } |> elementFocusView
                     )
         , map =
             \elementMap ->
@@ -118,13 +126,14 @@ elementIndexEach =
                     (\index element_ ->
                         { element = element_, index = index } |> elementMap |> .element
                     )
+        , focusName =
+            \focusFocusNamed -> { array = focusFocusNamed }
         }
 
 
-{-| Focus `Array` elements plus their indices.
+{-| Focus an `Array` element at a given index in a [direction](https://dark.elm.dmy.fr/packages/lue-bird/elm-linear-direction/latest/).
 
-In terms of accessors, think of Dicts as records where each field is a Maybe.
-
+    import Linear exposing (DirectionLinear(..))
     import Array exposing (Array)
     import Accessors exposing (view)
     import Array.Accessor as Array
@@ -137,24 +146,33 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     barray |> view (Array.element 1)
     --> Just { bar = "Things" }
 
-    barray |> view (Array.element 9000)
+    barray |> view (Array.element ( Up, 9000 ))
     --> Nothing
 
-    barray |> view (Array.element 0 << Record.bar)
-    --> Just "Stuff"
+    barray |> view (Array.element ( Down, 0 ) << Record.bar)
+    --> Just "Woot"
 
     barray
-        |> mapOver (Array.element 0 << Record.bar) (\_ -> "Whatever")
+        |> mapOver (Array.element ( Up, 0 ) << Record.bar) (\_ -> "Whatever")
     --> Array.fromList
     -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> mapOver (Array.element 9000 << Record.bar) (\_ -> "Whatever")
+    barray
+        |> mapOver (Array.element ( Up, 9000 ) << Record.bar) (\_ -> "Whatever")
     --> barray
 
 -}
 element :
     ( DirectionLinear, Int )
-    -> Prism (Array element) element focusFocus focusFocusView
+    ->
+        Prism
+            (Array element)
+            element
+            { element : elementFocusNamed }
+            focusFocus
+            elementFocusNamed
+            focusFocusView
+            elementFocusFocusNamed
 element location =
     prism
         { description =
@@ -172,4 +190,6 @@ element location =
         , map =
             \alter ->
                 Array.Linear.elementAlter ( location, alter )
+        , focusName =
+            \focusFocusNamed -> { element = focusFocusNamed }
         }

@@ -33,14 +33,19 @@ elementEach :
     Traversal
         (SelectList element)
         element
-        (SelectList elementFocusView)
-        elementFocus
+        { selectList : focusFocusNamed }
+        (SelectList elementView)
         elementFocusView
+        focusFocusNamed
+        elementView
+        focusFocusFocusNamed
 elementEach =
     Accessor.traversal
         { description = { structure = "SelectList", focus = "element each" }
         , view = SelectList.map
         , map = SelectList.map
+        , focusName =
+            \focusFocusNamed -> { selectList = focusFocusNamed }
         }
 
 
@@ -100,10 +105,13 @@ elementEach =
 elementIndexEach :
     Traversal
         (SelectList element)
-        { index : Int, element : element }
-        (SelectList elementFocusView)
-        elementFocus
+        { element : element, index : Int }
+        { selectList : focusFocusNamed }
+        (SelectList focusFocusView)
         elementFocusView
+        focusFocusNamed
+        focusFocusView
+        focusFocusFocusNamed
 elementIndexEach =
     Accessor.traversal
         { description = { structure = "SelectList", focus = "{element,index} each" }
@@ -153,6 +161,8 @@ elementIndexEach =
                         )
                         after
                     )
+        , focusName =
+            \focusFocusName -> { selectList = focusFocusName }
         }
 
 
@@ -186,10 +196,20 @@ elementIndexEach =
     --> }
 
 -}
-selected : Lens (SelectList element) element elementFocus elementFocusView
+selected :
+    Lens
+        (SelectList element)
+        element
+        { selected : focusFocusNamed }
+        elementFocusView
+        focusFocusNamed
+        focusFocusView
+        focusFocusFocusNamed
 selected =
     Accessor.lens
         { description = { structure = "SelectList", focus = "selected" }
         , view = SelectList.selected
         , map = SelectList.updateSelected
+        , focusName =
+            \focusFocusNamed -> { selected = focusFocusNamed }
         }

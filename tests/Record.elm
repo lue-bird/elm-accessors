@@ -8,6 +8,9 @@ makeOneToOne_ fieldName view alter =
         { description = { structure = "record", focus = fieldName }
         , view = view
         , map = alter
+        , focusName =
+            -- should be input
+            \focusFocusNamed -> { field = focusFocusNamed }
         }
 
 
