@@ -6,7 +6,7 @@ module Array.Accessor exposing (elementEach, elementIndexEach, element)
 
 -}
 
-import Accessor exposing (Prism, Traversal, lens, onJust, prism, traversal)
+import Accessor exposing (Prism, Traversal, prism, traversal)
 import Array exposing (Array)
 import Array.Linear
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
@@ -16,8 +16,9 @@ import Linear.Extra as Linear
 {-| This accessor combinator lets you view values inside Array.
 
     import Array exposing (Array)
-    import Accessors exposing (every, view, map)
+    import Accessor exposing (view, mapOver)
     import Record
+    import Array.Accessor
 
     fooBarray : { foo : Array { bar : Int } }
     fooBarray =
@@ -25,10 +26,12 @@ import Linear.Extra as Linear
             Array.fromList [ { bar = 2 }, { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << every << Record.bar) fooBarray
+    fooBarray
+        |> view (Record.foo << Array.Accessor.elementEach << Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
-    map (Record.foo << every << Record.bar) ((+) 1) fooBarray
+    fooBarray
+        |> mapOver (Record.foo << Array.Accessor.elementEach << Record.bar) ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -49,10 +52,10 @@ elementEach =
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (view, mapOver)
-    import Tuple.Accessor as Tuple
+    import Accessor exposing (view, mapOver)
+    import Tuple.Accessor
     import Record
-    import Array.Accessor as Array
+    import Array.Accessor
     import Array exposing (Array)
 
     fooBarray : { foo : Array { bar : Int } }
@@ -65,35 +68,45 @@ elementEach =
                 ]
         }
 
-    fooBarray |> view (Record.foo << Array.elementEach)
+    fooBarray |> view (Record.foo << Array.Accessor.elementIndexEach)
     --> Array.fromList
     -->     [ { index = 0, element = { bar = 2 } }
     -->     , { index = 1, element = { bar = 3 } }
     -->     , { index = 2, element = { bar = 4 } }
     -->     ]
 
+    tailMultiplyBy10 : { index : Int, element : { bar : Int } } -> { index : Int, element : { bar : Int } }
+    tailMultiplyBy10 =
+        \item ->
+            { item
+                | element =
+                    case item.index of
+                        0 ->
+                            item.element
+                        _ ->
+                            { bar = item.element.bar * 10 }
+            }
+
     fooBarray
         |> mapOver
-            (Record.foo << Array.elementEach)
-            (\{ index, element } ->
-                case index of
-                    0 ->
-                        element
-
-                    _ ->
-                        { bar = element.bar * 10 }
-            )
-    --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
+            (Record.foo << Array.Accessor.elementIndexEach)
+            tailMultiplyBy10
+    --> { foo =
+    -->     Array.fromList
+    -->         [ { bar = 2 }, { bar = 30 }, { bar = 40 } ]
+    --> }
 
     fooBarray
-        |> view (Record.foo << Array.elementEach << Tuple.second << Record.bar)
+        |> view (Record.foo << Array.Accessor.elementIndexEach << Record.element << Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     fooBarray
         |> mapOver
-            (Record.foo << Array.elementEach << Tuple.second << Record.bar)
+            (Record.foo << Array.Accessor.elementIndexEach << Record.element << Record.bar)
             ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
+
+In the last 2 examples, `Array.Accessor.elementIndexEach << Record.element` can be replaced with [`Array.Accessor.elementEach`](#elementEach)
 
 -}
 elementIndexEach :
@@ -127,29 +140,34 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
 
     import Linear exposing (DirectionLinear(..))
     import Array exposing (Array)
-    import Accessors exposing (view)
-    import Array.Accessor as Array
+    import Accessor exposing (view, mapOver)
+    import Array.Accessor
     import Record
 
     barray : Array { bar : String }
     barray =
         Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> view (Array.element ( Down, 1 ))
+    barray |> view (Array.Accessor.element ( Down, 1 ))
     --> Just { bar = "Things" }
 
-    barray |> view (Array.element ( Up, 9000 ))
+    barray |> view (Array.Accessor.element ( Up, 9000 ))
     --> Nothing
 
-    barray |> view (Array.element ( Up, 0 ) << Record.bar)
+    barray |> view (Array.Accessor.element ( Up, 0 ) << Record.bar)
     --> Just "Stuff"
 
     barray
-        |> mapOver (Array.element ( Up, 0 ) << Record.bar) (\_ -> "Whatever")
+        |> mapOver
+            (Array.Accessor.element ( Up, 0 ) << Record.bar)
+            (\_ -> "Whatever")
     --> Array.fromList
     -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> mapOver (Array.element ( Up, 9000 ) << Record.bar) (\_ -> "Whatever")
+    barray
+        |> mapOver
+            (Array.Accessor.element ( Up, 9000 ) << Record.bar)
+            (\_ -> "Whatever")
     --> barray
 
 -}

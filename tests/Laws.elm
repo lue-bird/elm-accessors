@@ -1,18 +1,18 @@
 module Laws exposing (tests)
 
-import Accessor exposing (Lens, TraversalConsume, mapOver, onJust, view)
+import Accessor exposing (LensConsume, PrismConsume, TraversalConsume, mapOver, onJust, view)
 import Array exposing (Array)
-import Array.Accessor as Array
+import Array.Accessor
 import Dict exposing (Dict)
-import Dict.Accessor as Dict
-import Expect exposing (Expectation)
+import Dict.Accessor
+import Expect
 import Fuzz exposing (Fuzzer)
 import Linear exposing (DirectionLinear(..))
-import List.Accessor as List
+import List.Accessor
 import Maybe exposing (Maybe)
 import Record
 import String
-import Test exposing (Test, describe, test)
+import Test exposing (Test, test)
 
 
 tests : Test
@@ -25,7 +25,7 @@ tests =
         , test
             "description"
             (\() ->
-                (Record.info << Record.stuff << List.element ( Up, 7 ) << Record.name)
+                (Record.info << Record.stuff << List.Accessor.element ( Up, 7 ) << Record.name)
                     |> Accessor.description
                     |> Accessor.descriptionToString
                     |> Expect.equal ".info>.stuff>element ↑7>.name"
@@ -37,7 +37,7 @@ lensExamples : Test
 lensExamples =
     Test.describe
         "lens"
-        [ (Record.info << Dict.valueAtString "stuff")
+        [ (Record.info << Dict.Accessor.valueAtString "stuff")
             |> isLens
                 { structure = personFuzzer
                 , focusAlter = maybeStringAlterFuzzer
@@ -56,12 +56,6 @@ lensExamples =
                 , focus = Fuzz.int
                 }
         ]
-
-
-{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
--}
-type alias LensConsume structure focus =
-    TraversalConsume structure focus focus
 
 
 isLens :
@@ -137,12 +131,6 @@ lensSetFocusViewIsFocus fuzzer =
             )
 
 
-{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
--}
-type alias PrismConsume structure focus =
-    TraversalConsume structure focus (Maybe focus)
-
-
 prismExamples : Test
 prismExamples =
     Test.describe
@@ -153,7 +141,7 @@ prismExamples =
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.stuff << List.element ( Up, 0 ))
+        , (Record.stuff << List.Accessor.element ( Up, 0 ))
             |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
@@ -238,25 +226,25 @@ settableExamples =
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.stuff << List.element ( Up, 0 ))
+        , (Record.stuff << List.Accessor.element ( Up, 0 ))
             |> isSettable
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.stuff << List.elementEach)
+        , (Record.stuff << List.Accessor.elementEach)
             |> isSettable
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.things << Array.element ( Up, 0 ))
+        , (Record.things << Array.Accessor.element ( Up, 0 ))
             |> isSettable
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.things << Array.elementEach)
+        , (Record.things << Array.Accessor.elementEach)
             |> isSettable
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer

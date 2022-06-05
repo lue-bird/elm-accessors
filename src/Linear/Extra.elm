@@ -1,4 +1,4 @@
-module Linear.Extra exposing (directionToArrowString, locationToString)
+module Linear.Extra exposing (locationToString)
 
 import Linear exposing (DirectionLinear)
 

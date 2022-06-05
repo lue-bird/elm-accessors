@@ -6,14 +6,14 @@ module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
 
 -}
 
-import Accessor exposing (Lens, Traversal, mapOver, view)
+import Accessor exposing (Traversal)
 import SelectList exposing (SelectList)
 
 
 {-| This accessor combinator lets you view values inside List.
 
-    import Accessors exposing (..)
-    import Accessors.SelectList as SL
+    import Accessor exposing (view, mapOver)
+    import SelectList.Accessor
     import Record
     import SelectList exposing (SelectList)
 
@@ -22,10 +22,12 @@ import SelectList exposing (SelectList)
         { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << SL.each << Record.bar) fooBarScroll
+    fooBarScroll
+        |> view (Record.foo << SelectList.Accessor.elementEach << Record.bar)
     --> SelectList.fromLists [1] 2 [3, 4]
 
-    map (Record.foo << SL.each << Record.bar) ((+) 1) fooBarScroll
+    fooBarScroll
+        |> mapOver (Record.foo << SelectList.Accessor.elementEach << Record.bar) ((+) 1)
     --> { foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -46,9 +48,8 @@ elementEach =
 
 {-| Traverse a `SelectList` including the absolute index of each element
 
-    import Accessors exposing (view, mapOver)
-    import Tuple.Accessor as Tuple
-    import Accessors.SelectList as SelectList
+    import Accessor exposing (view, mapOver)
+    import SelectList.Accessor
     import Record
     import SelectList exposing (SelectList)
 
@@ -61,39 +62,46 @@ elementEach =
                 [ { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << SelectList.elementIndexEach) fooBarScroll
+    view (Record.foo << SelectList.Accessor.elementIndexEach) fooBarScroll
     --> SelectList.fromLists
-    -->     [ ( 0, { bar = 1 } ) ]
-    -->     ( 1, { bar = 2 } )
-    -->     [ ( 2, { bar = 3 } ), ( 3, { bar = 4 } ) ]
+    -->     [ { index = 0, element = { bar = 1 } } ]
+    -->     { index = 1, element = { bar = 2 } }
+    -->     [ { index = 2, element = { bar = 3 } }
+    -->     , { index = 3, element = { bar = 4 } }
+    -->     ]
+
+    tailMultiplyBy10 : { index : Int, element : { bar : Int } } -> { index : Int, element : { bar : Int } }
+    tailMultiplyBy10 =
+        \item ->
+            { item
+                | element =
+                    case item.index of
+                        0 ->
+                            item.element
+                        _ ->
+                            { bar = item.element.bar * 10 }
+            }
 
     fooBarScroll
         |> mapOver
-            (Record.foo << SelectList.elementIndexEach)
-            (\{ index, element } =
-                case index of
-                    0 ->
-                        element
-
-                    _ ->
-                        { bar = element.bar * 10 }
-            )
+            (Record.foo << SelectList.Accessor.elementIndexEach)
+            tailMultiplyBy10
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 30 }, { bar = 40 } ]
     --> }
 
     fooBarScroll
-        |> view (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
+        |> view (Record.foo << SelectList.Accessor.elementIndexEach << Record.element << Record.bar)
     --> SelectList.fromLists [ 1 ] 2 [ 3, 4 ]
 
     fooBarScroll
         |> mapOver
-            (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
+            (Record.foo << SelectList.Accessor.elementIndexEach << Record.element << Record.bar)
             ((+) 1)
     --> { foo =
     -->     SelectList.fromLists
-    -->         [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] #
+    -->         [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ]
     --> }
 
 -}
@@ -158,8 +166,8 @@ elementIndexEach =
 
 {-| Accessor on the `SelectList`'s selected element.
 
-    import Accessors exposing (..)
-    import Accessors.SelectList as SL
+    import Accessor exposing (..)
+    import SelectList
     import Record
     import SelectList exposing (SelectList)
 
@@ -170,23 +178,32 @@ elementIndexEach =
                 [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    fooBarScroll |> view (Record.foo << SL.selected << Record.bar)
+    fooBarScroll
+        |> view (Record.foo << SelectList.Accessor.selected << Record.bar)
     --> 2
 
-    fooBarScroll |> mapOver (Record.foo << SL.selected << Record.bar) (\_ -> 37)
+    fooBarScroll
+        |> mapOver
+            (Record.foo << SelectList.Accessor.selected << Record.bar)
+            (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
-    fooBarScroll |> mapOver (Record.foo << SL.selected << Record.bar) ((*) 10)
+    fooBarScroll
+        |> mapOver
+            (Record.foo << SelectList.Accessor.selected << Record.bar)
+            ((*) 10)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
 -}
-selected : Lens (SelectList element) element elementFocus elementFocusView
+selected :
+    Accessor.Relation element focusFocus focusFocusView
+    -> Accessor.Relation (SelectList element) focusFocus focusFocusView
 selected =
     Accessor.lens
         { view = SelectList.selected

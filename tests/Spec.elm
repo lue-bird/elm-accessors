@@ -2,9 +2,9 @@ module Spec exposing (suite)
 
 import Accessor exposing (mapOver, mapOverLazy, onJust, valueElseOnNothing, view)
 import Dict exposing (Dict)
-import Dict.Accessor as Dict
+import Dict.Accessor
 import Expect
-import List.Accessor as List
+import List.Accessor
 import Record
 import Test exposing (Test, test)
 
@@ -68,7 +68,7 @@ suite =
             , test "in list" <|
                 \_ ->
                     recordWithList
-                        |> view (Record.bar << List.elementEach << Record.foo)
+                        |> view (Record.bar << List.Accessor.elementEach << Record.foo)
                         |> Expect.equal [ 3, 5 ]
             , test "in Just" <|
                 \_ ->
@@ -85,33 +85,33 @@ suite =
                 [ test "present" <|
                     \_ ->
                         dict
-                            |> view (Dict.valueAtString "foo")
+                            |> view (Dict.Accessor.valueAtString "foo")
                             |> Expect.equal (Just 7)
                 , test "absent" <|
                     \_ ->
                         dict
-                            |> view (Dict.valueAtString "bar")
+                            |> view (Dict.Accessor.valueAtString "bar")
                             |> Expect.equal Nothing
                 , test "nested present" <|
                     \_ ->
                         recordWithDict
-                            |> view (Record.bar << Dict.valueAtString "foo")
+                            |> view (Record.bar << Dict.Accessor.valueAtString "foo")
                             |> Expect.equal (Just 7)
                 , test "nested absent" <|
                     \_ ->
                         recordWithDict
-                            |> view (Record.bar << Dict.valueAtString "bar")
+                            |> view (Record.bar << Dict.Accessor.valueAtString "bar")
                             |> Expect.equal Nothing
-                , test "with try" <|
+                , test "with onJust" <|
                     \_ ->
                         dictWithRecord
-                            |> view (Dict.valueAtString "foo" << onJust << Record.bar)
+                            |> view (Dict.Accessor.valueAtString "foo" << onJust << Record.bar)
                             |> Expect.equal (Just "Yop")
                 , test "with valueElseOnNothing" <|
                     \_ ->
                         dictWithRecord
                             |> view
-                                (Dict.valueAtString "not_it"
+                                (Dict.Accessor.valueAtString "not_it"
                                     << valueElseOnNothing { bar = "Stuff" }
                                     << Record.bar
                                 )
@@ -137,9 +137,9 @@ suite =
                 \_ ->
                     recordWithList
                         |> mapOver
-                            (Record.bar << List.elementEach << Record.bar)
+                            (Record.bar << List.Accessor.elementEach << Record.bar)
                             (\_ -> "Why, hello")
-                        |> view (Record.bar << List.elementEach << Record.bar)
+                        |> view (Record.bar << List.Accessor.elementEach << Record.bar)
                         |> Expect.equal [ "Why, hello", "Why, hello" ]
             , test "in Just" <|
                 \_ ->
@@ -162,42 +162,49 @@ suite =
                 [ test "set currently present to present" <|
                     \_ ->
                         dict
-                            |> mapOver (Dict.valueAtString "foo") (\_ -> Just 9)
-                            |> view (Dict.valueAtString "foo")
+                            |> mapOver
+                                (Dict.Accessor.valueAtString "foo")
+                                (\_ -> Just 9)
+                            |> view (Dict.Accessor.valueAtString "foo")
                             |> Expect.equal (Just 9)
                 , test "set currently absent to present" <|
                     \_ ->
                         dict
-                            |> mapOver (Dict.valueAtString "bar") (\_ -> Just 9)
-                            |> view (Dict.valueAtString "bar")
+                            |> mapOver (Dict.Accessor.valueAtString "bar")
+                                (\_ -> Just 9)
+                            |> view (Dict.Accessor.valueAtString "bar")
                             |> Expect.equal (Just 9)
                 , test "set currently present to absent" <|
                     \_ ->
                         dict
-                            |> mapOver (Dict.valueAtString "foo") (\_ -> Nothing)
-                            |> view (Dict.valueAtString "foo")
+                            |> mapOver
+                                (Dict.Accessor.valueAtString "foo")
+                                (\_ -> Nothing)
+                            |> view (Dict.Accessor.valueAtString "foo")
                             |> Expect.equal Nothing
                 , test "set currently absent to absent" <|
                     \_ ->
                         dict
-                            |> mapOver (Dict.valueAtString "bar") (\_ -> Nothing)
-                            |> view (Dict.valueAtString "bar")
+                            |> mapOver
+                                (Dict.Accessor.valueAtString "bar")
+                                (\_ -> Nothing)
+                            |> view (Dict.Accessor.valueAtString "bar")
                             |> Expect.equal Nothing
-                , test "set with try present" <|
+                , test "set with onJust present" <|
                     \_ ->
                         dictWithRecord
                             |> mapOver
-                                (Dict.valueAtString "foo" << onJust << Record.bar)
+                                (Dict.Accessor.valueAtString "foo" << onJust << Record.bar)
                                 (\_ -> "Sup")
-                            |> view (Dict.valueAtString "foo" << onJust << Record.bar)
+                            |> view (Dict.Accessor.valueAtString "foo" << onJust << Record.bar)
                             |> Expect.equal (Just "Sup")
-                , test "set with try absent" <|
+                , test "set with onJust absent" <|
                     \_ ->
                         dictWithRecord
                             |> mapOver
-                                (Dict.valueAtString "bar" << onJust << Record.bar)
+                                (Dict.Accessor.valueAtString "bar" << onJust << Record.bar)
                                 (\_ -> "Sup")
-                            |> view (Dict.valueAtString "bar" << onJust << Record.bar)
+                            |> view (Dict.Accessor.valueAtString "bar" << onJust << Record.bar)
                             |> Expect.equal Nothing
                 ]
             ]
@@ -220,20 +227,24 @@ suite =
                 \_ ->
                     recordWithList
                         |> mapOver
-                            (Record.bar << List.elementEach << Record.foo)
+                            (Record.bar << List.Accessor.elementEach << Record.foo)
                             (\n -> n - 2)
-                        |> view (Record.bar << List.elementEach << Record.foo)
+                        |> view (Record.bar << List.Accessor.elementEach << Record.foo)
                         |> Expect.equal [ 1, 3 ]
             , test "through Just" <|
                 \_ ->
                     maybeRecord
-                        |> mapOver (Record.bar << onJust << Record.foo) (\n -> n + 3)
+                        |> mapOver
+                            (Record.bar << onJust << Record.foo)
+                            (\n -> n + 3)
                         |> view (Record.bar << onJust << Record.foo)
                         |> Expect.equal (Just 6)
             , test "through Nothing" <|
                 \_ ->
                     maybeRecord
-                        |> mapOver (Record.foo << onJust << Record.bar) (\w -> w ++ "!")
+                        |> mapOver
+                            (Record.foo << onJust << Record.bar)
+                            (\w -> w ++ "!")
                         |> view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
             ]
@@ -242,7 +253,9 @@ suite =
             [ test "simple" <|
                 \_ ->
                     simpleRecord
-                        |> mapOverLazy Record.bar (\w -> w ++ " lait")
+                        |> mapOverLazy
+                            Record.bar
+                            (\w -> w ++ " lait")
                         |> .bar
                         |> Expect.equal "Yop lait"
             , test "nested" <|
@@ -256,20 +269,24 @@ suite =
                 \_ ->
                     recordWithList
                         |> mapOverLazy
-                            (Record.bar << List.elementEach << Record.foo)
+                            (Record.bar << List.Accessor.elementEach << Record.foo)
                             (\n -> n - 2)
-                        |> view (Record.bar << List.elementEach << Record.foo)
+                        |> view (Record.bar << List.Accessor.elementEach << Record.foo)
                         |> Expect.equal [ 1, 3 ]
             , test "through Just" <|
                 \_ ->
                     maybeRecord
-                        |> mapOverLazy (Record.bar << onJust << Record.foo) (\n -> n + 3)
+                        |> mapOverLazy
+                            (Record.bar << onJust << Record.foo)
+                            (\n -> n + 3)
                         |> view (Record.bar << onJust << Record.foo)
                         |> Expect.equal (Just 6)
             , test "through Nothing" <|
                 \_ ->
                     maybeRecord
-                        |> mapOverLazy (Record.foo << onJust << Record.bar) (\w -> w ++ "!")
+                        |> mapOverLazy
+                            (Record.foo << onJust << Record.bar)
+                            (\w -> w ++ "!")
                         |> view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
             ]
@@ -323,14 +340,18 @@ suite =
                 , test "set" <|
                     \_ ->
                         recordWithList
-                            |> mapOver (Record.bar << myOnEach << Record.bar) (\_ -> "Greetings")
-                            |> view (Record.bar << List.elementEach << Record.bar)
+                            |> mapOver
+                                (Record.bar << myOnEach << Record.bar)
+                                (\_ -> "Greetings")
+                            |> view (Record.bar << List.Accessor.elementEach << Record.bar)
                             |> Expect.equal [ "Greetings", "Greetings" ]
                 , test "map" <|
                     \_ ->
                         recordWithList
-                            |> mapOver (Record.bar << myOnEach << Record.foo) (\n -> n - 2)
-                            |> view (Record.bar << List.elementEach << Record.foo)
+                            |> mapOver
+                                (Record.bar << myOnEach << Record.foo)
+                                (\n -> n - 2)
+                            |> view (Record.bar << List.Accessor.elementEach << Record.foo)
                             |> Expect.equal [ 1, 3 ]
                 ]
             ]

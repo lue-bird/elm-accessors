@@ -84,7 +84,7 @@ data structures:
 
 ```elm
 tryEach =
-    try << elementEach
+    onJust << elementEach
 
 myOtherAccessor =
     recordBar << tryEach

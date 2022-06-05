@@ -6,7 +6,7 @@ module List.Accessor exposing (element, elementEach, elementIndexEach)
 
 -}
 
-import Accessor exposing (Lens, Prism, Traversal, lens, onJust, traversal)
+import Accessor exposing (Prism, Traversal, traversal)
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
 import Linear.Extra as Linear
 import List.Linear
@@ -14,8 +14,9 @@ import List.Linear
 
 {-| This accessor combinator lets you view values inside List.
 
-    import Accessors exposing (each, view, map)
+    import Accessor exposing (view, mapOver)
     import Record
+    import List.Accessor
 
     listRecord : { foo : List { bar : Int } }
     listRecord =
@@ -26,10 +27,13 @@ import List.Linear
             ]
         }
 
-    view (Record.foo << each << Record.bar) listRecord
-    --> [2, 3, 4]
+    listRecord
+        |> view (Record.foo << List.Accessor.elementEach << Record.bar)
+    --> [ 2, 3, 4 ]
 
-    map (Record.foo << each << Record.bar) ((+) 1) listRecord
+    listRecord
+        |> mapOver (Record.foo << List.Accessor.elementEach << Record.bar)
+        ((+) 1)
     --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
 
 -}
@@ -50,9 +54,8 @@ elementEach =
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (view, mapOver)
-    import List.Accessor as List
-    import Tuple.Accessor as Tuple
+    import Accessor exposing (view, mapOver)
+    import List.Accessor
     import Record
 
     listRecord : { foo : List { bar : Int } }
@@ -64,29 +67,37 @@ elementEach =
             ]
         }
 
-    listRecord |> view (Record.foo << List.elementIndexEach)
-    --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
+    listRecord |> view (Record.foo << List.Accessor.elementIndexEach)
+    --> [ { index = 0, element = { bar = 2 } }
+    --> , { index = 1, element = { bar = 3 } }
+    --> , { index = 2, element = { bar = 4 } }
+    --> ]
+
+    tailMultiplyBy10 : { index : Int, element : { bar : Int } } -> { index : Int, element : { bar : Int } }
+    tailMultiplyBy10 =
+        \item ->
+            { item
+                | element =
+                    case item.index of
+                        0 ->
+                            item.element
+                        _ ->
+                            { bar = item.element.bar * 10 }
+            }
 
     listRecord
         |> mapOver
-            (Record.foo << List.elementIndexEach)
-            (\{ index, element } ->
-                case index of
-                    0 ->
-                        element
-
-                    _ ->
-                        { bar = element.bar * 10 }
-            )
+            (Record.foo << List.Accessor.elementIndexEach)
+            tailMultiplyBy10
     --> { foo = [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
     listRecord
-        |> view (Record.foo << List.elementIndexEach << Record.element << Record.bar)
+        |> view (Record.foo << List.Accessor.elementIndexEach << Record.element << Record.bar)
     --> [ 2, 3, 4 ]
 
     listRecord
         |> mapOver
-            (Record.foo << List.elementIndexEach << Record.element << Record.bar)
+            (Record.foo << List.Accessor.elementIndexEach << Record.element << Record.bar)
             ((+) 1)
     --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
@@ -118,27 +129,34 @@ elementIndexEach =
 
 {-| at: Structure Preserving accessor over List members.
 
-    import Accessors exposing (view)
-    import List.Accessor as List
+    import Linear exposing (DirectionLinear(..))
+    import Accessor exposing (view, mapOver)
+    import List.Accessor
     import Record
 
     bars : List { bar : String }
     bars =
         [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> view (List.element 1)
+    bars |> view (List.Accessor.element ( Down, 1 ))
     --> Just { bar = "Things" }
 
-    bars |> view (List.element 9000)
+    bars |> view (List.Accessor.element ( Up, 9000 ))
     --> Nothing
 
-    bars |> view (List.element 0 << Record.bar)
+    bars |> view (List.Accessor.element ( Up, 0 ) << Record.bar)
     --> Just "Stuff"
 
-    bars |> mapOver (List.element 0 << Record.bar) (\_ -> "Whatever")
+    bars
+        |> mapOver
+            (List.Accessor.element ( Up, 0 ) << Record.bar)
+            (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> mapOver (List.element 9000 << Record.bar) (\_ -> "Whatever")
+    bars
+        |> mapOver
+            (List.Accessor.element ( Up, 9000 ) << Record.bar)
+            (\_ -> "Whatever")
     --> bars
 
 -}
