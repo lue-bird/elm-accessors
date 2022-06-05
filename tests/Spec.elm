@@ -1,10 +1,12 @@
 module Spec exposing (suite)
 
-import Accessors exposing (..)
+import Accessor exposing (mapOver, mapOverLazy, onJust, valueElseOnNothing, view)
 import Dict exposing (Dict)
+import Dict.Accessor as Dict
 import Expect
-import Lens as L
-import Test exposing (Test, describe, test)
+import List.Accessor as List
+import Record
+import Test exposing (Test, test)
 
 
 simpleRecord : { foo : number, bar : String, qux : Bool }
@@ -49,258 +51,286 @@ dictWithRecord =
 
 suite : Test
 suite =
-    describe "strict lenses"
-        [ describe "get"
-            [ test "simple get" <|
+    Test.describe
+        "strict lenses"
+        [ Test.describe
+            "view"
+            [ test "simple" <|
                 \_ ->
-                    get L.foo simpleRecord
+                    simpleRecord
+                        |> view Record.foo
                         |> Expect.equal 3
-            , test "nested get" <|
+            , test "nested" <|
                 \_ ->
-                    get (L.foo << L.bar) nestedRecord
+                    nestedRecord
+                        |> view (Record.foo << Record.bar)
                         |> Expect.equal "Yop"
-            , test "get in list" <|
+            , test "in list" <|
                 \_ ->
-                    get (L.bar << each << L.foo) recordWithList
+                    recordWithList
+                        |> view (Record.bar << List.elementEach << Record.foo)
                         |> Expect.equal [ 3, 5 ]
-            , test "get in Just" <|
+            , test "in Just" <|
                 \_ ->
-                    get (L.bar << try << L.qux) maybeRecord
+                    maybeRecord
+                        |> view (Record.bar << onJust << Record.qux)
                         |> Expect.equal (Just False)
-            , test "get in Nothing" <|
+            , test "in Nothing" <|
                 \_ ->
-                    get (L.foo << try << L.bar) maybeRecord
+                    maybeRecord
+                        |> view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
-            , describe "dict"
-                [ test "get present" <|
+            , Test.describe
+                "dict"
+                [ test "present" <|
                     \_ ->
-                        get (key "foo") dict
+                        dict
+                            |> view (Dict.valueAtString "foo")
                             |> Expect.equal (Just 7)
-                , test "get absent" <|
+                , test "absent" <|
                     \_ ->
-                        get (key "bar") dict
+                        dict
+                            |> view (Dict.valueAtString "bar")
                             |> Expect.equal Nothing
-                , test "nested get present" <|
+                , test "nested present" <|
                     \_ ->
-                        get (L.bar << key "foo") recordWithDict
+                        recordWithDict
+                            |> view (Record.bar << Dict.valueAtString "foo")
                             |> Expect.equal (Just 7)
-                , test "nested get absent" <|
+                , test "nested absent" <|
                     \_ ->
-                        get (L.bar << key "bar") recordWithDict
+                        recordWithDict
+                            |> view (Record.bar << Dict.valueAtString "bar")
                             |> Expect.equal Nothing
-                , test "get with try" <|
+                , test "with try" <|
                     \_ ->
-                        get (key "foo" << try << L.bar) dictWithRecord
+                        dictWithRecord
+                            |> view (Dict.valueAtString "foo" << onJust << Record.bar)
                             |> Expect.equal (Just "Yop")
-                , test "get with def" <|
+                , test "with valueElseOnNothing" <|
                     \_ ->
                         dictWithRecord
-                            |> get (key "not_it" << def { bar = "Stuff" } << L.bar)
-                            |> Expect.equal "Stuff"
-                , test "get with or" <|
-                    \_ ->
-                        dictWithRecord
-                            |> get ((key "not_it" << try << L.bar) |> or "Stuff")
+                            |> view
+                                (Dict.valueAtString "not_it"
+                                    << valueElseOnNothing { bar = "Stuff" }
+                                    << Record.bar
+                                )
                             |> Expect.equal "Stuff"
                 ]
             ]
-        , describe "set"
-            [ test "simple set" <|
+        , Test.describe
+            "map (\\_ -> ...)"
+            [ test "simple" <|
                 \_ ->
-                    let
-                        updatedExample : { foo : number, bar : String, qux : Bool }
-                        updatedExample =
-                            set L.qux True simpleRecord
-                    in
-                    updatedExample.qux
+                    simpleRecord
+                        |> mapOver Record.qux (\_ -> True)
+                        |> .qux
                         |> Expect.equal True
-            , test "nested set" <|
+            , test "nested" <|
                 \_ ->
-                    let
-                        updatedExample : { foo : { foo : number, bar : String, qux : Bool } }
-                        updatedExample =
-                            set (L.foo << L.foo) 5 nestedRecord
-                    in
-                    updatedExample.foo.foo
+                    nestedRecord
+                        |> mapOver (Record.foo << Record.foo) (\_ -> 5)
+                        |> .foo
+                        |> .foo
                         |> Expect.equal 5
-            , test "set in list" <|
+            , test "in list" <|
                 \_ ->
-                    let
-                        updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
-                        updatedExample =
-                            set (L.bar << each << L.bar) "Why, hello" recordWithList
-                    in
-                    get (L.bar << each << L.bar) updatedExample
+                    recordWithList
+                        |> mapOver
+                            (Record.bar << List.elementEach << Record.bar)
+                            (\_ -> "Why, hello")
+                        |> view (Record.bar << List.elementEach << Record.bar)
                         |> Expect.equal [ "Why, hello", "Why, hello" ]
-            , test "set in Just" <|
+            , test "in Just" <|
                 \_ ->
-                    let
-                        updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
-                        updatedExample =
-                            set (L.bar << try << L.foo) 4 maybeRecord
-                    in
-                    get (L.bar << try << L.foo) updatedExample
+                    maybeRecord
+                        |> mapOver
+                            (Record.bar << onJust << Record.foo)
+                            (\_ -> 4)
+                        |> view (Record.bar << onJust << Record.foo)
                         |> Expect.equal (Just 4)
-            , test "set in Nothing" <|
+            , test "in Nothing" <|
                 \_ ->
-                    let
-                        -- updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
-                        updatedExample =
-                            set (L.foo << try << L.bar) "Nope" maybeRecord
-                    in
-                    get (L.foo << try << L.bar) updatedExample
+                    maybeRecord
+                        |> mapOver
+                            (Record.foo << onJust << Record.bar)
+                            (\_ -> "Nope")
+                        |> view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
-            , describe "dict"
+            , Test.describe
+                "dict"
                 [ test "set currently present to present" <|
                     \_ ->
-                        let
-                            updatedDict : Dict String number
-                            updatedDict =
-                                set (key "foo") (Just 9) dict
-                        in
-                        get (key "foo") updatedDict |> Expect.equal (Just 9)
+                        dict
+                            |> mapOver (Dict.valueAtString "foo") (\_ -> Just 9)
+                            |> view (Dict.valueAtString "foo")
+                            |> Expect.equal (Just 9)
                 , test "set currently absent to present" <|
                     \_ ->
-                        let
-                            updatedDict : Dict String number
-                            updatedDict =
-                                set (key "bar") (Just 9) dict
-                        in
-                        get (key "bar") updatedDict |> Expect.equal (Just 9)
+                        dict
+                            |> mapOver (Dict.valueAtString "bar") (\_ -> Just 9)
+                            |> view (Dict.valueAtString "bar")
+                            |> Expect.equal (Just 9)
                 , test "set currently present to absent" <|
                     \_ ->
-                        let
-                            updatedDict : Dict String number
-                            updatedDict =
-                                set (key "foo") Nothing dict
-                        in
-                        get (key "foo") updatedDict |> Expect.equal Nothing
+                        dict
+                            |> mapOver (Dict.valueAtString "foo") (\_ -> Nothing)
+                            |> view (Dict.valueAtString "foo")
+                            |> Expect.equal Nothing
                 , test "set currently absent to absent" <|
                     \_ ->
-                        let
-                            updatedDict : Dict String number
-                            updatedDict =
-                                set (key "bar") Nothing dict
-                        in
-                        get (key "bar") updatedDict |> Expect.equal Nothing
+                        dict
+                            |> mapOver (Dict.valueAtString "bar") (\_ -> Nothing)
+                            |> view (Dict.valueAtString "bar")
+                            |> Expect.equal Nothing
                 , test "set with try present" <|
                     \_ ->
-                        let
-                            updatedDict : Dict String { bar : String }
-                            updatedDict =
-                                set (key "foo" << try << L.bar) "Sup" dictWithRecord
-                        in
-                        get (key "foo" << try << L.bar) updatedDict |> Expect.equal (Just "Sup")
+                        dictWithRecord
+                            |> mapOver
+                                (Dict.valueAtString "foo" << onJust << Record.bar)
+                                (\_ -> "Sup")
+                            |> view (Dict.valueAtString "foo" << onJust << Record.bar)
+                            |> Expect.equal (Just "Sup")
                 , test "set with try absent" <|
                     \_ ->
-                        let
-                            updatedDict : Dict String { bar : String }
-                            updatedDict =
-                                set (key "bar" << try << L.bar) "Sup" dictWithRecord
-                        in
-                        get (key "bar" << try << L.bar) updatedDict |> Expect.equal Nothing
+                        dictWithRecord
+                            |> mapOver
+                                (Dict.valueAtString "bar" << onJust << Record.bar)
+                                (\_ -> "Sup")
+                            |> view (Dict.valueAtString "bar" << onJust << Record.bar)
+                            |> Expect.equal Nothing
                 ]
             ]
-        , describe "over"
-            [ test "simple over" <|
+        , Test.describe
+            "map"
+            [ test "simple" <|
                 \_ ->
-                    let
-                        updatedExample : { foo : number, bar : String, qux : Bool }
-                        updatedExample =
-                            over L.bar (\w -> w ++ " lait") simpleRecord
-                    in
-                    updatedExample.bar
+                    simpleRecord
+                        |> mapOver Record.bar (\w -> w ++ " lait")
+                        |> .bar
                         |> Expect.equal "Yop lait"
-            , test "nested over" <|
+            , test "nested" <|
                 \_ ->
-                    let
-                        updatedExample : { foo : { foo : number, bar : String, qux : Bool } }
-                        updatedExample =
-                            over (L.foo << L.qux) (\w -> not w) nestedRecord
-                    in
-                    updatedExample.foo.qux
+                    nestedRecord
+                        |> mapOver (Record.foo << Record.qux) not
+                        |> .foo
+                        |> .qux
                         |> Expect.equal True
-            , test "over list" <|
+            , test "list" <|
                 \_ ->
-                    let
-                        updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
-                        updatedExample =
-                            over (L.bar << each << L.foo) (\n -> n - 2) recordWithList
-                    in
-                    get (L.bar << each << L.foo) updatedExample
+                    recordWithList
+                        |> mapOver
+                            (Record.bar << List.elementEach << Record.foo)
+                            (\n -> n - 2)
+                        |> view (Record.bar << List.elementEach << Record.foo)
                         |> Expect.equal [ 1, 3 ]
-            , test "over through Just" <|
+            , test "through Just" <|
                 \_ ->
-                    let
-                        updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
-                        updatedExample =
-                            over (L.bar << try << L.foo) (\n -> n + 3) maybeRecord
-                    in
-                    get (L.bar << try << L.foo) updatedExample
+                    maybeRecord
+                        |> mapOver (Record.bar << onJust << Record.foo) (\n -> n + 3)
+                        |> view (Record.bar << onJust << Record.foo)
                         |> Expect.equal (Just 6)
-            , test "over through Nothing" <|
+            , test "through Nothing" <|
                 \_ ->
-                    let
-                        -- updatedExample : { bar : Maybe { foo : number, bar : String, qux : Bool }, foo : Maybe a }
-                        updatedExample =
-                            over (L.foo << try << L.bar) (\w -> w ++ "!") maybeRecord
-                    in
-                    get (L.foo << try << L.bar) updatedExample
+                    maybeRecord
+                        |> mapOver (Record.foo << onJust << Record.bar) (\w -> w ++ "!")
+                        |> view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
             ]
-        , describe "making accessors"
+        , Test.describe
+            "mapLazy"
+            [ test "simple" <|
+                \_ ->
+                    simpleRecord
+                        |> mapOverLazy Record.bar (\w -> w ++ " lait")
+                        |> .bar
+                        |> Expect.equal "Yop lait"
+            , test "nested" <|
+                \_ ->
+                    nestedRecord
+                        |> mapOverLazy (Record.foo << Record.qux) not
+                        |> .foo
+                        |> .qux
+                        |> Expect.equal True
+            , test "list" <|
+                \_ ->
+                    recordWithList
+                        |> mapOverLazy
+                            (Record.bar << List.elementEach << Record.foo)
+                            (\n -> n - 2)
+                        |> view (Record.bar << List.elementEach << Record.foo)
+                        |> Expect.equal [ 1, 3 ]
+            , test "through Just" <|
+                \_ ->
+                    maybeRecord
+                        |> mapOverLazy (Record.bar << onJust << Record.foo) (\n -> n + 3)
+                        |> view (Record.bar << onJust << Record.foo)
+                        |> Expect.equal (Just 6)
+            , test "through Nothing" <|
+                \_ ->
+                    maybeRecord
+                        |> mapOverLazy (Record.foo << onJust << Record.bar) (\w -> w ++ "!")
+                        |> view (Record.foo << onJust << Record.bar)
+                        |> Expect.equal Nothing
+            ]
+        , Test.describe
+            "making accessors"
             [ let
-                myFoo =
-                    makeOneToOne .foo (\f rec -> { rec | foo = f rec.foo })
+                myRecordFoo =
+                    Accessor.lens
+                        { description = ".foo"
+                        , view = .foo
+                        , map = \alter record -> { record | foo = alter record.foo }
+                        }
               in
-              describe "makeOneToOne"
-                [ test "get" <|
+              Test.describe
+                "Accessor.lens"
+                [ test "view" <|
                     \_ ->
-                        get (myFoo << L.bar) nestedRecord
+                        nestedRecord
+                            |> view (myRecordFoo << Record.bar)
                             |> Expect.equal "Yop"
                 , test "set" <|
                     \_ ->
-                        let
-                            updatedRec : { foo : { foo : number, bar : String, qux : Bool } }
-                            updatedRec =
-                                set (L.foo << myFoo) 1 nestedRecord
-                        in
-                        updatedRec.foo.foo |> Expect.equal 1
-                , test "over" <|
+                        nestedRecord
+                            |> mapOver (Record.foo << myRecordFoo) (\_ -> 1)
+                            |> .foo
+                            |> .foo
+                            |> Expect.equal 1
+                , test "map" <|
                     \_ ->
-                        let
-                            updatedRec : { foo : { foo : number, bar : String, qux : Bool } }
-                            updatedRec =
-                                over (myFoo << myFoo) (\n -> n + 3) nestedRecord
-                        in
-                        updatedRec.foo.foo |> Expect.equal 6
+                        nestedRecord
+                            |> mapOver (myRecordFoo << myRecordFoo) (\n -> n + 3)
+                            |> .foo
+                            |> .foo
+                            |> Expect.equal 6
                 ]
             , let
                 myOnEach =
-                    makeOneToN List.map List.map
+                    Accessor.traversal
+                        { description = "element each"
+                        , view = List.map
+                        , map = List.map
+                        }
               in
-              describe "makeOneToN"
-                [ test "get" <|
+              Test.describe
+                "Accessor"
+                [ test "view" <|
                     \_ ->
-                        get (L.bar << myOnEach << L.foo) recordWithList
+                        recordWithList
+                            |> view (Record.bar << myOnEach << Record.foo)
                             |> Expect.equal [ 3, 5 ]
                 , test "set" <|
                     \_ ->
-                        let
-                            updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
-                            updatedExample =
-                                set (L.bar << myOnEach << L.bar) "Greetings" recordWithList
-                        in
-                        get (L.bar << each << L.bar) updatedExample
+                        recordWithList
+                            |> mapOver (Record.bar << myOnEach << Record.bar) (\_ -> "Greetings")
+                            |> view (Record.bar << List.elementEach << Record.bar)
                             |> Expect.equal [ "Greetings", "Greetings" ]
-                , test "over" <|
+                , test "map" <|
                     \_ ->
-                        let
-                            updatedExample : { bar : List { foo : number, bar : String, qux : Bool } }
-                            updatedExample =
-                                over (L.bar << myOnEach << L.foo) (\n -> n - 2) recordWithList
-                        in
-                        get (L.bar << each << L.foo) updatedExample
+                        recordWithList
+                            |> mapOver (Record.bar << myOnEach << Record.foo) (\n -> n - 2)
+                            |> view (Record.bar << List.elementEach << Record.foo)
                             |> Expect.equal [ 1, 3 ]
                 ]
             ]

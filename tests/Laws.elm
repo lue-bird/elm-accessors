@@ -1,19 +1,383 @@
-module Laws exposing (..)
+module Laws exposing (tests)
 
-import Accessors as A exposing (Lens_, Setable)
+import Accessor exposing (Lens, TraversalConsume, mapOver, onJust, view)
 import Array exposing (Array)
+import Array.Accessor as Array
 import Dict exposing (Dict)
+import Dict.Accessor as Dict
 import Expect exposing (Expectation)
-import Fuzz exposing (Fuzzer, int, string)
-import Lens as L
+import Fuzz exposing (Fuzzer)
+import Linear exposing (DirectionLinear(..))
+import List.Accessor as List
 import Maybe exposing (Maybe)
+import Record
 import String
-import Test exposing (..)
+import Test exposing (Test, describe, test)
 
 
-eq : a -> a -> Expectation
-eq =
-    Expect.equal
+tests : Test
+tests =
+    Test.describe
+        "traversal laws"
+        [ prismExamples
+        , settableExamples
+        , lensExamples
+        , test
+            "description"
+            (\() ->
+                (Record.info << Record.stuff << List.element ( Up, 7 ) << Record.name)
+                    |> Accessor.description
+                    |> Accessor.descriptionToString
+                    |> Expect.equal ".info>.stuff>element ↑7>.name"
+            )
+        ]
+
+
+lensExamples : Test
+lensExamples =
+    Test.describe
+        "lens"
+        [ (Record.info << Dict.valueAtString "stuff")
+            |> isLens
+                { structure = personFuzzer
+                , focusAlter = maybeStringAlterFuzzer
+                , focus = Fuzz.maybe Fuzz.string
+                }
+        , Record.name
+            |> isLens
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        , Record.age
+            |> isLens
+                { structure = personFuzzer
+                , focusAlter = intAlter
+                , focus = Fuzz.int
+                }
+        ]
+
+
+{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
+-}
+type alias LensConsume structure focus =
+    TraversalConsume structure focus focus
+
+
+isLens :
+    { structure : Fuzzer structure
+    , focusAlter : Fuzzer (Alter focus)
+    , focus : Fuzzer focus
+    }
+    -> LensConsume structure focus
+    -> Test
+isLens fuzzer =
+    \settable ->
+        Test.describe
+            (settable |> Accessor.description |> Accessor.descriptionToString)
+            [ settable |> isSettable fuzzer
+
+            -- there's Traversal laws in here somewhere but not sure they're expressible in elm
+            , settable |> lensSetAsItsFocus { structure = fuzzer.structure }
+            , settable
+                |> lensSetFocusViewIsFocus
+                    { structure = fuzzer.structure
+                    , focus = fuzzer.focus
+                    }
+            ]
+
+
+lensSetAsItsFocus :
+    { structure : Fuzzer structure }
+    -> LensConsume structure focus
+    -> Test
+lensSetAsItsFocus fuzzer =
+    \lens_ ->
+        Test.fuzz
+            (Fuzz.constant (\structure -> { structure = structure })
+                |> Fuzz.andMap fuzzer.structure
+            )
+            "lensSetAsItsFocus"
+            (\{ structure } ->
+                (structure
+                    |> Accessor.mapOver lens_
+                        (\_ ->
+                            structure |> Accessor.view lens_
+                        )
+                )
+                    |> Expect.equal structure
+            )
+
+
+lensSetFocusViewIsFocus :
+    { structure : Fuzzer structure
+    , focus : Fuzzer focus
+    }
+    -> LensConsume structure focus
+    -> Test
+lensSetFocusViewIsFocus fuzzer =
+    \lens_ ->
+        Test.fuzz
+            (Fuzz.constant
+                (\structure focus ->
+                    { structure = structure
+                    , focus = focus
+                    }
+                )
+                |> Fuzz.andMap fuzzer.structure
+                |> Fuzz.andMap fuzzer.focus
+            )
+            "lensSetFocusViewIsFocus"
+            (\{ structure, focus } ->
+                (structure
+                    |> Accessor.mapOver lens_ (\_ -> focus)
+                    |> Accessor.view lens_
+                )
+                    |> Expect.equal focus
+            )
+
+
+{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
+-}
+type alias PrismConsume structure focus =
+    TraversalConsume structure focus (Maybe focus)
+
+
+prismExamples : Test
+prismExamples =
+    Test.describe
+        "prism"
+        [ (Record.email << onJust)
+            |> isPrism
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        , (Record.stuff << List.element ( Up, 0 ))
+            |> isPrism
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        ]
+
+
+isPrism :
+    { structure : Fuzzer structure
+    , focusAlter : Fuzzer (Alter focus)
+    , focus : Fuzzer focus
+    }
+    -> PrismConsume structure focus
+    -> Test
+isPrism fuzzer =
+    \prismToTest ->
+        Test.describe
+            ("isPrism " ++ (prismToTest |> Accessor.description |> Accessor.descriptionToString))
+            [ prismToTest
+                |> setJustViewIsIdentity
+                    { structure = fuzzer.structure }
+            , prismToTest
+                |> setFocusViewIsFocus
+                    { structure = fuzzer.structure
+                    , focus = fuzzer.focus
+                    }
+            ]
+
+
+setFocusViewIsFocus :
+    { structure : Fuzzer structure, focus : Fuzzer focus }
+    -> PrismConsume structure focus
+    -> Test
+setFocusViewIsFocus fuzzer =
+    \prism ->
+        Test.fuzz
+            (Fuzz.constant (\structure focus -> { structure = structure, focus = focus })
+                |> Fuzz.andMap fuzzer.structure
+                |> Fuzz.andMap fuzzer.focus
+            )
+            "setFocusViewIsFocus"
+            (\{ structure, focus } ->
+                structure
+                    |> mapOver prism (\_ -> focus)
+                    |> view prism
+                    |> Expect.equal
+                        (structure |> view prism |> Maybe.map (\_ -> focus))
+            )
+
+
+setJustViewIsIdentity :
+    { structure : Fuzzer structure }
+    -> PrismConsume structure focus
+    -> Test
+setJustViewIsIdentity fuzzer =
+    \prism ->
+        Test.fuzz
+            (Fuzz.constant (\structure -> { structure = structure })
+                |> Fuzz.andMap fuzzer.structure
+            )
+            "setJustViewIsIdentity"
+            (\{ structure } ->
+                case structure |> view prism of
+                    Nothing ->
+                        Expect.pass
+
+                    Just focusView ->
+                        structure
+                            |> mapOver prism (\_ -> focusView)
+                            |> Expect.equal structure
+            )
+
+
+settableExamples : Test
+settableExamples =
+    Test.describe
+        "settable"
+        [ (Record.email << onJust)
+            |> isSettable
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        , (Record.stuff << List.element ( Up, 0 ))
+            |> isSettable
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        , (Record.stuff << List.elementEach)
+            |> isSettable
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        , (Record.things << Array.element ( Up, 0 ))
+            |> isSettable
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        , (Record.things << Array.elementEach)
+            |> isSettable
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        ]
+
+
+isSettable :
+    { structure : Fuzzer structure
+    , focusAlter : Fuzzer (Alter focus)
+    , focus : Fuzzer focus
+    }
+    -> TraversalConsume structure focus focusView
+    -> Test
+isSettable fuzzer =
+    \settable ->
+        Test.describe
+            ("isSettable " ++ (settable |> Accessor.description |> Accessor.descriptionToString))
+            [ settable
+                |> mapIdentityIsIdentity { structure = fuzzer.structure }
+            , settable
+                |> mapMultipleIsMapComposition
+                    { structure = fuzzer.structure
+                    , focusAlter = fuzzer.focusAlter
+                    }
+            , settable
+                |> setMultipleIsSetLast
+                    { structure = fuzzer.structure
+                    , focus = fuzzer.focus
+                    }
+            ]
+
+
+mapIdentityIsIdentity :
+    { structure : Fuzzer structure }
+    -> TraversalConsume structure focus focusView
+    -> Test
+mapIdentityIsIdentity fuzzer =
+    \settable ->
+        Test.fuzz
+            (Fuzz.constant (\structure -> { structure = structure })
+                |> Fuzz.andMap fuzzer.structure
+            )
+            "mapIdentityIsIdentity"
+            (\{ structure } ->
+                (structure
+                    |> Accessor.mapOver settable identity
+                )
+                    |> Expect.equal structure
+            )
+
+
+mapMultipleIsMapComposition :
+    { structure : Fuzzer structure
+    , focusAlter : Fuzzer (Alter focus)
+    }
+    -> TraversalConsume structure focus focusView
+    -> Test
+mapMultipleIsMapComposition fuzzer =
+    \settable ->
+        Test.fuzz
+            (Fuzz.constant
+                (\structure alter0 alter1 ->
+                    { structure = structure
+                    , alter0 = alter0
+                    , alter1 = alter1
+                    }
+                )
+                |> Fuzz.andMap fuzzer.structure
+                |> Fuzz.andMap fuzzer.focusAlter
+                |> Fuzz.andMap fuzzer.focusAlter
+            )
+            "mapMultipleIsMapComposition"
+            (\{ structure, alter0, alter1 } ->
+                (structure
+                    |> Accessor.mapOver settable alter0
+                    |> Accessor.mapOver settable alter1
+                )
+                    |> Expect.equal
+                        (structure
+                            |> Accessor.mapOver settable (alter0 >> alter1)
+                        )
+            )
+
+
+setMultipleIsSetLast :
+    { structure : Fuzzer structure
+    , focus : Fuzzer focus
+    }
+    -> TraversalConsume structure focus focusView
+    -> Test
+setMultipleIsSetLast fuzzer =
+    \settable ->
+        Test.fuzz
+            (Fuzz.constant
+                (\structure focus0 focus1 ->
+                    { structure = structure
+                    , focus0 = focus0
+                    , focus1 = focus1
+                    }
+                )
+                |> Fuzz.andMap fuzzer.structure
+                |> Fuzz.andMap fuzzer.focus
+                |> Fuzz.andMap fuzzer.focus
+            )
+            "setMultipleIsSetLast"
+            (\{ structure, focus0, focus1 } ->
+                (structure
+                    |> Accessor.mapOver settable (\_ -> focus0)
+                    |> Accessor.mapOver settable (\_ -> focus1)
+                )
+                    |> Expect.equal
+                        (structure
+                            |> Accessor.mapOver settable (\_ -> focus1)
+                        )
+            )
+
+
+
+--- test data
 
 
 type alias Person =
@@ -26,151 +390,84 @@ type alias Person =
     }
 
 
-suite : Test
-suite =
-    describe "Laws"
-        [ isLens L.name personFuzzer strFun string
-        , isLens L.age personFuzzer intFun int
-        , isSetable (L.email << A.try) personFuzzer strFun string
+personFuzzer : Fuzzer Person
+personFuzzer =
+    Fuzz.constant
+        (\name age email stuff info things ->
+            { name = name
+            , age = age
+            , email = email
+            , stuff = stuff
+            , info = info
+            , things = things
+            }
+        )
+        |> Fuzz.andMap Fuzz.string
+        |> Fuzz.andMap Fuzz.int
+        |> Fuzz.andMap (Fuzz.maybe Fuzz.string)
+        |> Fuzz.andMap (Fuzz.list Fuzz.string)
+        |> Fuzz.andMap
+            (dictFuzz { key = Fuzz.string, value = Fuzz.string })
+        |> Fuzz.andMap (Fuzz.array Fuzz.string)
 
-        -- TODO: How to express laws for "Prism"-ish things elm-monocle calls this Optional.
-        -- , isOptional (L.email << A.try)
-        , isSetable (L.stuff << A.at 0) personFuzzer strFun string
-        , isSetable (L.stuff << A.each) personFuzzer strFun string
-        , isSetable (L.things << A.ix 0) personFuzzer strFun string
-        , isSetable (L.things << A.every) personFuzzer strFun string
-        , isLens (L.info << A.key "stuff") personFuzzer maybeStrFun (Fuzz.maybe string)
-        , test "Name compositions output `jq` style String's" <|
-            \() ->
-                A.name (L.info << L.stuff << A.at 7 << L.name)
-                    |> eq ".info.stuff(7)?.name"
-        ]
 
-
-type alias Function a =
+type alias Alter a =
     a -> a
 
 
-strFun : Fuzzer (Function String)
-strFun =
+maybeStringAlterFuzzer : Fuzzer (Alter (Maybe String))
+maybeStringAlterFuzzer =
     Fuzz.oneOf
-        -- [ Fuzz.map String.reverse string
-        -- , String.toUpper
-        -- , String.toLower
-        [ Fuzz.map String.append string
-        , Fuzz.map (\s -> String.append s >> String.reverse) string
-        , Fuzz.map (\s -> String.append s >> String.toUpper) string
-        , Fuzz.map (\s -> String.append s >> String.toLower) string
-        ]
+        (List.map Fuzz.constant
+            [ \maybe ->
+                maybe
+                    |> Maybe.andThen String.toInt
+                    |> Maybe.map String.fromInt
+            ]
+        )
 
 
-intFun : Fuzzer (Function Int)
-intFun =
+stringAlterFuzzer : Fuzzer (Alter String)
+stringAlterFuzzer =
     Fuzz.oneOf
-        [ Fuzz.map (+) int
-        , Fuzz.map (-) int
-        , Fuzz.map (*) int
-        , Fuzz.map (//) int
+        [ Fuzz.map String.append
+            Fuzz.string
+        , Fuzz.map (\s -> String.append s << String.reverse)
+            Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toUpper)
+            Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toLower)
+            Fuzz.string
+
+        -- , Fuzz.map String.reverse string
+        -- , Fuzz.constant String.toUpper
+        -- , Fuzz.constant String.toLower
         ]
 
 
-maybeStrFun : Fuzzer (Function (Maybe String))
-maybeStrFun =
+intAlter : Fuzzer (Alter Int)
+intAlter =
     Fuzz.oneOf
-        [ Fuzz.map
-            (\_ ->
-                Maybe.andThen String.toInt
-                    >> Maybe.map String.fromInt
-            )
-            (Fuzz.maybe string)
+        [ Fuzz.map (+)
+            Fuzz.int
+        , Fuzz.map (-)
+            Fuzz.int
+        , Fuzz.map (*)
+            Fuzz.int
+        , Fuzz.map (//)
+            Fuzz.int
         ]
 
 
-personFuzzer : Fuzzer Person
-personFuzzer =
-    Fuzz.map (\_ -> Person) Fuzz.unit
-        |> Fuzz.andMap string
-        |> Fuzz.andMap int
-        |> Fuzz.andMap (Fuzz.maybe string)
-        |> Fuzz.andMap (Fuzz.list string)
-        |> Fuzz.andMap (Fuzz.list (Fuzz.tuple ( string, string )) |> Fuzz.map Dict.fromList)
-        |> Fuzz.andMap (Fuzz.list string |> Fuzz.map Array.fromList)
+
+-- fuzzer help
 
 
-isSetable : Setable structure transformed attribute built -> Fuzzer structure -> Fuzzer (Function attribute) -> Fuzzer attribute -> Test
-isSetable l fzr fnFzr val =
-    describe ("isSetable: " ++ A.name l)
-        [ fuzz fzr
-            "identity"
-            (Expect.true "setter"
-                << setter_id l
-            )
-        , fuzz (Fuzz.tuple3 ( fzr, fnFzr, fnFzr ))
-            "composition"
-            (\( s, f, g ) ->
-                Expect.true "setter" <|
-                    setter_composition l s f g
-            )
-        , fuzz (Fuzz.tuple3 ( fzr, val, val ))
-            "set_set"
-            (\( s, a, b ) ->
-                Expect.true "setter" <|
-                    setter_set_set l s a b
-            )
-        ]
-
-
-isLens :
-    Lens_ structure attribute
-    -> Fuzzer structure
-    -> Fuzzer (Function attribute)
-    -> Fuzzer attribute
-    -> Test
-isLens l fzr valFn val =
-    describe ("isLens: " ++ A.name l)
-        [ isSetable l fzr valFn val
-
-        -- There's Traversal laws in here somewhere but not sure they're expressible in Elm.
-        , fuzz fzr "lens_set_get" (lens_set_get l >> Expect.true "lens_set_get")
-        , fuzz (Fuzz.tuple ( fzr, val ))
-            "lens_get_set"
-            (\( b, s ) ->
-                lens_get_set l b s
-                    |> Expect.true "lens_get_set"
-            )
-        ]
-
-
-setter_id : Setable structure transformed attribute built -> structure -> Bool
-setter_id l s =
-    A.over l identity s == s
-
-
-setter_composition :
-    Setable structure transformed attribute built
-    -> structure
-    -> Function attribute
-    -> Function attribute
-    -> Bool
-setter_composition l s f g =
-    A.over l f (A.over l g s) == A.over l (f << g) s
-
-
-setter_set_set :
-    Setable structure transformed attribute built
-    -> structure
-    -> attribute
-    -> attribute
-    -> Bool
-setter_set_set l s a b =
-    A.set l b (A.set l a s) == A.set l b s
-
-
-lens_set_get : Lens_ structure attribute -> structure -> Bool
-lens_set_get l s =
-    A.set l (A.get l s) s == s
-
-
-lens_get_set : Lens_ structure attribute -> structure -> attribute -> Bool
-lens_get_set l s a =
-    A.get l (A.set l a s) == a
+dictFuzz :
+    { key : Fuzzer comparableKey
+    , value : Fuzzer value
+    }
+    -> Fuzzer (Dict comparableKey value)
+dictFuzz { key, value } =
+    Fuzz.list (Fuzz.tuple ( key, value ))
+        |> Fuzz.map Dict.fromList
