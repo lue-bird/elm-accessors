@@ -86,7 +86,7 @@ valueEach =
     -->     ]
 
     recordDictStringBar
-        |> mapOver
+        |> over
             (Record.foo << Dict.valueKeyEach)
             (\entry ->
                 { entry
@@ -109,7 +109,7 @@ valueEach =
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     recordDictStringBar
-        |> mapOver
+        |> over
             (Record.foo << Dict.valueKeyEach << Record.value << Record.bar)
             ((+) 1)
     --> { foo =
@@ -165,11 +165,11 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     dict |> view (Dict.valueAt ( 'b', String.fromChar ) << onJust << Record.bar)
     --> Just 2
 
-    dict |> mapOver (Dict.valueAt ( 'b', String.fromChar )) (\_ -> Nothing)
+    dict |> over (Dict.valueAt ( 'b', String.fromChar )) (\_ -> Nothing)
     --> dict |> Dict.remove 'b'
 
     dict
-        |> mapOver
+        |> over
             (Dict.valueAt ( 'x', String.fromChar ) << onJust << Record.bar)
             (\_ -> 3)
     --> dict

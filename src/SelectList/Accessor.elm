@@ -46,7 +46,7 @@ elementEach =
 
 {-| Traverse a `SelectList` including the absolute index of each element
 
-    import Accessors exposing (view, mapOver)
+    import Accessors exposing (view, over)
     import Tuple.Accessor as Tuple
     import Accessors.SelectList as SelectList
     import Record
@@ -68,7 +68,7 @@ elementEach =
     -->     [ ( 2, { bar = 3 } ), ( 3, { bar = 4 } ) ]
 
     fooBarScroll
-        |> mapOver
+        |> over
             (Record.foo << SelectList.elementIndexEach)
             (\{ index, element } =
                 case index of
@@ -88,7 +88,7 @@ elementEach =
     --> SelectList.fromLists [ 1 ] 2 [ 3, 4 ]
 
     fooBarScroll
-        |> mapOver
+        |> over
             (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
             ((+) 1)
     --> { foo =
@@ -173,13 +173,13 @@ elementIndexEach =
     fooBarScroll |> view (Record.foo << SL.selected << Record.bar)
     --> 2
 
-    fooBarScroll |> mapOver (Record.foo << SL.selected << Record.bar) (\_ -> 37)
+    fooBarScroll |> over (Record.foo << SL.selected << Record.bar) (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
-    fooBarScroll |> mapOver (Record.foo << SL.selected << Record.bar) ((*) 10)
+    fooBarScroll |> over (Record.foo << SL.selected << Record.bar) ((*) 10)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]

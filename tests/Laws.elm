@@ -60,7 +60,7 @@ lensExamples =
 {-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
 -}
 type alias LensConsume structure focus =
-    TraversalConsume structure focus focus
+    Traversal_ structure focus focus
 
 
 isLens :
@@ -128,12 +128,6 @@ lens_set_get fuzzer =
             )
 
 
-{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
--}
-type alias OptionalConsume structure focus =
-    TraversalConsume structure focus (Maybe focus)
-
-
 optionalExamples : Test
 optionalExamples =
     Test.describe
@@ -158,7 +152,7 @@ isOptional :
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> OptionalConsume structure focus
+    -> Optional_ structure focus
     -> Test
 isOptional fuzzer =
     \optionalToTest ->
@@ -177,7 +171,7 @@ isOptional fuzzer =
 
 setFocusViewIsFocus :
     { structure : Fuzzer structure, focus : Fuzzer focus }
-    -> OptionalConsume structure focus
+    -> Optional_ structure focus
     -> Test
 setFocusViewIsFocus fuzzer =
     \optional ->
@@ -198,7 +192,7 @@ setFocusViewIsFocus fuzzer =
 
 setJustViewIsIdentity :
     { structure : Fuzzer structure }
-    -> OptionalConsume structure focus
+    -> Optional_ structure focus
     -> Test
 setJustViewIsIdentity fuzzer =
     \optional ->
@@ -261,7 +255,7 @@ isSettable :
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> TraversalConsume structure focus focusView
+    -> Traversal_ structure focus focusView
     -> Test
 isSettable fuzzer =
     \settable ->
@@ -275,7 +269,7 @@ isSettable fuzzer =
 
 setter_identity :
     { m | structure : Fuzzer structure }
-    -> TraversalConsume structure focus focusView
+    -> Traversal_ structure focus focusView
     -> Test
 setter_identity fuzzer =
     \settable ->
@@ -295,7 +289,7 @@ setter_composition :
         | structure : Fuzzer structure
         , focusAlter : Fuzzer (Alter focus)
     }
-    -> TraversalConsume structure focus focusView
+    -> Traversal_ structure focus focusView
     -> Test
 setter_composition fuzzer =
     \settable ->
@@ -327,7 +321,7 @@ setter_set_set :
         | structure : Fuzzer structure
         , focus : Fuzzer focus
     }
-    -> TraversalConsume structure focus focusView
+    -> Traversal_ structure focus focusView
     -> Test
 setter_set_set fuzzer =
     \settable ->

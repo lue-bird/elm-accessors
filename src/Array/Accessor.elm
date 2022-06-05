@@ -49,7 +49,7 @@ elementEach =
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (view, mapOver)
+    import Accessors exposing (view, over)
     import Tuple.Accessor as Tuple
     import Record
     import Array.Accessor as Array
@@ -73,7 +73,7 @@ elementEach =
     -->     ]
 
     fooBarray
-        |> mapOver
+        |> over
             (Record.foo << Array.elementEach)
             (\{ index, element } ->
                 case index of
@@ -90,7 +90,7 @@ elementEach =
     --> Array.fromList [ 2, 3, 4 ]
 
     fooBarray
-        |> mapOver
+        |> over
             (Record.foo << Array.elementEach << Tuple.second << Record.bar)
             ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
@@ -145,11 +145,11 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
     --> Just "Stuff"
 
     barray
-        |> mapOver (Array.element ( Up, 0 ) << Record.bar) (\_ -> "Whatever")
+        |> over (Array.element ( Up, 0 ) << Record.bar) (\_ -> "Whatever")
     --> Array.fromList
     -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> mapOver (Array.element ( Up, 9000 ) << Record.bar) (\_ -> "Whatever")
+    barray |> over (Array.element ( Up, 9000 ) << Record.bar) (\_ -> "Whatever")
     --> barray
 
 -}

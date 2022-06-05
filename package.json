@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "test": "npx elm-verify-examples && elm-test-rs"
+  }
+}

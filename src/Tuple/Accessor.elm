@@ -11,7 +11,7 @@ import Accessor exposing (Lens, lens)
 
 {-| Lens over the first component of a Tuple.
 
-    import Accessors exposing (view, mapOver)
+    import Accessors exposing (view, over)
     import Tuple.Accessor as Tuple
 
     charging : ( String, Int )
@@ -21,11 +21,11 @@ import Accessor exposing (Lens, lens)
     charging |> view Tuple.first
     --> "It's over"
 
-    charging |> mapOver Tuple.first (\_ -> "It's map")
+    charging |> over Tuple.first (\_ -> "It's map")
     --> ( "It's over", 1 )
 
     charging
-        |> mapOver Tuple.first (\m -> (m |> String.toUpper) ++ "!!!")
+        |> over Tuple.first (\m -> (m |> String.toUpper) ++ "!!!")
     --> ( "IT'S OVER!!!", 1 )
 
 -}
@@ -40,7 +40,7 @@ first =
 
 {-| Lens map the second component of a Tuple.
 
-    import Accessors exposing (view, mapOver)
+    import Accessors exposing (view, over)
     import Tuple.Accessor as Tuple
 
     jo : ( String, Int )
@@ -50,13 +50,13 @@ first =
     jo |> view Tuple.second
     --> 1
 
-    jo |> mapOver Tuple.second (\_ -> 1125)
+    jo |> over Tuple.second (\_ -> 1125)
     --> ( "Hi there", 1125 )
 
     jo
-        |> mapOver Tuple.second (\_ -> 1125)
-        |> mapOver Tuple.first (\m -> (m |> String.toUpper) ++ "!!!")
-        |> mapOver Tuple.second ((*) 8)
+        |> over Tuple.second (\_ -> 1125)
+        |> over Tuple.first (\m -> (m |> String.toUpper) ++ "!!!")
+        |> over Tuple.second ((*) 8)
     --> ( "HI THERE!!!", 9000 )
 
 -}

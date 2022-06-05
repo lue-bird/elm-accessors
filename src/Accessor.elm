@@ -1,12 +1,10 @@
 module Accessor exposing
-    ( Relation
-    , Lens, Optional, Traversal
-    , TraversalConsume
+    ( Lens, Optional, Optional_, Traversal, Traversal_
+    , Relation
     , lens, optional, traversal
-    , get, set, over, is, name
+    , get, set, over, over_, is, name
     , onJust, valueElseOnNothing
     , onOk, onErr
-    , over_
     )
 
 {-| Relations are interfaces to document the relation between two data
@@ -19,9 +17,11 @@ expects a `Relation` and builds a new relation with it. Accessors are
 composable, which means you can build a chain of relations to manipulate nested
 structures without handling the packing and the unpacking.
 
+
+## Types
+
+@docs Lens, Lens_, Optional, Optional_, Traversal, Traversal_
 @docs Relation
-@docs Lens, Optional, Traversal
-@docs TraversalConsume
 
 
 ## Builders
@@ -31,7 +31,7 @@ structures without handling the packing and the unpacking.
 
 ## Actions
 
-@docs get, set, over, is, name
+@docs get, set, over, over_, is, name
 
 
 ## for `Maybe`
@@ -58,9 +58,9 @@ For instance, `List focus` may not actually contain 1 `focus`.
 Therefore, `focusView` can be a simple wrapper which, in that example, will be `List focus`
 
 -}
-type Relation structure focus focusView
+type Relation structure focus attribute
     = Relation
-        { get : structure -> focusView
+        { get : structure -> attribute
         , over : (focus -> focus) -> (structure -> structure)
         , name : String
         }
@@ -79,6 +79,35 @@ type Relation structure focus focusView
 type alias Traversal structure focus focusView focusFocus focusFocusView =
     Relation focus focusFocus focusFocusView
     -> Relation structure focusFocus focusView
+
+
+{-| `Traversal_` is a "simple" traversal for
+
+    description :
+        Traversal_ structure focus focusView
+        -> List Description
+
+    view :
+        Traversal_ structure focus focusView
+        -> (structure -> focusView)
+
+    is :
+        Traversal_ structure value (Maybe valueView)
+        -> (structure -> Bool)
+
+    over :
+        Traversal_ structure focus focusView
+        ->
+            ((focus -> focus)
+             -> (structure -> structure)
+            )
+
+Use [`LensConsume`](#LensConsume) in the same context.
+
+-}
+type alias Traversal_ structure focus focusView =
+    Relation focus focus focus
+    -> Relation structure focus focusView
 
 
 {-| [`Traversal`](#Traversal) over a single value: 1:1. Examples
@@ -122,33 +151,10 @@ type alias Optional structure focus focusFocus focusFocusView =
     Traversal structure focus (Maybe focusFocusView) focusFocus focusFocusView
 
 
-{-| Only use `TraversalConsume` for accessor arguments that are **consumed** – used and then discarded:
-
-    description :
-        TraversalConsume structure focus focusView
-        -> List Description
-
-    view :
-        TraversalConsume structure focus focusView
-        -> (structure -> focusView)
-
-    is :
-        TraversalConsume structure value (Maybe valueView)
-        -> (structure -> Bool)
-
-    mapOver :
-        TraversalConsume structure focus focusView
-        ->
-            ((focus -> focus)
-             -> (structure -> structure)
-            )
-
-Use [`LensConsume`](#LensConsume) in the same context.
-
+{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
 -}
-type alias TraversalConsume structure focus focusView =
-    Relation focus focus focus
-    -> Relation structure focus focusView
+type alias Optional_ structure focus =
+    Traversal_ structure focus (Maybe focus)
 
 
 {-| takes
@@ -165,7 +171,7 @@ and returns the value accessed by that combinator.
 
 -}
 get :
-    TraversalConsume structure focus focusView
+    Traversal_ structure focus focusView
     -> (structure -> focusView)
 get accessor =
     let
@@ -201,7 +207,7 @@ get accessor =
 
 -}
 is :
-    TraversalConsume structure value (Maybe valueView)
+    Traversal_ structure value (Maybe valueView)
     -> (structure -> Bool)
 is optional_ =
     \structure ->
@@ -339,12 +345,12 @@ and returns the data `structure` with the focusView field changed by applying
 the function to the existing value.
 
     { foo = { qux = 0 } }
-        |> mapOver (Record.foo << Record.qux) ((+) 1)
+        |> over (Record.foo << Record.qux) ((+) 1)
     --> { foo = { qux = 1 } }
 
 -}
 over :
-    TraversalConsume structure focus focusView
+    Traversal_ structure focus focusView
     ->
         ((focus -> focus)
          -> (structure -> structure)
@@ -367,7 +373,7 @@ set l v =
     over l (\_ -> v)
 
 
-{-| Lazy version of [`mapOver`](#mapOver).
+{-| Lazy version of [`over`](#over).
 
 These actions check that the old and the new version are different before writing.
 They are useful when used together with `Html.lazy`, because it uses reference
@@ -388,7 +394,7 @@ The structure is changed only if the new field is different from the old one.
 
 -}
 over_ :
-    TraversalConsume structure focus focusView
+    Traversal_ structure focus focusView
     ->
         ((focus -> focus)
          -> (structure -> structure)
@@ -520,10 +526,10 @@ valueElseOnNothing fallback =
     maybeRecord |> view (Record.qux << onOk << Record.bar)
     --> Nothing
 
-    maybeRecord |> mapOver (Record.foo << onOk << Record.bar) ((+) 1)
+    maybeRecord |> over (Record.foo << onOk << Record.bar) ((+) 1)
     --> { foo = Ok { bar = 3 }, qux = Err "Not an Int" }
 
-    maybeRecord |> mapOver (Record.qux << onOk << Record.bar) ((+) 1)
+    maybeRecord |> over (Record.qux << onOk << Record.bar) ((+) 1)
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
 -}
@@ -553,10 +559,10 @@ onOk =
     maybeRecord |> view (Record.qux << onErr)
     --> Just "Not an Int"
 
-    maybeRecord |> mapOver (Record.foo << onErr) String.toUpper
+    maybeRecord |> over (Record.foo << onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
-    maybeRecord |> mapOver (Record.qux << onErr) String.toUpper
+    maybeRecord |> over (Record.qux << onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "NOT AN INT" }
 
 -}

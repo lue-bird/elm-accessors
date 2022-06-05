@@ -50,7 +50,7 @@ elementEach =
 
 {-| This accessor lets you traverse a list including the index of each element
 
-    import Accessors exposing (view, mapOver)
+    import Accessors exposing (view, over)
     import List.Accessor as List
     import Tuple.Accessor as Tuple
     import Record
@@ -68,7 +68,7 @@ elementEach =
     --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
     listRecord
-        |> mapOver
+        |> over
             (Record.foo << List.elementIndexEach)
             (\{ index, element } ->
                 case index of
@@ -85,7 +85,7 @@ elementEach =
     --> [ 2, 3, 4 ]
 
     listRecord
-        |> mapOver
+        |> over
             (Record.foo << List.elementIndexEach << Record.element << Record.bar)
             ((+) 1)
     --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
@@ -135,10 +135,10 @@ elementIndexEach =
     bars |> view (List.element 0 << Record.bar)
     --> Just "Stuff"
 
-    bars |> mapOver (List.element 0 << Record.bar) (\_ -> "Whatever")
+    bars |> over (List.element 0 << Record.bar) (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> mapOver (List.element 9000 << Record.bar) (\_ -> "Whatever")
+    bars |> over (List.element 9000 << Record.bar) (\_ -> "Whatever")
     --> bars
 
 -}

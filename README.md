@@ -55,7 +55,7 @@ fooBars =
 fooBars |> view (recordFoo << onEach << recordBar)
 --> [ 3, 2, 0 ]
 
-fooBars |> mapOver (recordFoo << onEach << recordBar) (\n -> n * 2)
+fooBars |> over (recordFoo << onEach << recordBar) (\n -> n * 2)
 --> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 ```
 
