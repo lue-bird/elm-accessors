@@ -84,13 +84,13 @@ Any accessor you make can be composed with any other accessor to match your new
 data structures: 
 
 ```elm
+import Accessor exposing (view, onJust)
+
 tryEach =
     onJust << elementEach
 
-myOtherAccessor =
-    recordBar << tryEach
-
-{ bar = Just [ 1, 3, 2 ] } |> view myOtherAccessor
+{ bar = Just [ 1, 3, 2 ] }
+    |> view (recordBar << tryEach)
 --> Just [ 1, 3, 2 ]
 ```
 
