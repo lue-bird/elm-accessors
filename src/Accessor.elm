@@ -3,11 +3,10 @@ module Accessor exposing
     , Lens, Optional, Traversal
     , TraversalConsume
     , lens, optional, traversal
-    , get, is
-    , over
+    , get, set, over, is, name
     , onJust, valueElseOnNothing
     , onOk, onErr
-    , name, over_, set
+    , over_
     )
 
 {-| Relations are interfaces to document the relation between two data
@@ -30,14 +29,9 @@ structures without handling the packing and the unpacking.
 @docs lens, optional, traversal
 
 
-## scan
+## Actions
 
-@docs get, is
-
-
-## nested map
-
-@docs over
+@docs get, set, over, is, name
 
 
 ## for `Maybe`
