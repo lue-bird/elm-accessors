@@ -7,7 +7,7 @@ module Accessor exposing
     , over
     , onJust, valueElseOnNothing
     , onOk, onErr
-    , name, over_
+    , name, over_, set
     )
 
 {-| Relations are interfaces to document the relation between two data
@@ -367,6 +367,10 @@ over accessor change =
                 )
     in
     relation.over change
+
+
+set l v =
+    over l (\_ -> v)
 
 
 {-| Lazy version of [`mapOver`](#mapOver).

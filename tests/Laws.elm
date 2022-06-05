@@ -1,6 +1,6 @@
 module Laws exposing (tests)
 
-import Accessor exposing (Lens, TraversalConsume, get, onJust, over)
+import Accessor exposing (..)
 import Array exposing (Array)
 import Array.Accessor as Array
 import Dict exposing (Dict)
@@ -26,7 +26,7 @@ tests =
             "description"
             (\() ->
                 (Record.info << Record.stuff << List.element ( Up, 7 ) << Record.name)
-                    |> Accessor.name
+                    |> name
                     |> Expect.equal ".info.stuffelement ↑7.name"
             )
         ]
@@ -73,48 +73,40 @@ isLens :
 isLens fuzzer =
     \settable ->
         Test.describe
-            (Accessor.name settable)
-            [ settable |> isSettable fuzzer
+            (name settable)
+            [ isSettable fuzzer settable
 
             -- there's Traversal laws in here somewhere but not sure they're expressible in elm
-            , settable |> lensSetAsItsFocus { structure = fuzzer.structure }
-            , settable
-                |> lensSetFocusViewIsFocus
-                    { structure = fuzzer.structure
-                    , focus = fuzzer.focus
-                    }
+            , lens_get_set fuzzer settable
+            , lens_set_get fuzzer settable
             ]
 
 
-lensSetAsItsFocus :
-    { structure : Fuzzer structure }
+lens_get_set :
+    { m | structure : Fuzzer structure }
     -> LensConsume structure focus
     -> Test
-lensSetAsItsFocus fuzzer =
+lens_get_set fuzzer =
     \lens_ ->
         Test.fuzz
             (Fuzz.constant (\structure -> { structure = structure })
                 |> Fuzz.andMap fuzzer.structure
             )
-            "lensSetAsItsFocus"
+            "lens_get_set"
             (\{ structure } ->
-                (structure
-                    |> Accessor.over lens_
-                        (\_ ->
-                            structure |> Accessor.get lens_
-                        )
-                )
+                set lens_ (get lens_ structure) structure
                     |> Expect.equal structure
             )
 
 
-lensSetFocusViewIsFocus :
-    { structure : Fuzzer structure
-    , focus : Fuzzer focus
+lens_set_get :
+    { m
+        | structure : Fuzzer structure
+        , focus : Fuzzer focus
     }
     -> LensConsume structure focus
     -> Test
-lensSetFocusViewIsFocus fuzzer =
+lens_set_get fuzzer =
     \lens_ ->
         Test.fuzz
             (Fuzz.constant
@@ -126,11 +118,11 @@ lensSetFocusViewIsFocus fuzzer =
                 |> Fuzz.andMap fuzzer.structure
                 |> Fuzz.andMap fuzzer.focus
             )
-            "lensSetFocusViewIsFocus"
+            "lens_set_get"
             (\{ structure, focus } ->
                 (structure
-                    |> Accessor.over lens_ (\_ -> focus)
-                    |> Accessor.get lens_
+                    |> set lens_ focus
+                    |> get lens_
                 )
                     |> Expect.equal focus
             )
@@ -171,7 +163,7 @@ isOptional :
 isOptional fuzzer =
     \optionalToTest ->
         Test.describe
-            ("isOptional " ++ Accessor.name optionalToTest)
+            ("isOptional " ++ name optionalToTest)
             [ optionalToTest
                 |> setJustViewIsIdentity
                     { structure = fuzzer.structure }
@@ -197,7 +189,7 @@ setFocusViewIsFocus fuzzer =
             "setFocusViewIsFocus"
             (\{ structure, focus } ->
                 structure
-                    |> over optional (\_ -> focus)
+                    |> set optional focus
                     |> get optional
                     |> Expect.equal
                         (structure |> get optional |> Maybe.map (\_ -> focus))
@@ -222,7 +214,7 @@ setJustViewIsIdentity fuzzer =
 
                     Just focusView ->
                         structure
-                            |> over optional (\_ -> focusView)
+                            |> set optional focusView
                             |> Expect.equal structure
             )
 
@@ -274,48 +266,38 @@ isSettable :
 isSettable fuzzer =
     \settable ->
         Test.describe
-            ("isSettable " ++ Accessor.name settable)
-            [ settable
-                |> mapIdentityIsIdentity { structure = fuzzer.structure }
-            , settable
-                |> mapMultipleIsMapComposition
-                    { structure = fuzzer.structure
-                    , focusAlter = fuzzer.focusAlter
-                    }
-            , settable
-                |> setMultipleIsSetLast
-                    { structure = fuzzer.structure
-                    , focus = fuzzer.focus
-                    }
+            ("isSettable " ++ name settable)
+            [ setter_identity fuzzer settable
+            , setter_composition fuzzer settable
+            , setter_set_set fuzzer settable
             ]
 
 
-mapIdentityIsIdentity :
-    { structure : Fuzzer structure }
+setter_identity :
+    { m | structure : Fuzzer structure }
     -> TraversalConsume structure focus focusView
     -> Test
-mapIdentityIsIdentity fuzzer =
+setter_identity fuzzer =
     \settable ->
         Test.fuzz
             (Fuzz.constant (\structure -> { structure = structure })
                 |> Fuzz.andMap fuzzer.structure
             )
-            "mapIdentityIsIdentity"
+            "setter_identity"
             (\{ structure } ->
-                (structure
-                    |> Accessor.over settable identity
-                )
+                over settable identity structure
                     |> Expect.equal structure
             )
 
 
-mapMultipleIsMapComposition :
-    { structure : Fuzzer structure
-    , focusAlter : Fuzzer (Alter focus)
+setter_composition :
+    { m
+        | structure : Fuzzer structure
+        , focusAlter : Fuzzer (Alter focus)
     }
     -> TraversalConsume structure focus focusView
     -> Test
-mapMultipleIsMapComposition fuzzer =
+setter_composition fuzzer =
     \settable ->
         Test.fuzz
             (Fuzz.constant
@@ -329,26 +311,25 @@ mapMultipleIsMapComposition fuzzer =
                 |> Fuzz.andMap fuzzer.focusAlter
                 |> Fuzz.andMap fuzzer.focusAlter
             )
-            "mapMultipleIsMapComposition"
+            "setter_composition"
             (\{ structure, alter0, alter1 } ->
                 (structure
-                    |> Accessor.over settable alter0
-                    |> Accessor.over settable alter1
+                    |> over settable alter0
+                    |> over settable alter1
                 )
                     |> Expect.equal
-                        (structure
-                            |> Accessor.over settable (alter0 >> alter1)
-                        )
+                        (over settable (alter0 >> alter1) structure)
             )
 
 
-setMultipleIsSetLast :
-    { structure : Fuzzer structure
-    , focus : Fuzzer focus
+setter_set_set :
+    { m
+        | structure : Fuzzer structure
+        , focus : Fuzzer focus
     }
     -> TraversalConsume structure focus focusView
     -> Test
-setMultipleIsSetLast fuzzer =
+setter_set_set fuzzer =
     \settable ->
         Test.fuzz
             (Fuzz.constant
@@ -362,16 +343,14 @@ setMultipleIsSetLast fuzzer =
                 |> Fuzz.andMap fuzzer.focus
                 |> Fuzz.andMap fuzzer.focus
             )
-            "setMultipleIsSetLast"
+            "setter_set_set"
             (\{ structure, focus0, focus1 } ->
                 (structure
-                    |> Accessor.over settable (\_ -> focus0)
-                    |> Accessor.over settable (\_ -> focus1)
+                    |> set settable focus0
+                    |> set settable focus1
                 )
                     |> Expect.equal
-                        (structure
-                            |> Accessor.over settable (\_ -> focus1)
-                        )
+                        (set settable focus1 structure)
             )
 
 
