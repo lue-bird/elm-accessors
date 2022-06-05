@@ -55,9 +55,9 @@ valueEach :
         valueFocusView
 valueEach =
     traversal
-        { description = "value each"
-        , view = \valueView -> Dict.map (\_ -> valueView)
-        , map = \valueMap -> Dict.map (\_ -> valueMap)
+        { name = "value each"
+        , get = \valueView -> Dict.map (\_ -> valueView)
+        , over = \valueMap -> Dict.map (\_ -> valueMap)
         }
 
 
@@ -127,14 +127,14 @@ valueKeyEach :
         valueFocusView
 valueKeyEach =
     traversal
-        { description = "{key,value} each"
-        , view =
+        { name = "{key,value} each"
+        , get =
             \valueKeyView ->
                 Dict.map
                     (\key value ->
                         { key = key, value = value } |> valueKeyView
                     )
-        , map =
+        , over =
             \valueKeyMap ->
                 Dict.map
                     (\key value ->
@@ -183,8 +183,8 @@ valueAt :
 valueAt ( key, keyToString ) =
     Accessor.lens
         { view = Dict.get key
-        , map = Dict.update key
-        , description = "value at " ++ (key |> keyToString)
+        , over = Dict.update key
+        , name = "value at " ++ (key |> keyToString)
         }
 
 

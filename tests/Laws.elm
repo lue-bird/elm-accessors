@@ -1,6 +1,6 @@
 module Laws exposing (tests)
 
-import Accessor exposing (Lens, TraversalConsume, mapOver, onJust, view)
+import Accessor exposing (Lens, TraversalConsume, get, onJust, over)
 import Array exposing (Array)
 import Array.Accessor as Array
 import Dict exposing (Dict)
@@ -19,16 +19,15 @@ tests : Test
 tests =
     Test.describe
         "traversal laws"
-        [ prismExamples
+        [ optionalExamples
         , settableExamples
         , lensExamples
         , test
             "description"
             (\() ->
                 (Record.info << Record.stuff << List.element ( Up, 7 ) << Record.name)
-                    |> Accessor.description
-                    |> Accessor.descriptionToString
-                    |> Expect.equal ".info>.stuff>element ↑7>.name"
+                    |> Accessor.name
+                    |> Expect.equal ".info.stuffelement ↑7.name"
             )
         ]
 
@@ -74,7 +73,7 @@ isLens :
 isLens fuzzer =
     \settable ->
         Test.describe
-            (settable |> Accessor.description |> Accessor.descriptionToString)
+            (Accessor.name settable)
             [ settable |> isSettable fuzzer
 
             -- there's Traversal laws in here somewhere but not sure they're expressible in elm
@@ -100,9 +99,9 @@ lensSetAsItsFocus fuzzer =
             "lensSetAsItsFocus"
             (\{ structure } ->
                 (structure
-                    |> Accessor.mapOver lens_
+                    |> Accessor.over lens_
                         (\_ ->
-                            structure |> Accessor.view lens_
+                            structure |> Accessor.get lens_
                         )
                 )
                     |> Expect.equal structure
@@ -130,8 +129,8 @@ lensSetFocusViewIsFocus fuzzer =
             "lensSetFocusViewIsFocus"
             (\{ structure, focus } ->
                 (structure
-                    |> Accessor.mapOver lens_ (\_ -> focus)
-                    |> Accessor.view lens_
+                    |> Accessor.over lens_ (\_ -> focus)
+                    |> Accessor.get lens_
                 )
                     |> Expect.equal focus
             )
@@ -143,10 +142,10 @@ type alias OptionalConsume structure focus =
     TraversalConsume structure focus (Maybe focus)
 
 
-prismExamples : Test
-prismExamples =
+optionalExamples : Test
+optionalExamples =
     Test.describe
-        "prism"
+        "optional"
         [ (Record.email << onJust)
             |> isOptional
                 { structure = personFuzzer
@@ -172,7 +171,7 @@ isOptional :
 isOptional fuzzer =
     \optionalToTest ->
         Test.describe
-            ("isOptional " ++ (optionalToTest |> Accessor.description |> Accessor.descriptionToString))
+            ("isOptional " ++ Accessor.name optionalToTest)
             [ optionalToTest
                 |> setJustViewIsIdentity
                     { structure = fuzzer.structure }
@@ -189,7 +188,7 @@ setFocusViewIsFocus :
     -> OptionalConsume structure focus
     -> Test
 setFocusViewIsFocus fuzzer =
-    \prism ->
+    \optional ->
         Test.fuzz
             (Fuzz.constant (\structure focus -> { structure = structure, focus = focus })
                 |> Fuzz.andMap fuzzer.structure
@@ -198,10 +197,10 @@ setFocusViewIsFocus fuzzer =
             "setFocusViewIsFocus"
             (\{ structure, focus } ->
                 structure
-                    |> mapOver prism (\_ -> focus)
-                    |> view prism
+                    |> over optional (\_ -> focus)
+                    |> get optional
                     |> Expect.equal
-                        (structure |> view prism |> Maybe.map (\_ -> focus))
+                        (structure |> get optional |> Maybe.map (\_ -> focus))
             )
 
 
@@ -210,20 +209,20 @@ setJustViewIsIdentity :
     -> OptionalConsume structure focus
     -> Test
 setJustViewIsIdentity fuzzer =
-    \prism ->
+    \optional ->
         Test.fuzz
             (Fuzz.constant (\structure -> { structure = structure })
                 |> Fuzz.andMap fuzzer.structure
             )
             "setJustViewIsIdentity"
             (\{ structure } ->
-                case structure |> view prism of
+                case structure |> get optional of
                     Nothing ->
                         Expect.pass
 
                     Just focusView ->
                         structure
-                            |> mapOver prism (\_ -> focusView)
+                            |> over optional (\_ -> focusView)
                             |> Expect.equal structure
             )
 
@@ -275,7 +274,7 @@ isSettable :
 isSettable fuzzer =
     \settable ->
         Test.describe
-            ("isSettable " ++ (settable |> Accessor.description |> Accessor.descriptionToString))
+            ("isSettable " ++ Accessor.name settable)
             [ settable
                 |> mapIdentityIsIdentity { structure = fuzzer.structure }
             , settable
@@ -304,7 +303,7 @@ mapIdentityIsIdentity fuzzer =
             "mapIdentityIsIdentity"
             (\{ structure } ->
                 (structure
-                    |> Accessor.mapOver settable identity
+                    |> Accessor.over settable identity
                 )
                     |> Expect.equal structure
             )
@@ -333,12 +332,12 @@ mapMultipleIsMapComposition fuzzer =
             "mapMultipleIsMapComposition"
             (\{ structure, alter0, alter1 } ->
                 (structure
-                    |> Accessor.mapOver settable alter0
-                    |> Accessor.mapOver settable alter1
+                    |> Accessor.over settable alter0
+                    |> Accessor.over settable alter1
                 )
                     |> Expect.equal
                         (structure
-                            |> Accessor.mapOver settable (alter0 >> alter1)
+                            |> Accessor.over settable (alter0 >> alter1)
                         )
             )
 
@@ -366,12 +365,12 @@ setMultipleIsSetLast fuzzer =
             "setMultipleIsSetLast"
             (\{ structure, focus0, focus1 } ->
                 (structure
-                    |> Accessor.mapOver settable (\_ -> focus0)
-                    |> Accessor.mapOver settable (\_ -> focus1)
+                    |> Accessor.over settable (\_ -> focus0)
+                    |> Accessor.over settable (\_ -> focus1)
                 )
                     |> Expect.equal
                         (structure
-                            |> Accessor.mapOver settable (\_ -> focus1)
+                            |> Accessor.over settable (\_ -> focus1)
                         )
             )
 

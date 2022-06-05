@@ -32,9 +32,9 @@ import Accessor exposing (Lens, lens)
 first : Lens ( partFirst, partSecond ) partFirst partFirstFocus partFirstFocusView
 first =
     lens
-        { description = "first"
+        { name = "first"
         , view = Tuple.first
-        , map = Tuple.mapFirst
+        , over = Tuple.mapFirst
         }
 
 
@@ -63,7 +63,7 @@ first =
 second : Lens ( partFirst, partSecond ) partSecond partSecondFocus partSecondFocusView
 second =
     lens
-        { description = "second"
+        { name = "second"
         , view = Tuple.second
-        , map = Tuple.mapSecond
+        , over = Tuple.mapSecond
         }

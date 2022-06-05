@@ -5,9 +5,9 @@ import Accessor exposing (Lens)
 
 makeOneToOne_ fieldName view alter =
     Accessor.lens
-        { description = fieldName
+        { name = fieldName
         , view = view
-        , map = alter
+        , over = alter
         }
 
 

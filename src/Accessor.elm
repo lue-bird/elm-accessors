@@ -3,11 +3,11 @@ module Accessor exposing
     , Lens, Optional, Traversal
     , TraversalConsume
     , lens, optional, traversal
-    , view, is
-    , Description(..), description, descriptionToString
-    , mapOver, mapOverLazy
+    , get, is
+    , over
     , onJust, valueElseOnNothing
     , onOk, onErr
+    , name, over_
     )
 
 {-| Relations are interfaces to document the relation between two data
@@ -25,20 +25,19 @@ structures without handling the packing and the unpacking.
 @docs TraversalConsume
 
 
-## create
+## Builders
 
 @docs lens, optional, traversal
 
 
 ## scan
 
-@docs view, is
-@docs Description, description, descriptionToString
+@docs get, is
 
 
 ## nested map
 
-@docs mapOver, mapOverLazy
+@docs over
 
 
 ## for `Maybe`
@@ -67,9 +66,9 @@ Therefore, `focusView` can be a simple wrapper which, in that example, will be `
 -}
 type Relation structure focus focusView
     = Relation
-        { view : structure -> focusView
-        , map : (focus -> focus) -> (structure -> structure)
-        , description : List Description
+        { get : structure -> focusView
+        , over : (focus -> focus) -> (structure -> structure)
+        , name : String
         }
 
 
@@ -171,15 +170,21 @@ and returns the value accessed by that combinator.
     --→ "filling"
 
 -}
-view :
+get :
     TraversalConsume structure focus focusView
     -> (structure -> focusView)
-view accessor =
+get accessor =
     let
         (Relation relation) =
-            accessor same
+            accessor
+                (Relation
+                    { get = identity
+                    , over = void
+                    , name = ""
+                    }
+                )
     in
-    relation.view
+    relation.get
 
 
 {-| Used with an Optional, think of `!!` boolean coercion in Javascript except type-safe.
@@ -206,63 +211,29 @@ is :
     -> (structure -> Bool)
 is optional_ =
     \structure ->
-        (structure |> view optional_) /= Nothing
+        (structure |> get optional_) /= Nothing
 
 
-{-| Each `Relation` has a [`description`](#description) to get unique names out of compositions of accessors.
-This is useful when you want type-safe keys for a `Dict` but you still want to use the `elm/core` implementation.
+void : a -> b
+void super =
+    void super
+
+
+{-| This function gives the name of the function as a string...
 -}
-description :
-    TraversalConsume structure focus focusView
-    -> List Description
-description accessor =
+name : Traversal a b c d e -> String
+name accessor =
     let
         (Relation relation) =
-            accessor same
-    in
-    relation.description
-
-
-type Description
-    = Identity
-    | FocusDeeper String
-
-
-{-| This function gives the name of the composition of accessors as a string.
-This is useful when you want to use type safe composition of functions as an identifier
-similar to the way you'd use a Sum type's constructors to key a dictionary for a form.
-
-    import Accessors exposing (name)
-    import Dict.Accessor as Dict
-    import Record
-
-    name (Record.email << onJust << Record.info << Dict.valueAtString "subject")
-    --> ".email>Maybe.Just>.info>Dict value at \"subject\""
-
--}
-descriptionToString : List Description -> String
-descriptionToString =
-    \descriptionsNested ->
-        descriptionsNested
-            |> List.filterMap
-                (\stepDescription ->
-                    case stepDescription of
-                        Identity ->
-                            Nothing
-
-                        FocusDeeper focusDeeper ->
-                            focusDeeper |> Just
+            accessor
+                (Relation
+                    { get = void
+                    , over = void
+                    , name = ""
+                    }
                 )
-            |> String.join ">"
-
-
-same : Relation structure structure structure
-same =
-    Relation
-        { description = [ Identity ]
-        , view = identity
-        , map = identity
-        }
+    in
+    relation.name
 
 
 {-| Create a 1:1 [`Lens`](#Lens) from
@@ -283,25 +254,20 @@ foo =
 
 -}
 lens :
-    { description : String
+    { name : String
     , view : structure -> focus
-    , map : (focus -> focus) -> (structure -> structure)
+    , over : (focus -> focus) -> (structure -> structure)
     }
     -> Lens structure focus focusFocus focusFocusView
-lens focus =
-    \(Relation deeperFocus) ->
-        Relation
-            { view =
-                \structure -> structure |> focus.view |> deeperFocus.view
-            , map =
-                \change -> focus.map (deeperFocus.map change)
-            , description =
-                deeperFocus.description
-                    |> (::) (FocusDeeper focus.description)
-            }
+lens focus (Relation sub) =
+    Relation
+        { get = focus.view >> sub.get
+        , over = \change -> focus.over (sub.over change)
+        , name = focus.name ++ sub.name
+        }
 
 
-{-| Create a 1:Maybe [`Optional`](#Prism) from
+{-| Create a 1:Maybe [`Optional`](#Optional) from
 
   - describing the structure and the targeted focus
   - a function to [access](#view) the structure's targeted `Maybe` focus
@@ -310,7 +276,7 @@ lens focus =
 ```
 onOk : Optional (Result error value) value focusFocus focusFocusView
 onOk =
-    prism
+    optional
         { description = { structure = "Result", focus = "Ok" }
         , view = Result.toMaybe
         , map = Result.map
@@ -319,22 +285,17 @@ onOk =
 
 -}
 optional :
-    { description : String
+    { name : String
     , view : structure -> Maybe focus
     , map : (focus -> focus) -> (structure -> structure)
     }
     -> Optional structure focus focusFocus focusFocusView
-optional focus =
-    \(Relation deeperFocus) ->
-        Relation
-            { view =
-                \structure -> structure |> focus.view |> Maybe.map deeperFocus.view
-            , map =
-                \change -> focus.map (deeperFocus.map change)
-            , description =
-                deeperFocus.description
-                    |> (::) (FocusDeeper focus.description)
-            }
+optional focus (Relation sub) =
+    Relation
+        { get = focus.view >> Maybe.map sub.get
+        , over = \change -> focus.map (sub.over change)
+        , name = focus.name ++ sub.name
+        }
 
 
 {-| Create a 1:n traversal [`Accessor`](#Accessor) from
@@ -361,26 +322,17 @@ elementEach =
 
 -}
 traversal :
-    { view : (focus -> focusFocusView) -> (structure -> focusView)
-    , map : (focus -> focus) -> (structure -> structure)
-    , description : String
+    { get : (focus -> focusFocusView) -> (structure -> focusView)
+    , over : (focus -> focus) -> (structure -> structure)
+    , name : String
     }
     -> Traversal structure focus focusView focusFocus focusFocusView
-traversal focus =
-    \(Relation deeperFocus) ->
-        Relation
-            { view =
-                focus.view deeperFocus.view
-            , map =
-                \change ->
-                    focus.map
-                        (deeperFocus.map
-                            change
-                        )
-            , description =
-                deeperFocus.description
-                    |> (::) (FocusDeeper focus.description)
-            }
+traversal focus (Relation sub) =
+    Relation
+        { get = focus.get sub.get
+        , over = \change -> focus.over (sub.over change)
+        , name = focus.name ++ sub.name
+        }
 
 
 {-| The map function takes:
@@ -397,18 +349,24 @@ the function to the existing value.
     --> { foo = { qux = 1 } }
 
 -}
-mapOver :
+over :
     TraversalConsume structure focus focusView
     ->
         ((focus -> focus)
          -> (structure -> structure)
         )
-mapOver accessor change =
+over accessor change =
     let
         (Relation relation) =
-            accessor same
+            accessor
+                (Relation
+                    { get = void
+                    , over = \fn -> fn
+                    , name = ""
+                    }
+                )
     in
-    relation.map change
+    relation.over change
 
 
 {-| Lazy version of [`mapOver`](#mapOver).
@@ -431,21 +389,21 @@ The structure is changed only if the new field is different from the old one.
     mapLazy (Record.foo << Record.qux) ((+) 1) myRecord
 
 -}
-mapOverLazy :
+over_ :
     TraversalConsume structure focus focusView
     ->
         ((focus -> focus)
          -> (structure -> structure)
         )
-mapOverLazy accessor change =
+over_ accessor change =
     \structure ->
         let
             changedStructure =
-                structure |> mapOver accessor change
+                structure |> over accessor change
         in
         if
-            (changedStructure |> view accessor)
-                /= (structure |> view accessor)
+            (changedStructure |> get accessor)
+                /= (structure |> get accessor)
         then
             changedStructure
 
@@ -484,9 +442,9 @@ mapOverLazy accessor change =
 onJust : Optional (Maybe value) value focusFocus valueView
 onJust =
     traversal
-        { description = "Just"
-        , view = Maybe.map
-        , map = Maybe.map
+        { name = "Just"
+        , get = Maybe.map
+        , over = Maybe.map
         }
 
 
@@ -532,14 +490,14 @@ valueElseOnNothing :
     -> Traversal (Maybe value) value focusFocusView focusFocus focusFocusView
 valueElseOnNothing fallback =
     traversal
-        { description = "Nothing"
-        , view =
+        { name = "Nothing"
+        , get =
             \valueMap ->
                 \maybe ->
                     maybe
                         |> Maybe.withDefault fallback
                         |> valueMap
-        , map = Maybe.map
+        , over = Maybe.map
         }
 
 
@@ -574,7 +532,7 @@ valueElseOnNothing fallback =
 onOk : Optional (Result error value) value focusFocus focusFocusView
 onOk =
     optional
-        { description = "Ok"
+        { name = "Ok"
         , view = Result.toMaybe
         , map = Result.map
         }
@@ -607,7 +565,7 @@ onOk =
 onErr : Optional (Result error value) error focusFocus focusFocusView
 onErr =
     optional
-        { description = "Err"
+        { name = "Err"
         , view =
             \result ->
                 case result of

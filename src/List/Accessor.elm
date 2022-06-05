@@ -42,9 +42,9 @@ elementEach :
         elementFocusView
 elementEach =
     traversal
-        { description = "element each"
-        , view = List.map
-        , map = List.map
+        { name = "element each"
+        , get = List.map
+        , over = List.map
         }
 
 
@@ -100,14 +100,14 @@ elementIndexEach :
         elementView
 elementIndexEach =
     traversal
-        { description = "{element,index} each"
-        , view =
+        { name = "{element,index} each"
+        , get =
             \elementAlter ->
                 List.indexedMap
                     (\index element_ ->
                         { element = element_, index = index } |> elementAlter
                     )
-        , map =
+        , over =
             \elementAlter ->
                 List.indexedMap
                     (\index element_ ->
@@ -147,7 +147,7 @@ element :
     -> Optional (List element) element focusFocus focusFocusView
 element focusLocation =
     Accessor.optional
-        { description =
+        { name =
             "element " ++ (focusLocation |> Linear.locationToString)
         , view =
             \list ->

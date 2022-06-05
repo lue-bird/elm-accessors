@@ -6,7 +6,7 @@ module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
 
 -}
 
-import Accessor exposing (Lens, Traversal, mapOver, view)
+import Accessor exposing (Lens, Traversal, over, get)
 import SelectList exposing (SelectList)
 
 
@@ -38,9 +38,9 @@ elementEach :
         elementFocusView
 elementEach =
     Accessor.traversal
-        { view = SelectList.map
-        , map = SelectList.map
-        , description = "element each"
+        { get = SelectList.map
+        , over = SelectList.map
+        , name = "element each"
         }
 
 
@@ -106,8 +106,8 @@ elementIndexEach :
         elementFocusView
 elementIndexEach =
     Accessor.traversal
-        { description = "{element,index} each"
-        , view =
+        { name = "{element,index} each"
+        , get =
             \alter selectList ->
                 let
                     ( before, current, after ) =
@@ -130,7 +130,7 @@ elementIndexEach =
                         )
                         after
                     )
-        , map =
+        , over =
             \map selectList ->
                 let
                     ( before, current, after ) =
@@ -190,6 +190,6 @@ selected : Lens (SelectList element) element elementFocus elementFocusView
 selected =
     Accessor.lens
         { view = SelectList.selected
-        , map = SelectList.updateSelected
-        , description = "selected"
+        , over = SelectList.updateSelected
+        , name = "selected"
         }
