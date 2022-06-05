@@ -5,14 +5,14 @@ import Array exposing (Array)
 import Array.Accessor as Array
 import Dict exposing (Dict)
 import Dict.Accessor as Dict
-import Expect exposing (Expectation)
+import Expect
 import Fuzz exposing (Fuzzer)
 import Linear exposing (DirectionLinear(..))
 import List.Accessor as List
 import Maybe exposing (Maybe)
 import Record
 import String
-import Test exposing (Test, describe, test)
+import Test exposing (Test, test)
 
 
 tests : Test
@@ -22,8 +22,7 @@ tests =
         [ optionalExamples
         , settableExamples
         , lensExamples
-        , test
-            "description"
+        , test "name"
             (\() ->
                 (Record.info << Record.stuff << List.element ( Up, 7 ) << Record.name)
                     |> name
@@ -232,31 +231,29 @@ isSettable :
     }
     -> Traversal_ structure focus focusView
     -> Test
-isSettable fuzzer =
-    \settable ->
-        Test.describe
-            ("isSettable " ++ name settable)
-            [ setter_identity fuzzer settable
-            , setter_composition fuzzer settable
-            , setter_set_set fuzzer settable
-            ]
+isSettable fuzzer settable =
+    Test.describe
+        ("isSettable " ++ name settable)
+        [ setter_identity fuzzer settable
+        , setter_composition fuzzer settable
+        , setter_set_set fuzzer settable
+        ]
 
 
 setter_identity :
     { m | structure : Fuzzer structure }
     -> Traversal_ structure focus focusView
     -> Test
-setter_identity fuzzer =
-    \settable ->
-        Test.fuzz
-            (Fuzz.constant (\structure -> { structure = structure })
-                |> Fuzz.andMap fuzzer.structure
-            )
-            "setter_identity"
-            (\{ structure } ->
-                over settable identity structure
-                    |> Expect.equal structure
-            )
+setter_identity fuzzer settable =
+    Test.fuzz
+        (Fuzz.constant (\structure -> { structure = structure })
+            |> Fuzz.andMap fuzzer.structure
+        )
+        "setter_identity"
+        (\{ structure } ->
+            over settable identity structure
+                |> Expect.equal structure
+        )
 
 
 setter_composition :
@@ -266,29 +263,28 @@ setter_composition :
     }
     -> Traversal_ structure focus focusView
     -> Test
-setter_composition fuzzer =
-    \settable ->
-        Test.fuzz
-            (Fuzz.constant
-                (\structure alter0 alter1 ->
-                    { structure = structure
-                    , alter0 = alter0
-                    , alter1 = alter1
-                    }
-                )
-                |> Fuzz.andMap fuzzer.structure
-                |> Fuzz.andMap fuzzer.focusAlter
-                |> Fuzz.andMap fuzzer.focusAlter
+setter_composition fuzzer settable =
+    Test.fuzz
+        (Fuzz.constant
+            (\structure alter0 alter1 ->
+                { structure = structure
+                , alter0 = alter0
+                , alter1 = alter1
+                }
             )
-            "setter_composition"
-            (\{ structure, alter0, alter1 } ->
-                (structure
-                    |> over settable alter0
-                    |> over settable alter1
-                )
-                    |> Expect.equal
-                        (over settable (alter0 >> alter1) structure)
+            |> Fuzz.andMap fuzzer.structure
+            |> Fuzz.andMap fuzzer.focusAlter
+            |> Fuzz.andMap fuzzer.focusAlter
+        )
+        "setter_composition"
+        (\{ structure, alter0, alter1 } ->
+            (structure
+                |> over settable alter0
+                |> over settable alter1
             )
+                |> Expect.equal
+                    (over settable (alter0 >> alter1) structure)
+        )
 
 
 setter_set_set :
@@ -298,29 +294,28 @@ setter_set_set :
     }
     -> Traversal_ structure focus focusView
     -> Test
-setter_set_set fuzzer =
-    \settable ->
-        Test.fuzz
-            (Fuzz.constant
-                (\structure focus0 focus1 ->
-                    { structure = structure
-                    , focus0 = focus0
-                    , focus1 = focus1
-                    }
-                )
-                |> Fuzz.andMap fuzzer.structure
-                |> Fuzz.andMap fuzzer.focus
-                |> Fuzz.andMap fuzzer.focus
+setter_set_set fuzzer settable =
+    Test.fuzz
+        (Fuzz.constant
+            (\structure focus0 focus1 ->
+                { structure = structure
+                , focus0 = focus0
+                , focus1 = focus1
+                }
             )
-            "setter_set_set"
-            (\{ structure, focus0, focus1 } ->
-                (structure
-                    |> set settable focus0
-                    |> set settable focus1
-                )
-                    |> Expect.equal
-                        (set settable focus1 structure)
+            |> Fuzz.andMap fuzzer.structure
+            |> Fuzz.andMap fuzzer.focus
+            |> Fuzz.andMap fuzzer.focus
+        )
+        "setter_set_set"
+        (\{ structure, focus0, focus1 } ->
+            (structure
+                |> set settable focus0
+                |> set settable focus1
             )
+                |> Expect.equal
+                    (set settable focus1 structure)
+        )
 
 
 
@@ -366,10 +361,7 @@ maybeStringAlterFuzzer : Fuzzer (Alter (Maybe String))
 maybeStringAlterFuzzer =
     Fuzz.oneOf
         (List.map Fuzz.constant
-            [ \maybe ->
-                maybe
-                    |> Maybe.andThen String.toInt
-                    |> Maybe.map String.fromInt
+            [ Maybe.andThen String.toInt >> Maybe.map String.fromInt
             ]
         )
 
@@ -377,32 +369,20 @@ maybeStringAlterFuzzer =
 stringAlterFuzzer : Fuzzer (Alter String)
 stringAlterFuzzer =
     Fuzz.oneOf
-        [ Fuzz.map String.append
-            Fuzz.string
-        , Fuzz.map (\s -> String.append s << String.reverse)
-            Fuzz.string
-        , Fuzz.map (\prefix -> String.append prefix << String.toUpper)
-            Fuzz.string
-        , Fuzz.map (\prefix -> String.append prefix << String.toLower)
-            Fuzz.string
-
-        -- , Fuzz.map String.reverse string
-        -- , Fuzz.constant String.toUpper
-        -- , Fuzz.constant String.toLower
+        [ Fuzz.map String.append Fuzz.string
+        , Fuzz.map (\s -> String.append s << String.reverse) Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toUpper) Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toLower) Fuzz.string
         ]
 
 
 intAlter : Fuzzer (Alter Int)
 intAlter =
     Fuzz.oneOf
-        [ Fuzz.map (+)
-            Fuzz.int
-        , Fuzz.map (-)
-            Fuzz.int
-        , Fuzz.map (*)
-            Fuzz.int
-        , Fuzz.map (//)
-            Fuzz.int
+        [ Fuzz.map (+) Fuzz.int
+        , Fuzz.map (-) Fuzz.int
+        , Fuzz.map (*) Fuzz.int
+        , Fuzz.map (//) Fuzz.int
         ]
 
 
