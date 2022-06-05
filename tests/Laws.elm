@@ -154,23 +154,16 @@ isOptional :
     }
     -> Optional_ structure focus
     -> Test
-isOptional fuzzer =
-    \optionalToTest ->
-        Test.describe
-            ("isOptional " ++ name optionalToTest)
-            [ optionalToTest
-                |> setJustViewIsIdentity
-                    { structure = fuzzer.structure }
-            , optionalToTest
-                |> setFocusViewIsFocus
-                    { structure = fuzzer.structure
-                    , focus = fuzzer.focus
-                    }
-            ]
+isOptional fuzzer optionalToTest =
+    Test.describe
+        ("isOptional " ++ name optionalToTest)
+        [ optional_identity fuzzer optionalToTest
+        , setFocusViewIsFocus fuzzer optionalToTest
+        ]
 
 
 setFocusViewIsFocus :
-    { structure : Fuzzer structure, focus : Fuzzer focus }
+    { m | structure : Fuzzer structure, focus : Fuzzer focus }
     -> Optional_ structure focus
     -> Test
 setFocusViewIsFocus fuzzer =
@@ -190,63 +183,45 @@ setFocusViewIsFocus fuzzer =
             )
 
 
-setJustViewIsIdentity :
-    { structure : Fuzzer structure }
+optional_identity :
+    { m | structure : Fuzzer structure }
     -> Optional_ structure focus
     -> Test
-setJustViewIsIdentity fuzzer =
-    \optional ->
-        Test.fuzz
-            (Fuzz.constant (\structure -> { structure = structure })
-                |> Fuzz.andMap fuzzer.structure
-            )
-            "setJustViewIsIdentity"
-            (\{ structure } ->
-                case structure |> get optional of
-                    Nothing ->
-                        Expect.pass
+optional_identity fuzzer optional =
+    Test.fuzz
+        (Fuzz.constant (\structure -> { structure = structure })
+            |> Fuzz.andMap fuzzer.structure
+        )
+        "optional_identity"
+        (\{ structure } ->
+            case get optional structure of
+                Just focus ->
+                    structure
+                        |> set optional focus
+                        |> Expect.equal structure
 
-                    Just focusView ->
-                        structure
-                            |> set optional focusView
-                            |> Expect.equal structure
-            )
+                Nothing ->
+                    Expect.pass
+        )
 
 
 settableExamples : Test
 settableExamples =
+    let
+        check =
+            isSettable
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+    in
     Test.describe
         "settable"
-        [ (Record.email << onJust)
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.stuff << List.element ( Up, 0 ))
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.stuff << List.elementEach)
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.things << Array.element ( Up, 0 ))
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.things << Array.elementEach)
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
+        [ check (Record.email << onJust)
+        , check (Record.stuff << List.element ( Up, 0 ))
+        , check (Record.stuff << List.elementEach)
+        , check (Record.things << Array.element ( Up, 0 ))
+        , check (Record.things << Array.elementEach)
         ]
 
 
