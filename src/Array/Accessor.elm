@@ -6,7 +6,7 @@ module Array.Accessor exposing (elementEach, elementIndexEach, element)
 
 -}
 
-import Accessor exposing (Prism, Traversal, lens, onJust, prism, traversal)
+import Accessor exposing (Optional, Traversal, lens, onJust, optional, traversal)
 import Array exposing (Array)
 import Array.Linear
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
@@ -155,9 +155,9 @@ In terms of accessors, think of Dicts as records where each field is a Maybe.
 -}
 element :
     ( DirectionLinear, Int )
-    -> Prism (Array element) element focusFocus focusFocusView
+    -> Optional (Array element) element focusFocus focusFocusView
 element location =
-    prism
+    optional
         { description =
             "element " ++ (location |> Linear.locationToString)
         , view =

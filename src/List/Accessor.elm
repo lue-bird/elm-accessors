@@ -6,7 +6,7 @@ module List.Accessor exposing (element, elementEach, elementIndexEach)
 
 -}
 
-import Accessor exposing (Lens, Prism, Traversal, lens, onJust, traversal)
+import Accessor exposing (Lens, Optional, Traversal, lens, onJust, traversal)
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
 import Linear.Extra as Linear
 import List.Linear
@@ -144,9 +144,9 @@ elementIndexEach =
 -}
 element :
     ( DirectionLinear, Int )
-    -> Prism (List element) element focusFocus focusFocusView
+    -> Optional (List element) element focusFocus focusFocusView
 element focusLocation =
-    Accessor.prism
+    Accessor.optional
         { description =
             "element " ++ (focusLocation |> Linear.locationToString)
         , view =

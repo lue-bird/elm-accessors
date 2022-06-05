@@ -139,7 +139,7 @@ lensSetFocusViewIsFocus fuzzer =
 
 {-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
 -}
-type alias PrismConsume structure focus =
+type alias OptionalConsume structure focus =
     TraversalConsume structure focus (Maybe focus)
 
 
@@ -148,13 +148,13 @@ prismExamples =
     Test.describe
         "prism"
         [ (Record.email << onJust)
-            |> isPrism
+            |> isOptional
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
         , (Record.stuff << List.element ( Up, 0 ))
-            |> isPrism
+            |> isOptional
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
@@ -162,21 +162,21 @@ prismExamples =
         ]
 
 
-isPrism :
+isOptional :
     { structure : Fuzzer structure
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> PrismConsume structure focus
+    -> OptionalConsume structure focus
     -> Test
-isPrism fuzzer =
-    \prismToTest ->
+isOptional fuzzer =
+    \optionalToTest ->
         Test.describe
-            ("isPrism " ++ (prismToTest |> Accessor.description |> Accessor.descriptionToString))
-            [ prismToTest
+            ("isOptional " ++ (optionalToTest |> Accessor.description |> Accessor.descriptionToString))
+            [ optionalToTest
                 |> setJustViewIsIdentity
                     { structure = fuzzer.structure }
-            , prismToTest
+            , optionalToTest
                 |> setFocusViewIsFocus
                     { structure = fuzzer.structure
                     , focus = fuzzer.focus
@@ -186,7 +186,7 @@ isPrism fuzzer =
 
 setFocusViewIsFocus :
     { structure : Fuzzer structure, focus : Fuzzer focus }
-    -> PrismConsume structure focus
+    -> OptionalConsume structure focus
     -> Test
 setFocusViewIsFocus fuzzer =
     \prism ->
@@ -207,7 +207,7 @@ setFocusViewIsFocus fuzzer =
 
 setJustViewIsIdentity :
     { structure : Fuzzer structure }
-    -> PrismConsume structure focus
+    -> OptionalConsume structure focus
     -> Test
 setJustViewIsIdentity fuzzer =
     \prism ->

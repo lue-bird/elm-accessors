@@ -1,8 +1,8 @@
 module Accessor exposing
     ( Relation
-    , Lens, Prism, Traversal
+    , Lens, Optional, Traversal
     , TraversalConsume
-    , lens, prism, traversal
+    , lens, optional, traversal
     , view, is
     , Description(..), description, descriptionToString
     , mapOver, mapOverLazy
@@ -21,13 +21,13 @@ composable, which means you can build a chain of relations to manipulate nested
 structures without handling the packing and the unpacking.
 
 @docs Relation
-@docs Lens, Prism, Traversal
+@docs Lens, Optional, Traversal
 @docs TraversalConsume
 
 
 ## create
 
-@docs lens, prism, traversal
+@docs lens, optional, traversal
 
 
 ## scan
@@ -77,7 +77,7 @@ type Relation structure focus focusView
 
   - [`Lens`](#Lens): 1:1
       - e.g. the selected element in a `SelectList`
-  - [`Prism`](#Prism): 1:Maybe
+  - [`Optional`](#Optional): 1:Maybe
       - e.g. the value of one of many variants
   - 1:n
       - e.g. each array element
@@ -101,7 +101,7 @@ Intuitively, a "Lens" type could look like
         , replace : focus -> (structure -> structure)
         }
 
-Unfortunately, we then need `composeLens`, `composeIso`, `composePrism` functions.
+Unfortunately, we then need `composeLens`, `composeIso`, `composeOptional` functions.
 
 Defining "Lens" in terms of `Relation`s:
 
@@ -125,7 +125,7 @@ type alias Lens structure focus focusFocus focusFocusView =
   - [`onErr`](#onErr)
 
 -}
-type alias Prism structure focus focusFocus focusFocusView =
+type alias Optional structure focus focusFocus focusFocusView =
     Traversal structure focus (Maybe focusFocusView) focusFocus focusFocusView
 
 
@@ -182,7 +182,7 @@ view accessor =
     relation.view
 
 
-{-| Used with a Prism, think of `!!` boolean coercion in Javascript except type-safe.
+{-| Used with an Optional, think of `!!` boolean coercion in Javascript except type-safe.
 
     Just 1234
         |> is try
@@ -204,9 +204,9 @@ view accessor =
 is :
     TraversalConsume structure value (Maybe valueView)
     -> (structure -> Bool)
-is prism_ =
+is optional_ =
     \structure ->
-        (structure |> view prism_) /= Nothing
+        (structure |> view optional_) /= Nothing
 
 
 {-| Each `Relation` has a [`description`](#description) to get unique names out of compositions of accessors.
@@ -301,14 +301,14 @@ lens focus =
             }
 
 
-{-| Create a 1:Maybe [`Prism`](#Prism) from
+{-| Create a 1:Maybe [`Optional`](#Prism) from
 
   - describing the structure and the targeted focus
   - a function to [access](#view) the structure's targeted `Maybe` focus
   - a function on the structure for mapping the targeted focus
 
 ```
-onOk : Prism (Result error value) value focusFocus focusFocusView
+onOk : Optional (Result error value) value focusFocus focusFocusView
 onOk =
     prism
         { description = { structure = "Result", focus = "Ok" }
@@ -318,13 +318,13 @@ onOk =
 ```
 
 -}
-prism :
+optional :
     { description : String
     , view : structure -> Maybe focus
     , map : (focus -> focus) -> (structure -> structure)
     }
-    -> Prism structure focus focusFocus focusFocusView
-prism focus =
+    -> Optional structure focus focusFocus focusFocusView
+optional focus =
     \(Relation deeperFocus) ->
         Relation
             { view =
@@ -481,7 +481,7 @@ mapOverLazy accessor change =
     --> { foo = Just { bar = 2 }, qux = Nothing }
 
 -}
-onJust : Prism (Maybe value) value focusFocus valueView
+onJust : Optional (Maybe value) value focusFocus valueView
 onJust =
     traversal
         { description = "Just"
@@ -571,9 +571,9 @@ valueElseOnNothing fallback =
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
 -}
-onOk : Prism (Result error value) value focusFocus focusFocusView
+onOk : Optional (Result error value) value focusFocus focusFocusView
 onOk =
-    prism
+    optional
         { description = "Ok"
         , view = Result.toMaybe
         , map = Result.map
@@ -604,9 +604,9 @@ onOk =
     --> { foo = Ok { bar = 2 }, qux = Err "NOT AN INT" }
 
 -}
-onErr : Prism (Result error value) error focusFocus focusFocusView
+onErr : Optional (Result error value) error focusFocus focusFocusView
 onErr =
-    prism
+    optional
         { description = "Err"
         , view =
             \result ->

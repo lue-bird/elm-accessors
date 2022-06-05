@@ -26,6 +26,6 @@
     - `Accessors.makeOneToN_` name → `Accessor.traversal`
     - `Accessors.makeOneToOne`, `Accessors.makeOneToN` remove
         - backwards compatibility for just a few users shouldn't affect the existing API this much (-`_`)
-    - `Prism`, `prism` add
+    - `Optional`, `optional` add
     - `TraversalConsume` add
     - `mapOverLazy` add
