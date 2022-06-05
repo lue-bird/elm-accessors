@@ -1,13 +1,14 @@
 module Accessor exposing
     ( Relation
     , Lens, Prism, Traversal
-    , TraversalConsume
+    , LensConsume, PrismConsume, TraversalConsume
     , lens, prism, traversal
     , view, is
-    , Description(..), description, descriptionToString
+    , description, descriptionToString
     , mapOver, mapOverLazy
     , onJust, valueElseOnNothing
     , onOk, onErr
+    , Description(..)
     )
 
 {-| Relations are interfaces to document the relation between two data
@@ -22,7 +23,11 @@ structures without handling the packing and the unpacking.
 
 @docs Relation
 @docs Lens, Prism, Traversal
-@docs TraversalConsume
+
+
+## consuming
+
+@docs LensConsume, PrismConsume, TraversalConsume
 
 
 ## create
@@ -33,7 +38,7 @@ structures without handling the packing and the unpacking.
 ## scan
 
 @docs view, is
-@docs Description, description, descriptionToString
+@docs StepDescription, description, descriptionToString
 
 
 ## nested map
@@ -52,10 +57,6 @@ structures without handling the packing and the unpacking.
 
 -}
 
-import Array exposing (Array)
-import Dict exposing (Dict)
-import RecordWithoutConstructorFunction exposing (RecordWithoutConstructorFunction)
-
 
 {-| A `Relation structure focus focusView` describes how to interact with a
 `focus` when given a `structure`.
@@ -69,7 +70,7 @@ type Relation structure focus focusView
     = Relation
         { view : structure -> focusView
         , map : (focus -> focus) -> (structure -> structure)
-        , description : List Description
+        , description : List String
         }
 
 
@@ -90,7 +91,7 @@ type alias Traversal structure focus focusView focusFocus focusFocusView =
 
 {-| [`Traversal`](#Traversal) over a single value: 1:1. Examples
 
-  - [`Tuple.Accessor.first`](Tuple#first)
+  - [`Tuple.Accessor.first`](Tuple-Accessor#first)
   - [`SelectList.Accessor.selected`](SelectList-Accessor#selected)
   - record .field value
 
@@ -109,7 +110,7 @@ Defining "Lens" in terms of `Relation`s:
     -> Relation structure focusFocus focusFocusView
 
 we're able to make use of `<<`
-to [`view`](#view)/[`map`](#map) a nested structure.
+to [`view`](#view)/[`mapOver`](#mapOver) a nested structure.
 
 Technical note: This is an approximation of [Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/).
 
@@ -127,6 +128,18 @@ type alias Lens structure focus focusFocus focusFocusView =
 -}
 type alias Prism structure focus focusFocus focusFocusView =
     Traversal structure focus (Maybe focusFocusView) focusFocus focusFocusView
+
+
+{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
+-}
+type alias LensConsume structure focus =
+    TraversalConsume structure focus focus
+
+
+{-| Only use `LensConsume` for accessor arguments that are **consumed** – used and then discarded:
+-}
+type alias PrismConsume structure focus =
+    TraversalConsume structure focus (Maybe focus)
 
 
 {-| Only use `TraversalConsume` for accessor arguments that are **consumed** – used and then discarded:
@@ -184,20 +197,24 @@ view accessor =
 
 {-| Used with a Prism, think of `!!` boolean coercion in Javascript except type-safe.
 
+    import Linear exposing (DirectionLinear(..))
+    import List.Accessor
+    import Accessor exposing (is, onJust)
+
     Just 1234
-        |> is try
+        |> is onJust
     --> True
 
     Nothing
-        |> is try
+        |> is onJust
     --> False
 
     [ "Stuff", "things" ]
-        |> is (at 2)
+        |> is (List.Accessor.element ( Up, 2 ))
     --> False
 
     [ "Stuff", "things" ]
-        |> is (at 0)
+        |> is (List.Accessor.element ( Up, 0 ))
     --> True
 
 -}
@@ -214,52 +231,49 @@ This is useful when you want type-safe keys for a `Dict` but you still want to u
 -}
 description :
     TraversalConsume structure focus focusView
-    -> List Description
+    -> Description
 description accessor =
     let
         (Relation relation) =
             accessor same
     in
-    relation.description
+    relation.description |> Description
 
 
+{-| Name of a single traversal step.
+
+Turn into a `String` using [`descriptionToString`](#description).
+
+-}
 type Description
-    = Identity
-    | FocusDeeper String
+    = Description (List String)
 
 
 {-| This function gives the name of the composition of accessors as a string.
 This is useful when you want to use type safe composition of functions as an identifier
 similar to the way you'd use a Sum type's constructors to key a dictionary for a form.
 
-    import Accessors exposing (name)
-    import Dict.Accessor as Dict
+    import Accessor
+    import Dict.Accessor
     import Record
 
-    name (Record.email << onJust << Record.info << Dict.valueAtString "subject")
-    --> ".email>Maybe.Just>.info>Dict value at \"subject\""
+    (Record.email << onJust << Record.info << Dict.Accessor.valueAtString "subject")
+        |> Accessor.description
+        |> Accessor.descriptionToString
+    --> ".email>Just>.info>value at \"subject\""
 
 -}
-descriptionToString : List Description -> String
+descriptionToString : Description -> String
 descriptionToString =
-    \descriptionsNested ->
+    \(Description descriptionsNested) ->
         descriptionsNested
-            |> List.filterMap
-                (\stepDescription ->
-                    case stepDescription of
-                        Identity ->
-                            Nothing
-
-                        FocusDeeper focusDeeper ->
-                            focusDeeper |> Just
-                )
             |> String.join ">"
 
 
 same : Relation structure structure structure
 same =
     Relation
-        { description = [ Identity ]
+        { description = []
         , view = identity
         , map = identity
         }
@@ -277,7 +291,9 @@ foo =
     lens
         { description = { structure = "record", focus = ".foo" }
         , view = .foo
-        , map = \alter record -> { record | foo = record.foo |> alter }
+        , map =
+            \alter ->
+                \record -> { record | foo = record.foo |> alter }
         }
 ```
 
@@ -297,7 +313,7 @@ lens focus =
                 \change -> focus.map (deeperFocus.map change)
             , description =
                 deeperFocus.description
-                    |> (::) (FocusDeeper focus.description)
+                    |> (::) focus.description
             }
 
 
@@ -333,11 +349,11 @@ prism focus =
                 \change -> focus.map (deeperFocus.map change)
             , description =
                 deeperFocus.description
-                    |> (::) (FocusDeeper focus.description)
+                    |> (::) focus.description
             }
 
 
-{-| Create a 1:n traversal [`Accessor`](#Accessor) from
+{-| Create a 1:n [`Traversal`](#Traversal) from
 
   - describing the structure and the targeted focus
   - a function on the structure for mapping the targeted focus [`view`](#view)
@@ -379,7 +395,7 @@ traversal focus =
                         )
             , description =
                 deeperFocus.description
-                    |> (::) (FocusDeeper focus.description)
+                    |> (::) focus.description
             }
 
 
@@ -391,6 +407,8 @@ traversal focus =
 
 and returns the data `structure` with the focusView field changed by applying
 the function to the existing value.
+
+    import Record
 
     { foo = { qux = 0 } }
         |> mapOver (Record.foo << Record.qux) ((+) 1)
@@ -459,7 +477,7 @@ mapOverLazy accessor change =
 
 {-| This accessor combinator lets you view values inside Maybe.
 
-    import Accessors exposing (view, map, try)
+    import Accessor exposing (view, mapOver, onJust)
     import Record
 
     maybeRecord : { foo : Maybe { bar : Int }, qux : Maybe { bar : Int } }
@@ -468,16 +486,16 @@ mapOverLazy accessor change =
         , qux = Nothing
         }
 
-    view (Record.foo << onJust << Record.bar) maybeRecord
+    maybeRecord |> view (Record.foo << onJust << Record.bar)
     --> Just 2
 
-    view (Record.qux << onJust << Record.bar) maybeRecord
+    maybeRecord |> view (Record.qux << onJust << Record.bar)
     --> Nothing
 
-    map (Record.foo << onJust << Record.bar) ((+) 1) maybeRecord
+    maybeRecord |> mapOver (Record.foo << onJust << Record.bar) ((+) 1)
     --> { foo = Just { bar = 3 }, qux = Nothing }
 
-    map (Record.qux << onJust << Record.bar) ((+) 1) maybeRecord
+    maybeRecord |> mapOver (Record.qux << onJust << Record.bar) ((+) 1)
     --> { foo = Just { bar = 2 }, qux = Nothing }
 
 -}
@@ -493,54 +511,62 @@ onJust =
 {-| Provide a default value for otherwise fallible compositions
 
     import Dict exposing (Dict)
+    import Accessor exposing (valueElseOnNothing)
     import Record
-    import Dict.Accessor as Dict
+    import Dict.Accessor
 
     dict : Dict String { bar : Int }
     dict =
         Dict.fromList [ ( "foo", { bar = 2 } ) ]
 
-    view (Dict.atValueString "foo" << valueElseOnNothing { bar = 0 }) dict
+    dict
+        |> view (Dict.Accessor.valueAtString "foo" << valueElseOnNothing { bar = 0 })
     --> { bar = 2 }
 
-    view (Dict.atValueString "baz" << valueElseOnNothing { bar = 0 }) dict
+    dict
+        |> view (Dict.Accessor.valueAtString "baz" << valueElseOnNothing { bar = 0 })
     --> { bar = 0 }
 
     dict
         |> view
-            (Dict.atValueString "foo"
-                << onJust
+            (Dict.Accessor.valueAtString "foo"
+                << valueElseOnNothing { bar = 0 }
                 << Record.bar
-                << onJust
-                << valueElseOnNothing 0
             )
-    ---> 2
+    --> 2
 
     dict
         |> view
-            (Dict.atValueString "baz"
-                << onJust
+            (Dict.Accessor.valueAtString "baz"
+                << valueElseOnNothing { bar = 0 }
                 << Record.bar
-                << onJust
-                << valueElseOnNothing 0
             )
-    ---> 0
+    --> 0
 
 -}
 valueElseOnNothing :
     value
-    -> Traversal (Maybe value) value focusFocusView focusFocus focusFocusView
+    -> Relation value focusFocus focusFocusView
+    -> Relation (Maybe value) focusFocus focusFocusView
 valueElseOnNothing fallback =
-    traversal
-        { description = "Nothing"
-        , view =
-            \valueMap ->
-                \maybe ->
-                    maybe
+    \(Relation focusFocus) ->
+        Relation
+            { view =
+                \structure ->
+                    structure
                         |> Maybe.withDefault fallback
-                        |> valueMap
-        , map = Maybe.map
-        }
+                        |> focusFocus.view
+            , map =
+                \alter ->
+                    \structure ->
+                        structure
+                            |> Maybe.map (focusFocus.map alter)
+
+            --|> Maybe.withDefault fallback
+            , description =
+                focusFocus.description
+                    |> (::) "Nothing"
+            }
 
 
 
@@ -549,7 +575,7 @@ valueElseOnNothing fallback =
 
 {-| This accessor lets you view values inside the Ok variant of a Result.
 
-    import Accessors exposing (view, map, onOk)
+    import Accessor exposing (view, mapOver, onOk)
     import Record
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
@@ -582,7 +608,7 @@ onOk =
 
 {-| This accessor lets you view values inside the Err variant of a Result.
 
-    import Accessors exposing (view, map, onErr)
+    import Accessor exposing (view, mapOver, onErr)
     import Record
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
