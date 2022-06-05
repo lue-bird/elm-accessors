@@ -1,6 +1,6 @@
 module Laws exposing (tests)
 
-import Accessor exposing (Lens, TraversalConsume, mapOver, onJust)
+import Accessor exposing (Lens, TraversalConsume, mapOver, onJust, view)
 import Array exposing (Array)
 import Array.Accessor as Array
 import Dict exposing (Dict)
@@ -169,11 +169,63 @@ isPrism :
     }
     -> PrismConsume structure focus
     -> Test
-isPrism { structure, focusAlter, focus } =
+isPrism fuzzer =
     \prismToTest ->
         Test.describe
             ("isPrism " ++ (prismToTest |> Accessor.description |> Accessor.descriptionToString))
-            []
+            [ prismToTest
+                |> setJustViewIsIdentity
+                    { structure = fuzzer.structure }
+            , prismToTest
+                |> setFocusViewIsFocus
+                    { structure = fuzzer.structure
+                    , focus = fuzzer.focus
+                    }
+            ]
+
+
+setFocusViewIsFocus :
+    { structure : Fuzzer structure, focus : Fuzzer focus }
+    -> PrismConsume structure focus
+    -> Test
+setFocusViewIsFocus fuzzer =
+    \prism ->
+        Test.fuzz
+            (Fuzz.constant (\structure focus -> { structure = structure, focus = focus })
+                |> Fuzz.andMap fuzzer.structure
+                |> Fuzz.andMap fuzzer.focus
+            )
+            "setFocusViewIsFocus"
+            (\{ structure, focus } ->
+                structure
+                    |> mapOver prism (\_ -> focus)
+                    |> view prism
+                    |> Expect.equal
+                        (structure |> view prism |> Maybe.map (\_ -> focus))
+            )
+
+
+setJustViewIsIdentity :
+    { structure : Fuzzer structure }
+    -> PrismConsume structure focus
+    -> Test
+setJustViewIsIdentity fuzzer =
+    \prism ->
+        Test.fuzz
+            (Fuzz.constant (\structure -> { structure = structure })
+                |> Fuzz.andMap fuzzer.structure
+            )
+            "setJustViewIsIdentity"
+            (\{ structure } ->
+                case structure |> view prism of
+                    Nothing ->
+                        Expect.pass
+
+                    Just focusView ->
+                        structure
+                            |> mapOver prism (\_ -> focusView)
+                            |> Expect.equal structure
+            )
 
 
 settableExamples : Test
