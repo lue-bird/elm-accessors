@@ -16,29 +16,45 @@ to [map](Reach#over)/[`view`](Reach#view) arbitrary content more easily
 ```elm
 import Reach
 
-recordFoo : Reach.Part
+recordFoo : Reach.PartMappingToSameType { record | foo : foo } foo fooView
 recordFoo =
     Reach.part "foo"
         { access = .foo
         , map = \alter record -> { record | foo = record.foo |> alter }
         }
 
+recordBar : Reach.PartMappingToSameType { record | bar : bar } bar barView
 recordBar =
     Reach.part "bar"
         { access = .bar
         , map = \alter record -> { record | bar = record.bar |> alter }
         }
 
-elementEach = 
-    Reach.elements "element each"
-        { view = List.map
-        , map = List.map
-        }
-
+onJust :
+    Reach.Maybe
+        (Maybe value)
+        value
+        valueView
+        (Maybe valueMapped)
+        valueMapped
 onJust =
     Reach.maybe "Just"
         { view = identity
         , map = Maybe.map
+        }
+
+elementEach :
+    Reach.Elements
+        (List element)
+        element
+        (List elementView)
+        elementView
+        (List elementMapped)
+        elementMapped
+elementEach = 
+    Reach.elements "element each"
+        { view = List.map
+        , map = List.map
         }
 ```
 
