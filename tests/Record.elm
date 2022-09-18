@@ -1,6 +1,6 @@
-module Record exposing (age, bar, email, foo, info, makeOneToOne_, name, qux, stuff, things)
+module Record exposing (age, bar, element, email, foo, info, name, qux, stuff, things, value)
 
-import Reach exposing (Part)
+import Reach
 
 
 makeOneToOne_ :
@@ -37,6 +37,14 @@ info =
 
 email =
     makeOneToOne_ "email" .email (\alter record -> { record | email = record.email |> alter })
+
+
+element =
+    makeOneToOne_ "element" .element (\alter record -> { record | element = record.element |> alter })
+
+
+value =
+    makeOneToOne_ "value" .value (\alter record -> { record | value = record.value |> alter })
 
 
 bar =

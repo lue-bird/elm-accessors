@@ -1,21 +1,20 @@
 module Array.Reach exposing (elementEach, elementIndexEach, element)
 
-{-| Reach for `Array`s.
+{-| Reach into an `Array`
 
 @docs elementEach, elementIndexEach, element
 
 -}
 
 import Array exposing (Array)
-import Array.Linear
-import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
 import Reach
 
 
-{-| Reach all elements contained inside an `Array`
+{-| Reach each element contained inside an `Array`
 
     import Array exposing (Array)
-    import Reach exposing (every, view, map)
+    import Reach
+    import Array.Reach
     import Record
 
     fooBarray : { foo : Array { bar : Int } }
@@ -25,11 +24,13 @@ import Reach
         }
 
     fooBarray
-        |> Reach.view (Record.foo << every << Record.bar)
+        |> Reach.view (Record.foo << Array.Reach.elementEach << Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     fooBarray
-        |> Reach.mapOver (Record.foo << every << Record.bar) ((+) 1)
+        |> Reach.mapOver
+            (Record.foo << Array.Reach.elementEach << Record.bar)
+            (\n -> n + 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
@@ -48,12 +49,14 @@ elementEach =
         }
 
 
-{-| Reach each element contained inside a `List` including the index of each element
+{-| Reach each element contained inside an `Array` including the index of each element.
 
-    import Reach exposing (view, mapOver)
-    import Tuple.Reach as Tuple
+Both examples ↓ show that this is always the final step
+before using the created reach to [map](Reach#mapOver) or [`view`](Reach#view) inside a structure
+
+    import Reach
     import Record
-    import Array.Reach as Array
+    import Array.Reach
     import Array exposing (Array)
 
     fooBarray : { foo : Array { bar : Int } }
@@ -66,7 +69,7 @@ elementEach =
                 ]
         }
 
-    fooBarray |> Reach.view (Record.foo << Array.elementEach)
+    fooBarray |> Reach.view (Record.foo << Array.Reach.elementIndexEach)
     --> Array.fromList
     -->     [ { index = 0, element = { bar = 2 } }
     -->     , { index = 1, element = { bar = 3 } }
@@ -75,26 +78,17 @@ elementEach =
 
     fooBarray
         |> Reach.mapOver
-            (Record.foo << Array.elementEach)
+            (Record.foo << Array.Reach.elementIndexEach)
             (\{ index, element } ->
                 case index of
                     0 ->
                         element
-
                     _ ->
                         { bar = element.bar * 10 }
             )
-    --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
-
-    fooBarray
-        |> Reach.view (Record.foo << Array.elementEach << Tuple.second << Record.bar)
-    --> Array.fromList [ 2, 3, 4 ]
-
-    fooBarray
-        |> Reach.mapOver
-            (Record.foo << Array.elementEach << Tuple.second << Record.bar)
-            ((+) 1)
-    --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
+    --> { foo =
+    -->     Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ]
+    --> }
 
 -}
 elementIndexEach :
@@ -104,7 +98,7 @@ elementIndexEach :
         (Array reachView)
         reachView
         (Array elementMapped)
-        { element : elementMapped, index : Int }
+        elementMapped
 elementIndexEach =
     Reach.elements "{element,index} each"
         { view =
@@ -117,46 +111,45 @@ elementIndexEach =
             \elementMap ->
                 Array.indexedMap
                     (\index element_ ->
-                        { element = element_, index = index } |> elementMap |> .element
+                        { element = element_, index = index } |> elementMap
                     )
         }
 
 
 {-| Focus an `Array` element at a given index in a [direction](https://dark.elm.dmy.fr/packages/lue-bird/elm-linear-direction/latest/).
 
-    import Linear exposing (DirectionLinear(..))
     import Array exposing (Array)
-    import Reach exposing (view)
-    import Array.Reach as Array
+    import Reach
+    import Array.Reach
     import Record
 
     barray : Array { bar : String }
     barray =
         Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> Reach.view (Array.element 1)
+    barray |> Reach.view (Array.Reach.element 1)
     --> Just { bar = "Things" }
 
-    barray |> Reach.view (Array.element ( Up, 9000 ))
+    barray |> Reach.view (Array.Reach.element 9000)
     --> Nothing
 
-    barray |> Reach.view (Array.element ( Down, 0 ) << Record.bar)
+    barray |> Reach.view (Array.Reach.element 2 << Record.bar)
     --> Just "Woot"
 
     barray
-        |> Reach.mapOver (Array.element ( Up, 0 ) << Record.bar) (\_ -> "Whatever")
+        |> Reach.mapOver (Array.Reach.element 0 << Record.bar) (\_ -> "Whatever")
     --> Array.fromList
     -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
     barray
         |> Reach.mapOver
-            (Array.element ( Up, 9000 ) << Record.bar)
+            (Array.Reach.element 9000 << Record.bar)
             (\_ -> "Whatever")
     --> barray
 
 -}
 element :
-    ( DirectionLinear, Int )
+    Int
     ->
         Reach.Maybe
             (Array reachMapped)
@@ -164,17 +157,20 @@ element :
             reachView
             (Array reachMapped)
             reachMapped
-element location =
-    Reach.maybe ("element " ++ (location |> Linear.locationToString))
+element index =
+    Reach.maybe
+        ("element "
+            ++ (index |> String.fromInt)
+        )
         { access =
             \array ->
-                case array |> Array.Linear.element location of
-                    Err (ExpectedIndexForLength _) ->
-                        Nothing
-
-                    Ok value ->
-                        value |> Just
+                array |> Array.get index
         , map =
-            \alter ->
-                Array.Linear.elementAlter ( location, alter )
+            \alter array ->
+                case array |> Array.get index of
+                    Nothing ->
+                        array
+
+                    Just elementAtIndex ->
+                        array |> Array.set index (elementAtIndex |> alter)
         }

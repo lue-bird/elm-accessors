@@ -1,8 +1,8 @@
-module SelectList.Reach exposing (elementEach, elementIndexEach, selected)
+module SelectList.Reach exposing (elementEach, selected)
 
-{-| This module exposes some helpers for [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
+{-| Reach into a [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
 
-@docs elementEach, elementIndexEach, selected
+@docs elementEach, selected
 
 -}
 
@@ -10,23 +10,37 @@ import Reach
 import SelectList exposing (SelectList)
 
 
-{-| Reach all elements contained inside a `List`
+{-| Reach each element contained inside a `SelectList`
 
-    import Reach exposing (..)
-    import Reach.SelectList as SL
+    import Reach
+    import SelectList.Reach
     import Record
     import SelectList exposing (SelectList)
 
     fooBarScroll : { foo : SelectList { bar : Int } }
     fooBarScroll =
-        { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
+        { foo =
+            SelectList.fromLists
+                [ { bar = 1 } ]
+                { bar = 2 }
+                [ { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << SL.each << Record.bar) fooBarScroll
+    fooBarScroll
+        |> Reach.view
+            (Record.foo << SelectList.Reach.elementEach << Record.bar)
     --> SelectList.fromLists [1] 2 [3, 4]
 
-    map (Record.foo << SL.each << Record.bar) ((+) 1) fooBarScroll
-    --> { foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] }
+    fooBarScroll
+        |> Reach.mapOver
+            (Record.foo << SelectList.Reach.elementEach << Record.bar)
+            (\n -> n + 1)
+    --> { foo =
+    -->     SelectList.fromLists
+    -->         [ { bar = 2 } ]
+    -->         { bar = 3 }
+    -->         [ { bar = 4 }, { bar = 5 } ]
+    --> }
 
 -}
 elementEach :
@@ -44,11 +58,13 @@ elementEach =
         }
 
 
-{-| Traverse a `SelectList` including the absolute index of each element
+{-| Reach each element contained inside a `SelectList` including the absolute index of each element.
 
-    import Reach exposing (view, mapOver)
-    import Tuple.Reach as Tuple
-    import Reach.SelectList as SelectList
+Both examples ↓ show that this is always the final step
+before using the created reach to [map](Reach#mapOver) or [`view`](Reach#view) inside a structure
+
+    import Reach
+    import SelectList.Reach
     import Record
     import SelectList exposing (SelectList)
 
@@ -61,39 +77,29 @@ elementEach =
                 [ { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << SelectList.elementIndexEach) fooBarScroll
+    fooBarScroll
+        |> Reach.view
+            (Record.foo << SelectList.Reach.elementIndexEach)
     --> SelectList.fromLists
-    -->     [ ( 0, { bar = 1 } ) ]
-    -->     ( 1, { bar = 2 } )
-    -->     [ ( 2, { bar = 3 } ), ( 3, { bar = 4 } ) ]
+    -->     [ { index = 0, element = { bar = 1 } } ]
+    -->     { index = 1, element = { bar = 2 } }
+    -->     [ { index = 2, element = { bar = 3 } }
+    -->     , { index = 3, element = { bar = 4 } }
+    -->     ]
 
     fooBarScroll
         |> Reach.mapOver
-            (Record.foo << SelectList.elementIndexEach)
-            (\{ index, element } =
-                case index of
+            (Record.foo << SelectList.Reach.elementIndexEach)
+            (\node ->
+                case node.index of
                     0 ->
-                        element
-
+                        node.element
                     _ ->
-                        { bar = element.bar * 10 }
+                        { bar = node.element.bar * 10 }
             )
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 30 }, { bar = 40 } ]
-    --> }
-
-    fooBarScroll
-        |> Reach.view (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
-    --> SelectList.fromLists [ 1 ] 2 [ 3, 4 ]
-
-    fooBarScroll
-        |> Reach.mapOver
-            (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
-            ((+) 1)
-    --> { foo =
-    -->     SelectList.fromLists
-    -->         [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] #
     --> }
 
 -}
@@ -104,7 +110,7 @@ elementIndexEach :
         (SelectList elementView)
         elementView
         (SelectList elementMapped)
-        { element : elementMapped, index : Int }
+        elementMapped
 elementIndexEach =
     Reach.elements "{element,index} each"
         { view =
@@ -142,14 +148,14 @@ elementIndexEach =
                 SelectList.fromLists
                     (List.indexedMap
                         (\index element ->
-                            { element = element, index = index } |> map |> .element
+                            { element = element, index = index } |> map
                         )
                         before
                     )
-                    ({ index = selectedIndex, element = current } |> map |> .element)
+                    ({ index = selectedIndex, element = current } |> map)
                     (List.indexedMap
                         (\idx element ->
-                            { element = element, index = selectedIndex + 1 + idx } |> map |> .element
+                            { element = element, index = selectedIndex + 1 + idx } |> map
                         )
                         after
                     )
@@ -158,8 +164,8 @@ elementIndexEach =
 
 {-| Reach the `SelectList`'s selected element
 
-    import Reach exposing (..)
-    import Reach.SelectList as SL
+    import Reach
+    import SelectList.Reach
     import Record
     import SelectList exposing (SelectList)
 
@@ -170,16 +176,24 @@ elementIndexEach =
                 [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    fooBarScroll |> Reach.view (Record.foo << SL.selected << Record.bar)
+    fooBarScroll
+        |> Reach.view
+            (Record.foo << SelectList.Reach.selected << Record.bar)
     --> 2
 
-    fooBarScroll |> Reach.mapOver (Record.foo << SL.selected << Record.bar) (\_ -> 37)
+    fooBarScroll
+        |> Reach.mapOver
+            (Record.foo << SelectList.Reach.selected << Record.bar)
+            (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
-    fooBarScroll |> Reach.mapOver (Record.foo << SL.selected << Record.bar) ((*) 10)
+    fooBarScroll
+        |> Reach.mapOver
+            (Record.foo << SelectList.Reach.selected << Record.bar)
+            (\n -> n * 10)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]

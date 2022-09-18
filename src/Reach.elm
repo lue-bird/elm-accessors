@@ -5,7 +5,7 @@ module Reach exposing
     , view, has
     , description
     , mapOver, mapOverLazy
-    , onJust, valueElseOnNothing
+    , onJust, onNothing
     , onOk, onErr
     )
 
@@ -37,7 +37,7 @@ module Reach exposing
 
 ## for `Maybe`
 
-@docs onJust, valueElseOnNothing
+@docs onJust, onNothing
 
 
 ## for `Result`
@@ -125,7 +125,7 @@ type ViewMap value view mapped
     = ViewMap
         { view : value -> view
         , map : value -> mapped
-        , description : () -> List String
+        , description : List String
         }
 
 
@@ -196,12 +196,13 @@ type alias ElementsMappingToSameType structure possibility view possibilityView 
 {-| The parts reached
 
     import Record
+    import List.Reach
 
-    { foo = { bar = "filling } }
+    { foo = { bar = "filling" } }
         |> Reach.view (Record.foo << Record.bar)
     --> "filling"
 
-    { foo = [ { bar = "filling } ] }
+    { foo = [ { bar = "filling" } ] }
         |> Reach.view (Record.foo << List.Reach.elementEach << Record.bar)
     --> [ "filling" ]
 
@@ -215,6 +216,8 @@ view reachMany =
 
 {-| Used with a Prism, think of `!!` boolean coercion in Javascript except type-safe.
 
+    import List.Reach
+
     Just 1234
         |> Reach.has onJust
     --> True
@@ -224,11 +227,11 @@ view reachMany =
     --> False
 
     [ "Stuff", "things" ]
-        |> Reach.has (at 2)
+        |> Reach.has (List.Reach.element 2)
     --> False
 
     [ "Stuff", "things" ]
-        |> Reach.has (at 0)
+        |> Reach.has (List.Reach.element 0)
     --> True
 
 -}
@@ -246,18 +249,18 @@ This is useful when you want type-safe identifiers for a `Dict`
 similar to the way you'd use a Sum type's constructors to key a dictionary for a form
 but you still want to use the `elm/core` implementation.
 
-    import Reach exposing (name)
-    import Dict.Reach as Dict
+    import Reach
+    import Dict.Reach
     import Record
 
     (Record.email
         << onJust
         << Record.info
-        << Dict.valueAtString "subject"
+        << Dict.Reach.valueAtString "subject"
     )
         |> Reach.description
         |> String.join ")"
-    --> "email>Just>info>value at \"subject\""
+    --> "email)Just)info)value at subject"
 
 -}
 description :
@@ -265,13 +268,13 @@ description :
     -> List String
 description =
     \reachMany ->
-        (reachMany |> viewAndDescription).description ()
+        reachMany |> viewAndDescription |> .description
 
 
 viewAndDescription :
     Elements structure reach view reach mapped reachMapped
     ->
-        { description : () -> List String
+        { description : List String
         , view : structure -> view
         }
 viewAndDescription reach =
@@ -279,7 +282,7 @@ viewAndDescription reach =
         (ViewMap viewMap) =
             reach
                 (ViewMap
-                    { description = \() -> []
+                    { description = []
                     , view = identity
                     , map =
                         -- as this will never be called, we can do any
@@ -350,10 +353,10 @@ onOk =
 maybe :
     String
     ->
-        { access : structure -> Maybe.Maybe reach
-        , map : (reach -> reachMapped) -> (structure -> mapped)
+        { access : structure -> Maybe.Maybe possibility
+        , map : (possibility -> possibilityMapped) -> (structure -> mapped)
         }
-    -> Maybe structure reach reachView mapped reachMapped
+    -> Maybe structure possibility reachView mapped possibilityMapped
 maybe focusDescription reach =
     elements focusDescription
         { view =
@@ -398,14 +401,15 @@ elements focusDescription reach =
             { view = reach.view deeper.view
             , map = reach.map deeper.map
             , description =
-                \() ->
-                    deeper.description ()
-                        |> (::) focusDescription
+                deeper.description
+                    |> (::) focusDescription
             }
 
 
 {-| Given a reach and a change for each element
 `mapOver` transforms the data `structure`'s reached content.
+
+    import Record
 
     { foo = { qux = 0 } }
         |> Reach.mapOver (Record.foo << Record.qux) (\n -> n + 1)
@@ -423,7 +427,7 @@ mapOver reach change =
         (ViewMap structureViewMap) =
             reach
                 (ViewMap
-                    { description = \() -> []
+                    { description = []
                     , view = identity
                     , map = change
                     }
@@ -468,10 +472,10 @@ mapOverLazy reach change =
 
 {-| Reach the value inside `Maybe`
 
-    import Reach exposing (view, map, try)
+    import Reach exposing (onJust)
     import Record
 
-    maybeRecord : { foo : Maybe { bar : Int }, qux : Maybe { bar : Int } }
+    maybeRecord : { foo : Maybe.Maybe { bar : Int }, qux : Maybe.Maybe { bar : Int } }
     maybeRecord =
         { foo = Just { bar = 2 }
         , qux = Nothing
@@ -486,11 +490,11 @@ mapOverLazy reach change =
     --> Nothing
 
     maybeRecord
-        |> map (Record.foo << onJust << Record.bar) ((+) 1)
+        |> Reach.mapOver (Record.foo << onJust << Record.bar) (\n -> n + 1)
     --> { foo = Just { bar = 3 }, qux = Nothing }
 
     maybeRecord
-        |> map (Record.qux << onJust << Record.bar) ((+) 1)
+        |> Reach.mapOver (Record.qux << onJust << Record.bar) (\n -> n + 1)
     --> { foo = Just { bar = 2 }, qux = Nothing }
 
 -}
@@ -508,69 +512,46 @@ onJust =
         }
 
 
-{-| Provide a default value for otherwise fallible compositions
+{-| Reach the value inside `Maybe`
 
-    import Dict exposing (Dict)
+    import Reach exposing (onNothing)
     import Record
-    import Dict.Reach as Dict
 
-    dict : Dict String { bar : Int }
-    dict =
-        Dict.fromList [ ( "foo", { bar = 2 } ) ]
+    maybeRecord : { foo : Maybe.Maybe { bar : Int }, qux : Maybe.Maybe { bar : Int } }
+    maybeRecord =
+        { foo = Just { bar = 2 }
+        , qux = Nothing
+        }
 
-    dict
-        |> Reach.view
-            (Dict.atValueString "foo"
-                << valueElseOnNothing { bar = 0 }
-            )
-    --> { bar = 2 }
+    maybeRecord
+        |> Reach.has (Record.foo << onNothing)
+    --> False
 
-    dict
-        |> Reach.view
-            (Dict.atValueString "baz"
-                << valueElseOnNothing { bar = 0 }
-            )
-    --> { bar = 0 }
+    maybeRecord
+        |> Reach.has (Record.qux << onNothing)
+    --> True
 
-    dict
-        |> Reach.view
-            (Dict.atValueString "foo"
-                << onJust
-                << Record.bar
-                << onJust
-                << valueElseOnNothing 0
-            )
-    --> 2
-
-    dict
-        |> Reach.view
-            (Dict.atValueString "baz"
-                << onJust
-                << Record.bar
-                << onJust
-                << valueElseOnNothing 0
-            )
-    --> 0
+There's no real use case for reaching into variants with 0 values except for [`Reach.has`](Reach#has)
 
 -}
-valueElseOnNothing :
-    value
-    ->
-        Elements
-            (Maybe.Maybe value)
-            value
-            valueView
-            valueView
-            (Maybe.Maybe reachMapped)
-            reachMapped
-valueElseOnNothing fallbackValue =
-    elements "value or fallback"
-        { view =
-            \valueMap maybeStructure ->
-                maybeStructure
-                    |> Maybe.withDefault fallbackValue
-                    |> valueMap
-        , map = Maybe.map
+onNothing :
+    Maybe
+        (Maybe.Maybe value)
+        ()
+        unitView
+        (Maybe.Maybe value)
+        ()
+onNothing =
+    maybe "Nothing"
+        { access =
+            \maybeStructure ->
+                case maybeStructure of
+                    Nothing ->
+                        () |> Just
+
+                    Just _ ->
+                        Nothing
+        , map = \_ -> identity
         }
 
 
@@ -580,7 +561,7 @@ valueElseOnNothing fallbackValue =
 
 {-| Reach the value inside the `Ok` variant of a `Result`
 
-    import Reach exposing (view, map, onOk)
+    import Reach exposing (onOk)
     import Record
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
@@ -596,11 +577,15 @@ valueElseOnNothing fallbackValue =
     --> Nothing
 
     maybeRecord
-        |> Reach.mapOver (Record.foo << onOk << Record.bar) ((+) 1)
+        |> Reach.mapOver
+            (Record.foo << onOk << Record.bar)
+            (\n -> n + 1)
     --> { foo = Ok { bar = 3 }, qux = Err "Not an Int" }
 
     maybeRecord
-        |> Reach.mapOver (Record.qux << onOk << Record.bar) ((+) 1)
+        |> Reach.mapOver
+            (Record.qux << onOk << Record.bar)
+            (\n -> n + 1)
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
 -}
@@ -620,7 +605,7 @@ onOk =
 
 {-| Reach the value inside the `Err` variant of a `Result`
 
-    import Reach exposing (view, map, onErr)
+    import Reach exposing (onErr)
     import Record
 
     maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }

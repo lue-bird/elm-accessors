@@ -1,19 +1,18 @@
-module List.Reach exposing (element, elementEach, elementIndexEach)
+module List.Reach exposing (element, elementEach)
 
-{-| Reach for `List`s.
+{-| Reach into a `List`
 
-@docs element, elementEach, elementIndexEach
+@docs element, elementEach
 
 -}
 
-import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
-import List.Linear
+import List.Extra as List
 import Reach
 
 
-{-| Reach all the elements contained inside a `List`
+{-| Reach each element contained inside a `List`
 
-    import Reach exposing (each, view, map)
+    import Reach
     import Record
 
     listRecord : { foo : List { bar : Int } }
@@ -25,10 +24,14 @@ import Reach
             ]
         }
 
-    view (Record.foo << each << Record.bar) listRecord
+    listRecord
+        |> Reach.view (Record.foo << List.Reach.elementEach << Record.bar)
     --> [2, 3, 4]
 
-    map (Record.foo << each << Record.bar) ((+) 1) listRecord
+    listRecord
+        |> Reach.mapOver
+            (Record.foo << List.Reach.elementEach << Record.bar)
+            (\n -> n + 1)
     --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
 
 -}
@@ -47,11 +50,13 @@ elementEach =
         }
 
 
-{-| Reach each element contained inside a `List` including the index of each element
+{-| Reach each element contained inside a `List` including the index of each element.
 
-    import Reach exposing (view, mapOver)
-    import List.Reach as List
-    import Tuple.Reach as Tuple
+Both examples ↓ show that this is always the final step
+before using the created reach to [map](Reach#mapOver) or [`view`](Reach#view) inside a structure
+
+    import Reach
+    import List.Reach
     import Record
 
     listRecord : { foo : List { bar : Int } }
@@ -63,31 +68,23 @@ elementEach =
             ]
         }
 
-    listRecord |> Reach.view (Record.foo << List.elementIndexEach)
-    --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
+    listRecord |> Reach.view (Record.foo << List.Reach.elementIndexEach)
+    --> [ { index = 0, element = { bar = 2 } }
+    --> , { index = 1, element = { bar = 3 } }
+    --> , { index = 2, element = { bar = 4 } }
+    --> ]
 
     listRecord
         |> Reach.mapOver
-            (Record.foo << List.elementIndexEach)
+            (Record.foo << List.Reach.elementIndexEach)
             (\{ index, element } ->
                 case index of
                     0 ->
                         element
-
                     _ ->
                         { bar = element.bar * 10 }
             )
     --> { foo = [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
-
-    listRecord
-        |> Reach.view (Record.foo << List.elementIndexEach << Record.element << Record.bar)
-    --> [ 2, 3, 4 ]
-
-    listRecord
-        |> Reach.mapOver
-            (Record.foo << List.elementIndexEach << Record.element << Record.bar)
-            ((+) 1)
-    --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
 elementIndexEach :
@@ -97,7 +94,7 @@ elementIndexEach :
         (List elementView)
         elementView
         (List elementMapped)
-        { element : elementMapped, index : Int }
+        elementMapped
 elementIndexEach =
     Reach.elements "{element,index} each"
         { view =
@@ -110,40 +107,45 @@ elementIndexEach =
             \elementIndexMap ->
                 List.indexedMap
                     (\index element_ ->
-                        { element = element_, index = index } |> elementIndexMap |> .element
+                        { element = element_, index = index } |> elementIndexMap
                     )
         }
 
 
-{-| Focus a `List` element at a given index in a [direction](https://dark.elm.dmy.fr/packages/lue-bird/elm-linear-direction/latest/).
+{-| Reach a `List`'s element at a given index
 
-    import Linear exposing (DirectionLinear(..))
-    import Reach exposing (view)
-    import List.Reach as List
+    import Reach
+    import List.Reach
     import Record
 
     bars : List { bar : String }
     bars =
         [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> Reach.view (List.element 1)
+    bars |> Reach.view (List.Reach.element 1)
     --> Just { bar = "Things" }
 
-    bars |> Reach.view (List.element 9000)
+    bars |> Reach.view (List.Reach.element 9000)
     --> Nothing
 
-    bars |> Reach.view (List.element 0 << Record.bar)
+    bars |> Reach.view (List.Reach.element 0 << Record.bar)
     --> Just "Stuff"
 
-    bars |> Reach.mapOver (List.element 0 << Record.bar) (\_ -> "Whatever")
+    bars
+        |> Reach.mapOver
+            (List.Reach.element 0 << Record.bar)
+            (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> Reach.mapOver (List.element 9000 << Record.bar) (\_ -> "Whatever")
+    bars
+        |> Reach.mapOver
+            (List.Reach.element 9000 << Record.bar)
+            (\_ -> "Whatever")
     --> bars
 
 -}
 element :
-    ( DirectionLinear, Int )
+    Int
     ->
         Reach.Maybe
             (List element)
@@ -151,17 +153,15 @@ element :
             elementView
             (List element)
             element
-element focusLocation =
-    Reach.maybe ("element " ++ (focusLocation |> Linear.locationToString))
+element index =
+    Reach.maybe
+        ("element "
+            ++ (index |> String.fromInt)
+        )
         { access =
             \list ->
-                case list |> List.Linear.element focusLocation of
-                    Err (ExpectedIndexForLength _) ->
-                        Nothing
-
-                    Ok elementFound ->
-                        elementFound |> Just
+                list |> List.getAt index
         , map =
             \elementMap ->
-                List.Linear.elementAlter ( focusLocation, elementMap )
+                List.updateAt index elementMap
         }

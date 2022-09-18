@@ -1,8 +1,8 @@
-module Dict.Reach exposing (valueEach, valueKeyEach, valueAt, valueAtString)
+module Dict.Reach exposing (valueEach, valueAt, valueAtString)
 
-{-| Reach for `Dict`s.
+{-| Reach into a `Dict`
 
-@docs valueEach, valueKeyEach, valueAt, valueAtString
+@docs valueEach, valueAt, valueAtString
 
 -}
 
@@ -44,7 +44,7 @@ import Reach
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     recordDictStringBar
-        |> Reach.mapOver (Record.foo << Dict.Reach.valueEach << Record.bar) ((+) 1)
+        |> Reach.mapOver (Record.foo << Dict.Reach.valueEach << Record.bar) (\n -> n + 1)
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
@@ -66,10 +66,13 @@ valueEach =
         }
 
 
-{-| Traverse each `Dict` entry containing its `key` and `value`.
+{-| Reach each entry `{ key, value }` contained in a `Dict`.
 
-    import Reach exposing (view, map)
-    import Dict.Reach as Dict
+Both examples ↓ show that this is always the final step
+before using the created reach to [map](Reach#mapOver) or [`view`](Reach#view) inside a structure
+
+    import Reach
+    import Dict.Reach
     import Record
     import Dict exposing (Dict)
 
@@ -83,43 +86,26 @@ valueEach =
                 ]
         }
 
-    recordDictStringBar |> Reach.view (Record.foo << Dict.valueKeyEach)
+    recordDictStringBar |> Reach.view (Record.foo << Dict.Reach.valueKeyEach)
     --> Dict.fromList
-    -->     [ ( "a", ( "a", { bar = 2 } ) )
-    -->     , ( "b", ( "b", { bar = 3 } ) )
-    -->     , ( "c", ( "c", { bar = 4 } ) )
+    -->     [ ( "a", { key = "a", value = { bar = 2 } } )
+    -->     , ( "b", { key = "b", value = { bar = 3 } } )
+    -->     , ( "c", { key = "c", value = { bar = 4 } } )
     -->     ]
 
     recordDictStringBar
         |> Reach.mapOver
-            (Record.foo << Dict.valueKeyEach)
+            (Record.foo << Dict.Reach.valueKeyEach)
             (\entry ->
-                { entry
-                    | value =
-                        case key of
-                            "a" ->
-                                { bar = entry.value.bar * 10 }
-
-                            _ ->
-                                entry
-                }
+                case entry.key of
+                    "a" ->
+                        { bar = entry.value.bar * 10 }
+                    _ ->
+                        entry.value
             )
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
-    --> }
-
-    recordDictStringBar
-        |> Reach.view (Record.foo << Dict.valueKeyEach << Record.value << Record.bar)
-    --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
-
-    recordDictStringBar
-        |> Reach.mapOver
-            (Record.foo << Dict.valueKeyEach << Record.value << Record.bar)
-            ((+) 1)
-    --> { foo =
-    -->     Dict.fromList
-    -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
     --> }
 
 -}
@@ -130,7 +116,7 @@ valueKeyEach :
         (Dict key reachView)
         reachView
         (Dict key valueMapped)
-        { key : key, value : valueMapped }
+        valueMapped
 valueKeyEach =
     Reach.elements "{key,value} each"
         { view =
@@ -143,7 +129,7 @@ valueKeyEach =
             \valueKeyMap ->
                 Dict.map
                     (\key value ->
-                        { key = key, value = value } |> valueKeyMap |> .value
+                        { key = key, value = value } |> valueKeyMap
                     )
         }
 
@@ -153,11 +139,11 @@ valueKeyEach =
 In terms of reach, think of Dicts as records where each field is a `Maybe`.
 
     import Dict exposing (Dict)
-    import Reach exposing (view, try)
+    import Reach exposing (onJust)
     import Dict.Reach
     import Record
 
-    dict : Dict String { bar : Int }
+    dict : Dict Char { bar : Int }
     dict =
         Dict.fromList [ ( 'b', { bar = 2 } ) ]
 
@@ -169,7 +155,7 @@ In terms of reach, think of Dicts as records where each field is a `Maybe`.
 
     dict
         |> Reach.view
-            (Dict.Reach.valueAt ( 'b', String.fromChar ) << onJust << Record.bar)
+            (Dict.Reach.valueAt ( 'b', String.fromChar ) << Record.bar)
     --> Just 2
 
     dict
@@ -180,7 +166,7 @@ In terms of reach, think of Dicts as records where each field is a `Maybe`.
 
     dict
         |> Reach.mapOver
-            (Dict.Reach.valueAt ( 'x', String.fromChar ) << onJust << Record.bar)
+            (Dict.Reach.valueAt ( 'x', String.fromChar ) << Record.bar)
             (\_ -> 3)
     --> dict
 
@@ -190,16 +176,18 @@ In terms of reach, think of Dicts as records where each field is a `Maybe`.
 valueAt :
     ( comparableKey, comparableKey -> String )
     ->
-        Reach.Part
+        Reach.Maybe
             (Dict comparableKey value)
-            (Maybe value)
+            value
             valueView
             (Dict comparableKey value)
-            (Maybe value)
+            value
 valueAt ( key, keyToString ) =
-    Reach.part ("value at " ++ (key |> keyToString))
+    Reach.maybe ("value at " ++ (key |> keyToString))
         { access = Dict.get key
-        , map = Dict.update key
+        , map =
+            \valueMap structure ->
+                structure |> Dict.update key (Maybe.map valueMap)
         }
 
 
@@ -208,11 +196,11 @@ valueAt ( key, keyToString ) =
 valueAtString :
     String
     ->
-        Reach.Part
+        Reach.Maybe
             (Dict String value)
-            (Maybe value)
+            value
             valueView
             (Dict String value)
-            (Maybe value)
+            value
 valueAtString key =
     valueAt ( key, identity )

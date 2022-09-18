@@ -4,7 +4,7 @@ import Dict exposing (Dict)
 import Dict.Reach as Dict
 import Expect
 import List.Reach as List
-import Reach exposing (onJust, valueElseOnNothing)
+import Reach exposing (onJust)
 import Record
 import Test exposing (Test, test)
 
@@ -102,20 +102,11 @@ suite =
                         recordWithDict
                             |> Reach.view (Record.bar << Dict.valueAtString "bar")
                             |> Expect.equal Nothing
-                , test "with try" <|
+                , test "with lens afterwards" <|
                     \_ ->
                         dictWithRecord
-                            |> Reach.view (Dict.valueAtString "foo" << onJust << Record.bar)
+                            |> Reach.view (Dict.valueAtString "foo" << Record.bar)
                             |> Expect.equal (Just "Yop")
-                , test "with valueElseOnNothing" <|
-                    \_ ->
-                        dictWithRecord
-                            |> Reach.view
-                                (Dict.valueAtString "not_it"
-                                    << valueElseOnNothing { bar = "Stuff" }
-                                    << Record.bar
-                                )
-                            |> Expect.equal "Stuff"
                 ]
             ]
         , Test.describe
@@ -157,49 +148,6 @@ suite =
                             (\_ -> "Nope")
                         |> Reach.view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
-            , Test.describe
-                "dict"
-                [ test "set currently present to present" <|
-                    \_ ->
-                        dict
-                            |> Reach.mapOver (Dict.valueAtString "foo") (\_ -> Just 9)
-                            |> Reach.view (Dict.valueAtString "foo")
-                            |> Expect.equal (Just 9)
-                , test "set currently absent to present" <|
-                    \_ ->
-                        dict
-                            |> Reach.mapOver (Dict.valueAtString "bar") (\_ -> Just 9)
-                            |> Reach.view (Dict.valueAtString "bar")
-                            |> Expect.equal (Just 9)
-                , test "set currently present to absent" <|
-                    \_ ->
-                        dict
-                            |> Reach.mapOver (Dict.valueAtString "foo") (\_ -> Nothing)
-                            |> Reach.view (Dict.valueAtString "foo")
-                            |> Expect.equal Nothing
-                , test "set currently absent to absent" <|
-                    \_ ->
-                        dict
-                            |> Reach.mapOver (Dict.valueAtString "bar") (\_ -> Nothing)
-                            |> Reach.view (Dict.valueAtString "bar")
-                            |> Expect.equal Nothing
-                , test "set with try present" <|
-                    \_ ->
-                        dictWithRecord
-                            |> Reach.mapOver
-                                (Dict.valueAtString "foo" << onJust << Record.bar)
-                                (\_ -> "Sup")
-                            |> Reach.view (Dict.valueAtString "foo" << onJust << Record.bar)
-                            |> Expect.equal (Just "Sup")
-                , test "set with try absent" <|
-                    \_ ->
-                        dictWithRecord
-                            |> Reach.mapOver
-                                (Dict.valueAtString "bar" << onJust << Record.bar)
-                                (\_ -> "Sup")
-                            |> Reach.view (Dict.valueAtString "bar" << onJust << Record.bar)
-                            |> Expect.equal Nothing
-                ]
             ]
         , Test.describe
             "map"

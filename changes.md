@@ -27,13 +27,13 @@ TODO!
                 , name : String
                 }
       ```
-      → `description` lazy, type change on map allowed, `map` simplified
+      → `description` `List`, type change on map allowed, `map` simplified
       ```elm
       type ViewMap value view mapped
           = ViewMap
               { view : value -> view
               , map : value -> mapped
-              , description : () -> List String
+              , description : List String
               }
       ```
     - `Setable` remove
@@ -43,6 +43,8 @@ TODO!
     - `or` remove
         - in favor of `valueElseOnNothing`
     - `type alias ..._`s remove
+    - `def`, `or`, indexed/keyed versions, non-structure-preserving reaches remove
+        - in favor of handling directly in the function given to `mapOver` or after `view`
     - `Accessor` name → `Reach.Elements`
     - `Lens` name → `Reach.Part`
     - `is` name → `has`
@@ -61,3 +63,4 @@ TODO!
     - `Reach.Maybe`, `Reach.maybe` add
     - `Reach....MappingToSameType`s add
     - `mapOverLazy` add
+    - `onNothing` add

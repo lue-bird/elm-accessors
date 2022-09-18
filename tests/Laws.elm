@@ -6,7 +6,6 @@ import Dict exposing (Dict)
 import Dict.Reach
 import Expect
 import Fuzz exposing (Fuzzer)
-import Linear exposing (DirectionLinear(..))
 import List.Reach
 import Maybe exposing (Maybe)
 import Reach exposing (onJust)
@@ -24,10 +23,10 @@ tests =
         , lensExamples
         , test "description"
             (\() ->
-                (Record.info << Record.stuff << List.Reach.element ( Up, 7 ) << Record.name)
+                (Record.info << Record.stuff << List.Reach.element 7 << Record.name)
                     |> Reach.description
                     |> String.join ")"
-                    |> Expect.equal "info)stuff)element ↑7)name"
+                    |> Expect.equal "info)stuff)element 7)name"
             )
         ]
 
@@ -36,13 +35,7 @@ lensExamples : Test
 lensExamples =
     Test.describe
         "lens"
-        [ (Record.info << Dict.Reach.valueAtString "stuff")
-            |> isLens
-                { structure = personFuzzer
-                , focusAlter = maybeStringAlterFuzzer
-                , focus = Fuzz.maybe Fuzz.string
-                }
-        , Record.name
+        [ Record.name
             |> isLens
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
@@ -126,15 +119,21 @@ lens_set_get fuzzer =
 prismExamples : Test
 prismExamples =
     Test.describe
-        "optional"
-        [ (Record.email << onJust)
-            |> isOptional
+        "prism"
+        [ (Record.info << Dict.Reach.valueAtString "stuff")
+            |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.stuff << List.Reach.element ( Up, 0 ))
-            |> isOptional
+        , (Record.email << onJust)
+            |> isPrism
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        , (Record.stuff << List.Reach.element 0)
+            |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
@@ -142,14 +141,14 @@ prismExamples =
         ]
 
 
-isOptional :
+isPrism :
     { structure : Fuzzer structure
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
     -> Reach.MaybeMappingToSameType structure focus focus
     -> Test
-isOptional fuzzer optionalToTest =
+isPrism fuzzer optionalToTest =
     Test.describe
         ("isOptional "
             ++ (optionalToTest |> Reach.description |> String.join ")")
@@ -215,9 +214,9 @@ settableExamples =
     Test.describe
         "settable"
         [ check (Record.email << onJust)
-        , check (Record.stuff << List.Reach.element ( Up, 0 ))
+        , check (Record.stuff << List.Reach.element 0)
         , check (Record.stuff << List.Reach.elementEach)
-        , check (Record.things << Array.Reach.element ( Up, 0 ))
+        , check (Record.things << Array.Reach.element 0)
         , check (Record.things << Array.Reach.elementEach)
         ]
 
