@@ -1,15 +1,14 @@
 module Laws exposing (tests)
 
-import Accessor exposing (LensConsume, PrismConsume, TraversalConsume, mapOver, onJust, view)
 import Array exposing (Array)
-import Array.Accessor
+import Array.Reach
 import Dict exposing (Dict)
-import Dict.Accessor
+import Dict.Reach
 import Expect
 import Fuzz exposing (Fuzzer)
-import Linear exposing (DirectionLinear(..))
-import List.Accessor
+import List.Reach
 import Maybe exposing (Maybe)
+import Reach exposing (onJust)
 import Record
 import String
 import Test exposing (Test, test)
@@ -22,13 +21,12 @@ tests =
         [ prismExamples
         , settableExamples
         , lensExamples
-        , test
-            "description"
+        , test "description"
             (\() ->
-                (Record.info << Record.stuff << List.Accessor.element ( Up, 7 ) << Record.name)
-                    |> Accessor.description
-                    |> Accessor.descriptionToString
-                    |> Expect.equal ".info>.stuff>element ↑7>.name"
+                (Record.info << Record.stuff << List.Reach.element 7 << Record.name)
+                    |> Reach.description
+                    |> String.join ")"
+                    |> Expect.equal "info)stuff)element 7)name"
             )
         ]
 
@@ -37,13 +35,7 @@ lensExamples : Test
 lensExamples =
     Test.describe
         "lens"
-        [ (Record.info << Dict.Accessor.valueAtString "stuff")
-            |> isLens
-                { structure = personFuzzer
-                , focusAlter = maybeStringAlterFuzzer
-                , focus = Fuzz.maybe Fuzz.string
-                }
-        , Record.name
+        [ Record.name
             |> isLens
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
@@ -63,53 +55,46 @@ isLens :
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> LensConsume structure focus
+    -> Reach.PartMappingToSameType structure focus focus
     -> Test
 isLens fuzzer =
     \settable ->
         Test.describe
-            (settable |> Accessor.description |> Accessor.descriptionToString)
-            [ settable |> isSettable fuzzer
+            (settable |> Reach.description |> String.join ")")
+            [ isSettable fuzzer settable
 
             -- there's Traversal laws in here somewhere but not sure they're expressible in elm
-            , settable |> lensSetAsItsFocus { structure = fuzzer.structure }
-            , settable
-                |> lensSetFocusViewIsFocus
-                    { structure = fuzzer.structure
-                    , focus = fuzzer.focus
-                    }
+            , lens_get_set fuzzer settable
+            , lens_set_get fuzzer settable
             ]
 
 
-lensSetAsItsFocus :
-    { structure : Fuzzer structure }
-    -> LensConsume structure focus
+lens_get_set :
+    { m | structure : Fuzzer structure }
+    -> Reach.PartMappingToSameType structure focus focus
     -> Test
-lensSetAsItsFocus fuzzer =
+lens_get_set fuzzer =
     \lens_ ->
         Test.fuzz
             (Fuzz.constant (\structure -> { structure = structure })
                 |> Fuzz.andMap fuzzer.structure
             )
-            "lensSetAsItsFocus"
+            "lens_get_set"
             (\{ structure } ->
-                (structure
-                    |> Accessor.mapOver lens_
-                        (\_ ->
-                            structure |> Accessor.view lens_
-                        )
-                )
+                structure
+                    |> Reach.mapOver lens_ (\_ -> structure |> Reach.view lens_)
                     |> Expect.equal structure
             )
 
 
-lensSetFocusViewIsFocus :
-    { structure : Fuzzer structure
-    , focus : Fuzzer focus
+lens_set_get :
+    { m
+        | structure : Fuzzer structure
+        , focus : Fuzzer focus
     }
-    -> LensConsume structure focus
+    -> Reach.PartMappingToSameType structure focus focus
     -> Test
-lensSetFocusViewIsFocus fuzzer =
+lens_set_get fuzzer =
     \lens_ ->
         Test.fuzz
             (Fuzz.constant
@@ -121,11 +106,11 @@ lensSetFocusViewIsFocus fuzzer =
                 |> Fuzz.andMap fuzzer.structure
                 |> Fuzz.andMap fuzzer.focus
             )
-            "lensSetFocusViewIsFocus"
+            "lens_set_get"
             (\{ structure, focus } ->
                 (structure
-                    |> Accessor.mapOver lens_ (\_ -> focus)
-                    |> Accessor.view lens_
+                    |> Reach.mapOver lens_ (\_ -> focus)
+                    |> Reach.view lens_
                 )
                     |> Expect.equal focus
             )
@@ -135,13 +120,19 @@ prismExamples : Test
 prismExamples =
     Test.describe
         "prism"
-        [ (Record.email << onJust)
+        [ (Record.info << Dict.Reach.valueAtString "stuff")
             |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.stuff << List.Accessor.element ( Up, 0 ))
+        , (Record.email << onJust)
+            |> isPrism
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+        , (Record.stuff << List.Reach.element 0)
             |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
@@ -155,29 +146,24 @@ isPrism :
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> PrismConsume structure focus
+    -> Reach.MaybeMappingToSameType structure focus focus
     -> Test
-isPrism fuzzer =
-    \prismToTest ->
-        Test.describe
-            ("isPrism " ++ (prismToTest |> Accessor.description |> Accessor.descriptionToString))
-            [ prismToTest
-                |> setJustViewIsIdentity
-                    { structure = fuzzer.structure }
-            , prismToTest
-                |> setFocusViewIsFocus
-                    { structure = fuzzer.structure
-                    , focus = fuzzer.focus
-                    }
-            ]
+isPrism fuzzer optionalToTest =
+    Test.describe
+        ("isOptional "
+            ++ (optionalToTest |> Reach.description |> String.join ")")
+        )
+        [ optional_identity fuzzer optionalToTest
+        , setFocusViewIsFocus fuzzer optionalToTest
+        ]
 
 
 setFocusViewIsFocus :
-    { structure : Fuzzer structure, focus : Fuzzer focus }
-    -> PrismConsume structure focus
+    { m | structure : Fuzzer structure, focus : Fuzzer focus }
+    -> Reach.MaybeMappingToSameType structure focus focus
     -> Test
 setFocusViewIsFocus fuzzer =
-    \prism ->
+    \optional ->
         Test.fuzz
             (Fuzz.constant (\structure focus -> { structure = structure, focus = focus })
                 |> Fuzz.andMap fuzzer.structure
@@ -186,70 +172,52 @@ setFocusViewIsFocus fuzzer =
             "setFocusViewIsFocus"
             (\{ structure, focus } ->
                 structure
-                    |> mapOver prism (\_ -> focus)
-                    |> view prism
+                    |> Reach.mapOver optional (\_ -> focus)
+                    |> Reach.view optional
                     |> Expect.equal
-                        (structure |> view prism |> Maybe.map (\_ -> focus))
+                        (structure |> Reach.view optional |> Maybe.map (\_ -> focus))
             )
 
 
-setJustViewIsIdentity :
-    { structure : Fuzzer structure }
-    -> PrismConsume structure focus
+optional_identity :
+    { m | structure : Fuzzer structure }
+    -> Reach.MaybeMappingToSameType structure focus focus
     -> Test
-setJustViewIsIdentity fuzzer =
-    \prism ->
-        Test.fuzz
-            (Fuzz.constant (\structure -> { structure = structure })
-                |> Fuzz.andMap fuzzer.structure
-            )
-            "setJustViewIsIdentity"
-            (\{ structure } ->
-                case structure |> view prism of
-                    Nothing ->
-                        Expect.pass
+optional_identity fuzzer optional =
+    Test.fuzz
+        (Fuzz.constant (\structure -> { structure = structure })
+            |> Fuzz.andMap fuzzer.structure
+        )
+        "optional_identity"
+        (\{ structure } ->
+            case structure |> Reach.view optional of
+                Just focus ->
+                    structure
+                        |> Reach.mapOver optional (\_ -> focus)
+                        |> Expect.equal structure
 
-                    Just focusView ->
-                        structure
-                            |> mapOver prism (\_ -> focusView)
-                            |> Expect.equal structure
-            )
+                Nothing ->
+                    Expect.pass
+        )
 
 
 settableExamples : Test
 settableExamples =
+    let
+        check =
+            isSettable
+                { structure = personFuzzer
+                , focusAlter = stringAlterFuzzer
+                , focus = Fuzz.string
+                }
+    in
     Test.describe
         "settable"
-        [ (Record.email << onJust)
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.stuff << List.Accessor.element ( Up, 0 ))
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.stuff << List.Accessor.elementEach)
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.things << Array.Accessor.element ( Up, 0 ))
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.things << Array.Accessor.elementEach)
-            |> isSettable
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
+        [ check (Record.email << onJust)
+        , check (Record.stuff << List.Reach.element 0)
+        , check (Record.stuff << List.Reach.elementEach)
+        , check (Record.things << Array.Reach.element 0)
+        , check (Record.things << Array.Reach.elementEach)
         ]
 
 
@@ -258,110 +226,100 @@ isSettable :
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> TraversalConsume structure focus focusView
+    -> Reach.ElementsMappingToSameType structure focus view focus
     -> Test
-isSettable fuzzer =
-    \settable ->
-        Test.describe
-            ("isSettable " ++ (settable |> Accessor.description |> Accessor.descriptionToString))
-            [ settable
-                |> mapIdentityIsIdentity { structure = fuzzer.structure }
-            , settable
-                |> mapMultipleIsMapComposition
-                    { structure = fuzzer.structure
-                    , focusAlter = fuzzer.focusAlter
-                    }
-            , settable
-                |> setMultipleIsSetLast
-                    { structure = fuzzer.structure
-                    , focus = fuzzer.focus
-                    }
-            ]
+isSettable fuzzer settable =
+    Test.describe
+        ("isSettable "
+            ++ (settable |> Reach.description |> String.join ")")
+        )
+        [ setter_identity fuzzer settable
+        , setter_composition fuzzer settable
+        , setter_set_set fuzzer settable
+        ]
 
 
-mapIdentityIsIdentity :
-    { structure : Fuzzer structure }
-    -> TraversalConsume structure focus focusView
+setter_identity :
+    { m | structure : Fuzzer structure }
+    -> Reach.ElementsMappingToSameType structure focus view focus
     -> Test
-mapIdentityIsIdentity fuzzer =
-    \settable ->
-        Test.fuzz
-            (Fuzz.constant (\structure -> { structure = structure })
-                |> Fuzz.andMap fuzzer.structure
-            )
-            "mapIdentityIsIdentity"
-            (\{ structure } ->
-                (structure
-                    |> Accessor.mapOver settable identity
-                )
-                    |> Expect.equal structure
-            )
+setter_identity fuzzer settable =
+    Test.fuzz
+        (Fuzz.constant (\structure -> { structure = structure })
+            |> Fuzz.andMap fuzzer.structure
+        )
+        "setter_identity"
+        (\{ structure } ->
+            structure
+                |> Reach.mapOver settable identity
+                |> Expect.equal structure
+        )
 
 
-mapMultipleIsMapComposition :
-    { structure : Fuzzer structure
-    , focusAlter : Fuzzer (Alter focus)
+setter_composition :
+    { m
+        | structure : Fuzzer structure
+        , focusAlter : Fuzzer (Alter focus)
     }
-    -> TraversalConsume structure focus focusView
+    -> Reach.ElementsMappingToSameType structure focus view focus
     -> Test
-mapMultipleIsMapComposition fuzzer =
-    \settable ->
-        Test.fuzz
-            (Fuzz.constant
-                (\structure alter0 alter1 ->
-                    { structure = structure
-                    , alter0 = alter0
-                    , alter1 = alter1
-                    }
-                )
-                |> Fuzz.andMap fuzzer.structure
-                |> Fuzz.andMap fuzzer.focusAlter
-                |> Fuzz.andMap fuzzer.focusAlter
+setter_composition fuzzer settable =
+    Test.fuzz
+        (Fuzz.constant
+            (\structure alter0 alter1 ->
+                { structure = structure
+                , alter0 = alter0
+                , alter1 = alter1
+                }
             )
-            "mapMultipleIsMapComposition"
-            (\{ structure, alter0, alter1 } ->
-                (structure
-                    |> Accessor.mapOver settable alter0
-                    |> Accessor.mapOver settable alter1
-                )
-                    |> Expect.equal
-                        (structure
-                            |> Accessor.mapOver settable (alter0 >> alter1)
-                        )
+            |> Fuzz.andMap fuzzer.structure
+            |> Fuzz.andMap fuzzer.focusAlter
+            |> Fuzz.andMap fuzzer.focusAlter
+        )
+        "setter_composition"
+        (\{ structure, alter0, alter1 } ->
+            (structure
+                |> Reach.mapOver settable alter0
+                |> Reach.mapOver settable alter1
             )
+                |> Expect.equal
+                    (structure
+                        |> Reach.mapOver settable (alter0 >> alter1)
+                    )
+        )
 
 
-setMultipleIsSetLast :
-    { structure : Fuzzer structure
-    , focus : Fuzzer focus
+setter_set_set :
+    { m
+        | structure : Fuzzer structure
+        , focus : Fuzzer focus
     }
-    -> TraversalConsume structure focus focusView
+    -> Reach.ElementsMappingToSameType structure focus view focus
     -> Test
-setMultipleIsSetLast fuzzer =
-    \settable ->
-        Test.fuzz
-            (Fuzz.constant
-                (\structure focus0 focus1 ->
-                    { structure = structure
-                    , focus0 = focus0
-                    , focus1 = focus1
-                    }
-                )
-                |> Fuzz.andMap fuzzer.structure
-                |> Fuzz.andMap fuzzer.focus
-                |> Fuzz.andMap fuzzer.focus
+setter_set_set fuzzer settable =
+    Test.fuzz
+        (Fuzz.constant
+            (\structure focus0 focus1 ->
+                { structure = structure
+                , focus0 = focus0
+                , focus1 = focus1
+                }
             )
-            "setMultipleIsSetLast"
-            (\{ structure, focus0, focus1 } ->
-                (structure
-                    |> Accessor.mapOver settable (\_ -> focus0)
-                    |> Accessor.mapOver settable (\_ -> focus1)
-                )
-                    |> Expect.equal
-                        (structure
-                            |> Accessor.mapOver settable (\_ -> focus1)
-                        )
+            |> Fuzz.andMap fuzzer.structure
+            |> Fuzz.andMap fuzzer.focus
+            |> Fuzz.andMap fuzzer.focus
+        )
+        "setter_set_set"
+        (\{ structure, focus0, focus1 } ->
+            (structure
+                |> Reach.mapOver settable (\_ -> focus0)
+                |> Reach.mapOver settable (\_ -> focus1)
             )
+                |> Expect.equal
+                    (structure
+                        |> Reach.mapOver settable (\_ -> focus1)
+                    )
+        )
 
 
 
@@ -407,10 +365,7 @@ maybeStringAlterFuzzer : Fuzzer (Alter (Maybe String))
 maybeStringAlterFuzzer =
     Fuzz.oneOf
         (List.map Fuzz.constant
-            [ \maybe ->
-                maybe
-                    |> Maybe.andThen String.toInt
-                    |> Maybe.map String.fromInt
+            [ Maybe.andThen String.toInt >> Maybe.map String.fromInt
             ]
         )
 
@@ -418,32 +373,20 @@ maybeStringAlterFuzzer =
 stringAlterFuzzer : Fuzzer (Alter String)
 stringAlterFuzzer =
     Fuzz.oneOf
-        [ Fuzz.map String.append
-            Fuzz.string
-        , Fuzz.map (\s -> String.append s << String.reverse)
-            Fuzz.string
-        , Fuzz.map (\prefix -> String.append prefix << String.toUpper)
-            Fuzz.string
-        , Fuzz.map (\prefix -> String.append prefix << String.toLower)
-            Fuzz.string
-
-        -- , Fuzz.map String.reverse string
-        -- , Fuzz.constant String.toUpper
-        -- , Fuzz.constant String.toLower
+        [ Fuzz.map String.append Fuzz.string
+        , Fuzz.map (\s -> String.append s << String.reverse) Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toUpper) Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toLower) Fuzz.string
         ]
 
 
 intAlter : Fuzzer (Alter Int)
 intAlter =
     Fuzz.oneOf
-        [ Fuzz.map (+)
-            Fuzz.int
-        , Fuzz.map (-)
-            Fuzz.int
-        , Fuzz.map (*)
-            Fuzz.int
-        , Fuzz.map (//)
-            Fuzz.int
+        [ Fuzz.map (+) Fuzz.int
+        , Fuzz.map (-) Fuzz.int
+        , Fuzz.map (*) Fuzz.int
+        , Fuzz.map (//) Fuzz.int
         ]
 
 

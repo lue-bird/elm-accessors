@@ -1,55 +1,19 @@
-module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
+module SelectList.Reach exposing (elementEach, selected)
 
-{-| This module exposes some helpers for [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
+{-| Reach into a [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
 
-@docs elementEach, elementIndexEach, selected
+@docs elementEach, selected
 
 -}
 
-import Accessor exposing (Traversal)
+import Reach
 import SelectList exposing (SelectList)
 
 
-{-| This accessor combinator lets you view values inside List.
+{-| Reach each element contained inside a `SelectList`
 
-    import Accessor exposing (view, mapOver)
-    import SelectList.Accessor
-    import Record
-    import SelectList exposing (SelectList)
-
-    fooBarScroll : { foo : SelectList { bar : Int } }
-    fooBarScroll =
-        { foo = SelectList.fromLists [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
-        }
-
-    fooBarScroll
-        |> view (Record.foo << SelectList.Accessor.elementEach << Record.bar)
-    --> SelectList.fromLists [1] 2 [3, 4]
-
-    fooBarScroll
-        |> mapOver (Record.foo << SelectList.Accessor.elementEach << Record.bar) ((+) 1)
-    --> { foo = SelectList.fromLists [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ] }
-
--}
-elementEach :
-    Traversal
-        (SelectList element)
-        element
-        (SelectList elementFocusView)
-        elementFocus
-        elementFocusView
-elementEach =
-    Accessor.traversal
-        { view = SelectList.map
-        , map = SelectList.map
-        , description = "element each"
-        }
-
-
-{-| Traverse a `SelectList` including the absolute index of each element
-
-    import Accessor exposing (view, mapOver)
-    import SelectList.Accessor
+    import Reach
+    import SelectList.Reach
     import Record
     import SelectList exposing (SelectList)
 
@@ -62,7 +26,60 @@ elementEach =
                 [ { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << SelectList.Accessor.elementIndexEach) fooBarScroll
+    fooBarScroll
+        |> Reach.view
+            (Record.foo << SelectList.Reach.elementEach << Record.bar)
+    --> SelectList.fromLists [1] 2 [3, 4]
+
+    fooBarScroll
+        |> Reach.mapOver
+            (Record.foo << SelectList.Reach.elementEach << Record.bar)
+            (\n -> n + 1)
+    --> { foo =
+    -->     SelectList.fromLists
+    -->         [ { bar = 2 } ]
+    -->         { bar = 3 }
+    -->         [ { bar = 4 }, { bar = 5 } ]
+    --> }
+
+-}
+elementEach :
+    Reach.Elements
+        (SelectList element)
+        element
+        (SelectList elementView)
+        elementView
+        (SelectList elementMapped)
+        elementMapped
+elementEach =
+    Reach.elements "element each"
+        { view = SelectList.map
+        , map = SelectList.map
+        }
+
+
+{-| Reach each element contained inside a `SelectList` including the absolute index of each element.
+
+Both examples ↓ show that this is always the final step
+before using the created reach to [map](Reach#mapOver) or [`view`](Reach#view) inside a structure
+
+    import Reach
+    import SelectList.Reach
+    import Record
+    import SelectList exposing (SelectList)
+
+    fooBarScroll : { foo : SelectList { bar : Int } }
+    fooBarScroll =
+        { foo =
+            SelectList.fromLists
+                [ { bar = 1 } ]
+                { bar = 2 }
+                [ { bar = 3 }, { bar = 4 } ]
+        }
+
+    fooBarScroll
+        |> Reach.view
+            (Record.foo << SelectList.Reach.elementIndexEach)
     --> SelectList.fromLists
     -->     [ { index = 0, element = { bar = 1 } } ]
     -->     { index = 1, element = { bar = 2 } }
@@ -70,52 +87,33 @@ elementEach =
     -->     , { index = 3, element = { bar = 4 } }
     -->     ]
 
-    tailMultiplyBy10 : { index : Int, element : { bar : Int } } -> { index : Int, element : { bar : Int } }
-    tailMultiplyBy10 =
-        \item ->
-            { item
-                | element =
-                    case item.index of
-                        0 ->
-                            item.element
-                        _ ->
-                            { bar = item.element.bar * 10 }
-            }
-
     fooBarScroll
-        |> mapOver
-            (Record.foo << SelectList.Accessor.elementIndexEach)
-            tailMultiplyBy10
+        |> Reach.mapOver
+            (Record.foo << SelectList.Reach.elementIndexEach)
+            (\node ->
+                case node.index of
+                    0 ->
+                        node.element
+                    _ ->
+                        { bar = node.element.bar * 10 }
+            )
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 30 }, { bar = 40 } ]
     --> }
 
-    fooBarScroll
-        |> view (Record.foo << SelectList.Accessor.elementIndexEach << Record.element << Record.bar)
-    --> SelectList.fromLists [ 1 ] 2 [ 3, 4 ]
-
-    fooBarScroll
-        |> mapOver
-            (Record.foo << SelectList.Accessor.elementIndexEach << Record.element << Record.bar)
-            ((+) 1)
-    --> { foo =
-    -->     SelectList.fromLists
-    -->         [ { bar = 2 } ] { bar = 3 } [ { bar = 4 }, { bar = 5 } ]
-    --> }
-
 -}
 elementIndexEach :
-    Traversal
+    Reach.Elements
         (SelectList element)
-        { index : Int, element : element }
-        (SelectList elementFocusView)
-        elementFocus
-        elementFocusView
+        { element : element, index : Int }
+        (SelectList elementView)
+        elementView
+        (SelectList elementMapped)
+        elementMapped
 elementIndexEach =
-    Accessor.traversal
-        { description = "{element,index} each"
-        , view =
+    Reach.elements "{element,index} each"
+        { view =
             \alter selectList ->
                 let
                     ( before, current, after ) =
@@ -150,24 +148,24 @@ elementIndexEach =
                 SelectList.fromLists
                     (List.indexedMap
                         (\index element ->
-                            { element = element, index = index } |> map |> .element
+                            { element = element, index = index } |> map
                         )
                         before
                     )
-                    ({ index = selectedIndex, element = current } |> map |> .element)
+                    ({ index = selectedIndex, element = current } |> map)
                     (List.indexedMap
                         (\idx element ->
-                            { element = element, index = selectedIndex + 1 + idx } |> map |> .element
+                            { element = element, index = selectedIndex + 1 + idx } |> map
                         )
                         after
                     )
         }
 
 
-{-| Accessor on the `SelectList`'s selected element.
+{-| Reach the `SelectList`'s selected element
 
-    import Accessor exposing (..)
-    import SelectList
+    import Reach
+    import SelectList.Reach
     import Record
     import SelectList exposing (SelectList)
 
@@ -179,12 +177,13 @@ elementIndexEach =
         }
 
     fooBarScroll
-        |> view (Record.foo << SelectList.Accessor.selected << Record.bar)
+        |> Reach.view
+            (Record.foo << SelectList.Reach.selected << Record.bar)
     --> 2
 
     fooBarScroll
-        |> mapOver
-            (Record.foo << SelectList.Accessor.selected << Record.bar)
+        |> Reach.mapOver
+            (Record.foo << SelectList.Reach.selected << Record.bar)
             (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
@@ -192,9 +191,9 @@ elementIndexEach =
     --> }
 
     fooBarScroll
-        |> mapOver
-            (Record.foo << SelectList.Accessor.selected << Record.bar)
-            ((*) 10)
+        |> Reach.mapOver
+            (Record.foo << SelectList.Reach.selected << Record.bar)
+            (\n -> n * 10)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]
@@ -202,11 +201,15 @@ elementIndexEach =
 
 -}
 selected :
-    Accessor.Relation element focusFocus focusFocusView
-    -> Accessor.Relation (SelectList element) focusFocus focusFocusView
+    Reach.Part
+        (SelectList elementMapped)
+        elementMapped
+        elementView
+        (SelectList elementMapped)
+        elementMapped
 selected =
-    Accessor.lens
-        { view = SelectList.selected
+    Reach.part "selected"
+        { access = SelectList.selected
         , map = SelectList.updateSelected
         , description = "selected"
         }
