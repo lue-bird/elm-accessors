@@ -1,4 +1,4 @@
-module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
+module SelectList.Reach exposing (elementEach, elementIndexEach, selected)
 
 {-| This module exposes some helpers for [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
 
@@ -6,14 +6,14 @@ module SelectList.Accessor exposing (elementEach, elementIndexEach, selected)
 
 -}
 
-import Accessor exposing (Lens, LensKeepingFocusType, Traversal, mapOver, view)
+import Reach
 import SelectList exposing (SelectList)
 
 
-{-| This accessor combinator lets you view values inside List.
+{-| Reach all elements contained inside a `List`
 
-    import Accessors exposing (..)
-    import Accessors.SelectList as SL
+    import Reach exposing (..)
+    import Reach.SelectList as SL
     import Record
     import SelectList exposing (SelectList)
 
@@ -30,33 +30,25 @@ import SelectList exposing (SelectList)
 
 -}
 elementEach :
-    Traversal
+    Reach.Elements
         (SelectList element)
         element
+        (SelectList elementView)
+        elementView
         (SelectList elementMapped)
         elementMapped
-        { selectList : focusFocusNamed }
-        (SelectList elementView)
-        elementFocusView
-        elementFocusMapped
-        focusFocusNamed
-        elementView
-        focusFocusFocusNamed
 elementEach =
-    Accessor.traversal
-        { description = { structure = "SelectList", focus = "element each" }
-        , view = SelectList.map
+    Reach.elements "element each"
+        { view = SelectList.map
         , map = SelectList.map
-        , focusName =
-            \focusFocusNamed -> { selectList = focusFocusNamed }
         }
 
 
 {-| Traverse a `SelectList` including the absolute index of each element
 
-    import Accessors exposing (view, mapOver)
-    import Tuple.Accessor as Tuple
-    import Accessors.SelectList as SelectList
+    import Reach exposing (view, mapOver)
+    import Tuple.Reach as Tuple
+    import Reach.SelectList as SelectList
     import Record
     import SelectList exposing (SelectList)
 
@@ -76,7 +68,7 @@ elementEach =
     -->     [ ( 2, { bar = 3 } ), ( 3, { bar = 4 } ) ]
 
     fooBarScroll
-        |> mapOver
+        |> Reach.mapOver
             (Record.foo << SelectList.elementIndexEach)
             (\{ index, element } =
                 case index of
@@ -92,11 +84,11 @@ elementEach =
     --> }
 
     fooBarScroll
-        |> view (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
+        |> Reach.view (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
     --> SelectList.fromLists [ 1 ] 2 [ 3, 4 ]
 
     fooBarScroll
-        |> mapOver
+        |> Reach.mapOver
             (Record.foo << SelectList.elementIndexEach << Record.element << Record.bar)
             ((+) 1)
     --> { foo =
@@ -106,22 +98,16 @@ elementEach =
 
 -}
 elementIndexEach :
-    Traversal
+    Reach.Elements
         (SelectList element)
         { element : element, index : Int }
+        (SelectList elementView)
+        elementView
         (SelectList elementMapped)
         { element : elementMapped, index : Int }
-        { selectList : focusFocusNamed }
-        (SelectList elementFocusView)
-        elementFocusView
-        elementFocusMapped
-        focusFocusNamed
-        elementFocusView
-        focusFocusFocusNamed
 elementIndexEach =
-    Accessor.traversal
-        { description = { structure = "SelectList", focus = "{element,index} each" }
-        , view =
+    Reach.elements "{element,index} each"
+        { view =
             \alter selectList ->
                 let
                     ( before, current, after ) =
@@ -167,15 +153,13 @@ elementIndexEach =
                         )
                         after
                     )
-        , focusName =
-            \focusFocusName -> { selectList = focusFocusName }
         }
 
 
-{-| Accessor on the `SelectList`'s selected element.
+{-| Reach the `SelectList`'s selected element
 
-    import Accessors exposing (..)
-    import Accessors.SelectList as SL
+    import Reach exposing (..)
+    import Reach.SelectList as SL
     import Record
     import SelectList exposing (SelectList)
 
@@ -186,16 +170,16 @@ elementIndexEach =
                 [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
 
-    fooBarScroll |> view (Record.foo << SL.selected << Record.bar)
+    fooBarScroll |> Reach.view (Record.foo << SL.selected << Record.bar)
     --> 2
 
-    fooBarScroll |> mapOver (Record.foo << SL.selected << Record.bar) (\_ -> 37)
+    fooBarScroll |> Reach.mapOver (Record.foo << SL.selected << Record.bar) (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
     --> }
 
-    fooBarScroll |> mapOver (Record.foo << SL.selected << Record.bar) ((*) 10)
+    fooBarScroll |> Reach.mapOver (Record.foo << SL.selected << Record.bar) ((*) 10)
     --> { foo =
     -->     SelectList.fromLists
     -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]
@@ -203,20 +187,14 @@ elementIndexEach =
 
 -}
 selected :
-    LensKeepingFocusType
-        (SelectList element)
-        element
-        { selected : focusFocusNamed }
-        elementFocusMapped
-        elementFocusView
-        focusFocusNamed
-        focusFocusView
-        focusFocusFocusNamed
+    Reach.Part
+        (SelectList elementMapped)
+        elementMapped
+        elementView
+        (SelectList elementMapped)
+        elementMapped
 selected =
-    Accessor.lens
-        { description = { structure = "SelectList", focus = "selected" }
-        , view = SelectList.selected
+    Reach.part "selected"
+        { access = SelectList.selected
         , map = SelectList.updateSelected
-        , focusName =
-            \focusFocusNamed -> { selected = focusFocusNamed }
         }

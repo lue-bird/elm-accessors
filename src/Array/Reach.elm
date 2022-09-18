@@ -1,22 +1,21 @@
-module Array.Accessor exposing (elementEach, elementIndexEach, element)
+module Array.Reach exposing (elementEach, elementIndexEach, element)
 
-{-| Accessors for `Array`s.
+{-| Reach for `Array`s.
 
 @docs elementEach, elementIndexEach, element
 
 -}
 
-import Accessor exposing (Prism, PrismKeepingFocusType, Traversal, lens, onJust, prism, traversal)
 import Array exposing (Array)
 import Array.Linear
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
-import Linear.Extra as Linear
+import Reach
 
 
-{-| This accessor combinator lets you view values inside Array.
+{-| Reach all elements contained inside an `Array`
 
     import Array exposing (Array)
-    import Accessors exposing (every, view, map)
+    import Reach exposing (every, view, map)
     import Record
 
     fooBarray : { foo : Array { bar : Int } }
@@ -25,41 +24,36 @@ import Linear.Extra as Linear
             Array.fromList [ { bar = 2 }, { bar = 3 }, { bar = 4 } ]
         }
 
-    view (Record.foo << every << Record.bar) fooBarray
+    fooBarray
+        |> Reach.view (Record.foo << every << Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
-    map (Record.foo << every << Record.bar) ((+) 1) fooBarray
+    fooBarray
+        |> Reach.mapOver (Record.foo << every << Record.bar) ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
 elementEach :
-    Traversal
+    Reach.Elements
         (Array element)
         element
+        (Array elementView)
+        elementView
         (Array elementMapped)
         elementMapped
-        focusFocusNamed
-        (Array elementFocusView)
-        elementFocus
-        elementFocusMapped
-        focusFocusNamed
-        elementFocusView
-        focusFocusFocusNamed
 elementEach =
-    traversal
-        { description = { structure = "Array", focus = "element each" }
-        , view = Array.map
+    Reach.elements "element each"
+        { view = Array.map
         , map = Array.map
-        , focusName = identity
         }
 
 
-{-| This accessor lets you traverse a list including the index of each element
+{-| Reach each element contained inside a `List` including the index of each element
 
-    import Accessors exposing (view, mapOver)
-    import Tuple.Accessor as Tuple
+    import Reach exposing (view, mapOver)
+    import Tuple.Reach as Tuple
     import Record
-    import Array.Accessor as Array
+    import Array.Reach as Array
     import Array exposing (Array)
 
     fooBarray : { foo : Array { bar : Int } }
@@ -72,7 +66,7 @@ elementEach =
                 ]
         }
 
-    fooBarray |> view (Record.foo << Array.elementEach)
+    fooBarray |> Reach.view (Record.foo << Array.elementEach)
     --> Array.fromList
     -->     [ { index = 0, element = { bar = 2 } }
     -->     , { index = 1, element = { bar = 3 } }
@@ -80,7 +74,7 @@ elementEach =
     -->     ]
 
     fooBarray
-        |> mapOver
+        |> Reach.mapOver
             (Record.foo << Array.elementEach)
             (\{ index, element } ->
                 case index of
@@ -93,33 +87,27 @@ elementEach =
     --> { foo = Array.fromList [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
     fooBarray
-        |> view (Record.foo << Array.elementEach << Tuple.second << Record.bar)
+        |> Reach.view (Record.foo << Array.elementEach << Tuple.second << Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     fooBarray
-        |> mapOver
+        |> Reach.mapOver
             (Record.foo << Array.elementEach << Tuple.second << Record.bar)
             ((+) 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
 elementIndexEach :
-    Traversal
+    Reach.Elements
         (Array element)
         { element : element, index : Int }
+        (Array reachView)
+        reachView
         (Array elementMapped)
         { element : elementMapped, index : Int }
-        focusFocusNamed
-        (Array elementFocusView)
-        elementView
-        elementFocus
-        focusFocusNamed
-        elementFocusView
-        focusFocusFocusNamed
 elementIndexEach =
-    Accessor.traversal
-        { description = { structure = "Array", focus = "{element,index} each" }
-        , view =
+    Reach.elements "{element,index} each"
+        { view =
             \elementFocusView ->
                 Array.indexedMap
                     (\index element_ ->
@@ -131,7 +119,6 @@ elementIndexEach =
                     (\index element_ ->
                         { element = element_, index = index } |> elementMap |> .element
                     )
-        , focusName = identity
         }
 
 
@@ -139,52 +126,47 @@ elementIndexEach =
 
     import Linear exposing (DirectionLinear(..))
     import Array exposing (Array)
-    import Accessors exposing (view)
-    import Array.Accessor as Array
+    import Reach exposing (view)
+    import Array.Reach as Array
     import Record
 
     barray : Array { bar : String }
     barray =
         Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    barray |> view (Array.element 1)
+    barray |> Reach.view (Array.element 1)
     --> Just { bar = "Things" }
 
-    barray |> view (Array.element ( Up, 9000 ))
+    barray |> Reach.view (Array.element ( Up, 9000 ))
     --> Nothing
 
-    barray |> view (Array.element ( Down, 0 ) << Record.bar)
+    barray |> Reach.view (Array.element ( Down, 0 ) << Record.bar)
     --> Just "Woot"
 
     barray
-        |> mapOver (Array.element ( Up, 0 ) << Record.bar) (\_ -> "Whatever")
+        |> Reach.mapOver (Array.element ( Up, 0 ) << Record.bar) (\_ -> "Whatever")
     --> Array.fromList
     -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
     barray
-        |> mapOver (Array.element ( Up, 9000 ) << Record.bar) (\_ -> "Whatever")
+        |> Reach.mapOver
+            (Array.element ( Up, 9000 ) << Record.bar)
+            (\_ -> "Whatever")
     --> barray
 
 -}
 element :
     ( DirectionLinear, Int )
     ->
-        PrismKeepingFocusType
-            (Array element)
-            element
-            { element : focusFocusNamed }
-            focusFocus
-            focusFocusMapped
-            focusFocusNamed
-            focusFocusView
-            focusFocusFocusNamed
+        Reach.Maybe
+            (Array reachMapped)
+            reachMapped
+            reachView
+            (Array reachMapped)
+            reachMapped
 element location =
-    prism
-        { description =
-            { structure = "Array"
-            , focus = "element " ++ (location |> Linear.locationToString)
-            }
-        , view =
+    Reach.maybe ("element " ++ (location |> Linear.locationToString))
+        { access =
             \array ->
                 case array |> Array.Linear.element location of
                     Err (ExpectedIndexForLength _) ->
@@ -195,6 +177,4 @@ element location =
         , map =
             \alter ->
                 Array.Linear.elementAlter ( location, alter )
-        , focusName =
-            \focusFocusNamed -> { element = focusFocusNamed }
         }

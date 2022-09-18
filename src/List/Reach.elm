@@ -1,20 +1,19 @@
-module List.Accessor exposing (element, elementEach, elementIndexEach)
+module List.Reach exposing (element, elementEach, elementIndexEach)
 
-{-| Accessors for `List`s.
+{-| Reach for `List`s.
 
 @docs element, elementEach, elementIndexEach
 
 -}
 
-import Accessor exposing (Lens, Prism, PrismKeepingFocusType, Traversal, lens, onJust, traversal)
 import Linear exposing (DirectionLinear, ExpectedIndexInRange(..))
-import Linear.Extra as Linear
 import List.Linear
+import Reach
 
 
-{-| This accessor combinator lets you view values inside List.
+{-| Reach all the elements contained inside a `List`
 
-    import Accessors exposing (each, view, map)
+    import Reach exposing (each, view, map)
     import Record
 
     listRecord : { foo : List { bar : Int } }
@@ -34,32 +33,25 @@ import List.Linear
 
 -}
 elementEach :
-    Traversal
+    Reach.Elements
         (List element)
         element
+        (List elementView)
+        elementView
         (List elementMapped)
         elementMapped
-        focusFocusNamed
-        (List elementFocusView)
-        elementFocus
-        elementFocusMapped
-        focusFocusNamed
-        elementFocusView
-        focusFocusFocusNamed
 elementEach =
-    traversal
-        { description = { structure = "List", focus = "element each" }
-        , view = List.map
+    Reach.elements "element each"
+        { view = List.map
         , map = List.map
-        , focusName = identity
         }
 
 
-{-| This accessor lets you traverse a list including the index of each element
+{-| Reach each element contained inside a `List` including the index of each element
 
-    import Accessors exposing (view, mapOver)
-    import List.Accessor as List
-    import Tuple.Accessor as Tuple
+    import Reach exposing (view, mapOver)
+    import List.Reach as List
+    import Tuple.Reach as Tuple
     import Record
 
     listRecord : { foo : List { bar : Int } }
@@ -71,11 +63,11 @@ elementEach =
             ]
         }
 
-    listRecord |> view (Record.foo << List.elementIndexEach)
+    listRecord |> Reach.view (Record.foo << List.elementIndexEach)
     --> [ ( 0, { bar = 2 } ), ( 1, { bar = 3 } ), ( 2, { bar = 4 } ) ]
 
     listRecord
-        |> mapOver
+        |> Reach.mapOver
             (Record.foo << List.elementIndexEach)
             (\{ index, element } ->
                 case index of
@@ -88,33 +80,27 @@ elementEach =
     --> { foo = [ { bar = 2 }, { bar = 30 }, { bar = 40 } ] }
 
     listRecord
-        |> view (Record.foo << List.elementIndexEach << Record.element << Record.bar)
+        |> Reach.view (Record.foo << List.elementIndexEach << Record.element << Record.bar)
     --> [ 2, 3, 4 ]
 
     listRecord
-        |> mapOver
+        |> Reach.mapOver
             (Record.foo << List.elementIndexEach << Record.element << Record.bar)
             ((+) 1)
     --> { foo = [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
 elementIndexEach :
-    Traversal
+    Reach.Elements
         (List element)
         { element : element, index : Int }
+        (List elementView)
+        elementView
         (List elementMapped)
         { element : elementMapped, index : Int }
-        focusFocusNamed
-        (List elementFocusView)
-        elementFocus
-        elementFocusMapped
-        focusFocusNamed
-        elementFocusView
-        focusFocusFocusNamed
 elementIndexEach =
-    traversal
-        { description = { structure = "List", focus = "{element,index} each" }
-        , view =
+    Reach.elements "{element,index} each"
+        { view =
             \elementIndexFocusView ->
                 List.indexedMap
                     (\index element_ ->
@@ -126,56 +112,48 @@ elementIndexEach =
                     (\index element_ ->
                         { element = element_, index = index } |> elementIndexMap |> .element
                     )
-        , focusName = identity
         }
 
 
 {-| Focus a `List` element at a given index in a [direction](https://dark.elm.dmy.fr/packages/lue-bird/elm-linear-direction/latest/).
 
     import Linear exposing (DirectionLinear(..))
-    import Accessors exposing (view)
-    import List.Accessor as List
+    import Reach exposing (view)
+    import List.Reach as List
     import Record
 
     bars : List { bar : String }
     bars =
         [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> view (List.element 1)
+    bars |> Reach.view (List.element 1)
     --> Just { bar = "Things" }
 
-    bars |> view (List.element 9000)
+    bars |> Reach.view (List.element 9000)
     --> Nothing
 
-    bars |> view (List.element 0 << Record.bar)
+    bars |> Reach.view (List.element 0 << Record.bar)
     --> Just "Stuff"
 
-    bars |> mapOver (List.element 0 << Record.bar) (\_ -> "Whatever")
+    bars |> Reach.mapOver (List.element 0 << Record.bar) (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
-    bars |> mapOver (List.element 9000 << Record.bar) (\_ -> "Whatever")
+    bars |> Reach.mapOver (List.element 9000 << Record.bar) (\_ -> "Whatever")
     --> bars
 
 -}
 element :
     ( DirectionLinear, Int )
     ->
-        PrismKeepingFocusType
+        Reach.Maybe
             (List element)
             element
-            { element : elementFocusNamed }
             elementView
-            elementFocus
-            elementFocusNamed
-            elementFocusView
-            elementFocusFocusNamed
+            (List element)
+            element
 element focusLocation =
-    Accessor.prism
-        { description =
-            { structure = "List"
-            , focus = "element " ++ (focusLocation |> Linear.locationToString)
-            }
-        , view =
+    Reach.maybe ("element " ++ (focusLocation |> Linear.locationToString))
+        { access =
             \list ->
                 case list |> List.Linear.element focusLocation of
                     Err (ExpectedIndexForLength _) ->
@@ -186,6 +164,4 @@ element focusLocation =
         , map =
             \elementMap ->
                 List.Linear.elementAlter ( focusLocation, elementMap )
-        , focusName =
-            \focusFocusNamed -> { element = focusFocusNamed }
         }

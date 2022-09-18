@@ -1,52 +1,51 @@
-Describe relations between a structure and its
-content, and use that description to `map`/`view` arbitrary content more easily.
+Describe how to reach a structure's content
+to [map](Reach#over)/[`view`](Reach#view) arbitrary content more easily
 
-## build relations 
+## reach 
 
 - 1:1, e.g.
-    - a record and a specific field value
-    - a tuple and the first or second value
+    - a record's `.score` field value
+    - a tuple's second value
 - 1:n, e.g.
-    - a `List` can contain 0-n elements
-    - a `Maybe` can contain 0-1 elements
+    - a `List`'s contained 0-n elements
+    - a `Set Int`'s contained 0-n even elements
+- 1:?, e.g.
+    - a `Maybe`'s 0-1 values
+    - a `List`'s 0-1 head elements
 
 ```elm
-import Accessor
+import Reach
 
+recordFoo : Reach.Part
 recordFoo =
-    Accessor.lens
-        { description = ".foo"
-        , view = .foo
+    Reach.part "foo"
+        { access = .foo
         , map = \alter record -> { record | foo = record.foo |> alter }
         }
 
 recordBar =
-    Accessor.lens
-        { description = ".bar"
-        , view = .bar
+    Reach.part "bar"
+        { access = .bar
         , map = \alter record -> { record | bar = record.bar |> alter }
         }
 
 elementEach = 
-    Accessor.traversal
-        { description = "element each"
-        , view = List.map
+    Reach.elements "element each"
+        { view = List.map
         , map = List.map
         }
 
 onJust =
-    Accessor.traversal
-        { description = "Just"
-        , view = Maybe.map
+    Reach.maybe "Just"
+        { view = identity
         , map = Maybe.map
         }
 ```
 
-## combine relations
-
-Accessors can be composed easily to describe relations:
+## reach deep inside
 
 ```elm
+fooBars : { foo : List { bar : number } }
 fooBars =
     { foo =
         [ { bar = 3 }
@@ -55,23 +54,24 @@ fooBars =
         ]
     }
 
-fooBars |> view (Record.foo << List.Accessor.elementEach << Record.bar)
+fooBars
+    |> Reach.view (Record.foo << List.Reach.elementEach << Record.bar)
 --> [ 3, 2, 0 ]
 
 fooBars
-    |> mapOver
-        (recordFoo << List.Accessor.elementEach << Record.bar)
+    |> Reach.mapOver
+        (recordFoo << List.Reach.elementEach << Record.bar)
         (\n -> n * 2)
 --> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 ```
 
 ## type-safe, reusable
 
-Applying an accessor on non-matching data structures will yield nice
-compile-time errors: 
+Reaching into on non-matching data structures will yield nice
+compile-time errors:
 
 ```elm
-fooBars |> view (Record.foo << Record.foo)
+fooBars |> Reach.view (Record.foo << Record.foo)
 ```
 > The 2nd argument to `view` is not what I expect:
 > 
@@ -85,30 +85,26 @@ fooBars |> view (Record.foo << Record.foo)
 > 
 >     { foo : { a | foo : c } }
 
-Any accessor you make can be composed with any other accessor to match your new
+Any reach you create can be composed with any other to match your new
 data structures: 
 
 ```elm
-import Accessor exposing (onJust)
-import List.Accessor
+import Reach exposing (onJust)
+import List.Reach
 
 tryEach =
-    onJust << List.Accessor.elementEach
+    onJust << List.Reach.elementEach
 
 { bar = Just [ 1, 3, 2 ] }
-    |> view (recordBar << tryEach)
---> Just [ 1, 3, 2 ]
+    |> Reach.mapOver (recordBar << tryEach) negate
+--> { bar = Just [ -1, -3, -2 ] }
 ```
-
-## play with it
-
-[ellie with accessors](https://ellie-app.com/4wHNCxgft87a1). 
 
 ## contribute
 
 run
 
-`npx elm-verify-examples` and `elm-test` or `elm-test-rs`
+`elm-review`, `npx elm-verify-examples` and `elm-test`/`elm-test-rs`
 
-If you write new accessor combinators that rely on common library data, I'll be
-happy to review and merge. Please include tests for your combinators.
+If you write new reach combinators that rely on common library data, I'll be
+happy to review and merge. Please include tests.

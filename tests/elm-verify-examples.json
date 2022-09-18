@@ -1,11 +1,11 @@
 {
   "root": "../src",
   "tests": [
-    "Accessor",
-    "Tuple.Accessor",
-    "List.Accessor",
-    "Array.Accessor",
-    "Dict.Accessor",
-    "SelectList.Accessor"
+    "Reach",
+    "Tuple.Reach",
+    "List.Reach",
+    "Array.Reach",
+    "Dict.Reach",
+    "SelectList.Reach"
   ]
 }

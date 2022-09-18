@@ -1,31 +1,63 @@
+TODO!
+- remove arrows for element index
+
 # change log
 
 ## 3.0.0
 
 - `module Accessors.Library` remove
-    - backwards compatibility for just a few users shouldn't clutter the existing API this much
+    - clutter without benefit
+    - no need for backwards compatibility
 - `module Accessors.Lazy` remove
-    - in favor of `Accessors.mapLazy`
+    - in favor of `Reach.mapOverLazy`
 - `module Accessors`
-    - name → `Accessor`
-        - plural is just more verbose and doesn't mirror the type name
-    - tuple accessors move to `Tuple.Accessor`
-    - `List` accessors move to `List.Accessor`
-    - `Array` accessors move to `Array.Accessor`
-    - `Dict` accessors move to `Dict.Accessor`
-    - `Settable` remove
+    - name → `Reach`
+        - plural is just more verbose and
+        - `Reach` is shorter
+        - `Reach` is nice as a type prefix
+    - tuple accessors move to `Tuple.Reach`
+    - `List` accessors move to `List.Reach`
+    - `Array` accessors move to `Array.Reach`
+    - `Dict` accessors move to `Dict.Reach`
+    - ```elm
+      type Relation structure reach view
+          = Relation
+                { get : structure -> view
+                , over : (reach -> reach) -> (structure -> structure)
+                , name : String
+                }
+      ```
+      → `description` lazy, type change on map allowed, `map` simplified
+      ```elm
+      type ViewMap value view mapped
+          = ViewMap
+              { view : value -> view
+              , map : value -> mapped
+              , description : () -> List String
+              }
+      ```
+    - `Setable` remove
         - type described _every_ uncomposable traversal
     - `set` remove
-        - in favor of `map` which supplies the value to replace with lazily
+        - in favor of `over ... (\_ -> )` which supplies the value to replace with lazily
     - `or` remove
         - in favor of `valueElseOnNothing`
+    - `type alias ..._`s remove
+    - `Accessor` name → `Reach.Elements`
+    - `Lens` name → `Reach.Part`
+    - `is` name → `has`
+    - `try` name → `onJust`
+    - `ok` name → `onOk`
+    - `err` name → `onErr`
     - `def` name → `valueElseOnNothing`
+    - `name` → `|> description |> String.join ")"`
+    - `makeOneToOne`, `makeOneToN` remove
+        - no need for backwards compatibility
+    - `makeOneToOne_` name → `Reach.part`
+    - `makeOneToN_` name → `Reach.elements`
     - `over` name → `mapOver`
-    - `name` → `|> description |> descriptionToString`
-    - `Accessors.makeOneToOne_` name → `Accessor.lens`
-    - `Accessors.makeOneToN_` name → `Accessor.traversal`
-    - `Accessors.makeOneToOne`, `Accessors.makeOneToN` remove
-        - backwards compatibility for just a few users shouldn't affect the existing API this much (-`_`)
-    - `Prism`, `prism` add
-    - `TraversalConsume` add
+    - `get` name → `view`
+    - `name : -> String` name → `description : List String`
+    - `Reach.Maybe`, `Reach.maybe` add
+    - `Reach....MappingToSameType`s add
     - `mapOverLazy` add
