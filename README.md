@@ -91,8 +91,8 @@ fooBars |> Reach.view (Record.foo << Record.foo)
 ```
 > The 2nd argument to `view` is not what I expect:
 > 
-> ..| view (recordFoo << recordFoo) myData
->                                     ^^^^^^
+>     ..| view (recordFoo << recordFoo) myData
+>                                       ^^^^^^
 > This `myData` value is a:
 > 
 >     { foo : List { bar : number } }
