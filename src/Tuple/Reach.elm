@@ -14,18 +14,15 @@ import Reach
     import Reach
     import Tuple.Reach
 
-    charging : ( String, Int )
-    charging =
-        ( "It's over", 1 )
 
-    charging |> Reach.view Tuple.Reach.first
+    ( "It's over", 1 ) |> Reach.view Tuple.Reach.first
     --> "It's over"
 
-    charging
-        |> Reach.mapOver Tuple.Reach.first (\_ -> "It's map")
-    --> ( "It's over", 1 )
+    ( "It's over", 1 )
+        |> Reach.mapOver Tuple.Reach.first (\_ -> "It's mapOver")
+    --> ( "It's mapOver", 1 )
 
-    charging
+    ( "It's over", 1 )
         |> Reach.mapOver
             Tuple.Reach.first
             (\m -> (m |> String.toUpper) ++ "!!!")

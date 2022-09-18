@@ -80,19 +80,13 @@ valueEach =
     dict |> Reach.view (Dict.Reach.valueAt ( 'b', String.fromChar ))
     --> Just { bar = 2 }
 
-    dict |> Reach.view (Dict.Reach.valueAt ( 'b', String.fromChar ))
+    dict |> Reach.view (Dict.Reach.valueAt ( 'a', String.fromChar ))
     --> Nothing
 
     dict
         |> Reach.view
             (Dict.Reach.valueAt ( 'b', String.fromChar ) << Record.bar)
     --> Just 2
-
-    dict
-        |> Reach.mapOver
-            (Dict.Reach.valueAt ( 'b', String.fromChar ))
-            (\_ -> Nothing)
-    --> dict |> Dict.remove 'b'
 
     dict
         |> Reach.mapOver
