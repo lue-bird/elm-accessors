@@ -211,5 +211,4 @@ selected =
     Reach.part "selected"
         { access = SelectList.selected
         , map = SelectList.updateSelected
-        , description = "selected"
         }
