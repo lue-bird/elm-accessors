@@ -122,5 +122,5 @@ run
 
 `elm-review`, `npx elm-verify-examples` and `elm-test`/`elm-test-rs`
 
-If you write new reach combinators that rely on common library data, I'll be
+If you write new reaches for common library data, I'll be
 happy to review and merge. Please include tests.
