@@ -66,77 +66,7 @@ valueEach =
         }
 
 
-{-| Reach each entry `{ key, value }` contained in a `Dict`.
-
-Both examples ↓ show that this is always the final step
-before using the created reach to [map](Reach#mapOver) or [`view`](Reach#view) inside a structure
-
-    import Reach
-    import Dict.Reach
-    import Record
-    import Dict exposing (Dict)
-
-    recordDictStringBar : { foo : Dict String { bar : Int } }
-    recordDictStringBar =
-        { foo =
-            Dict.fromList
-                [ ( "a", { bar = 2 } )
-                , ( "b", { bar = 3 } )
-                , ( "c", { bar = 4 } )
-                ]
-        }
-
-    recordDictStringBar |> Reach.view (Record.foo << Dict.Reach.valueKeyEach)
-    --> Dict.fromList
-    -->     [ ( "a", { key = "a", value = { bar = 2 } } )
-    -->     , ( "b", { key = "b", value = { bar = 3 } } )
-    -->     , ( "c", { key = "c", value = { bar = 4 } } )
-    -->     ]
-
-    recordDictStringBar
-        |> Reach.mapOver
-            (Record.foo << Dict.Reach.valueKeyEach)
-            (\entry ->
-                case entry.key of
-                    "a" ->
-                        { bar = entry.value.bar * 10 }
-                    _ ->
-                        entry.value
-            )
-    --> { foo =
-    -->     Dict.fromList
-    -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
-    --> }
-
--}
-valueKeyEach :
-    Reach.Elements
-        (Dict key value)
-        { key : key, value : value }
-        (Dict key reachView)
-        reachView
-        (Dict key valueMapped)
-        valueMapped
-valueKeyEach =
-    Reach.elements "{key,value} each"
-        { view =
-            \valueKeyView ->
-                Dict.map
-                    (\key value ->
-                        { key = key, value = value } |> valueKeyView
-                    )
-        , map =
-            \valueKeyMap ->
-                Dict.map
-                    (\key value ->
-                        { key = key, value = value } |> valueKeyMap
-                    )
-        }
-
-
-{-| NON-structure preserving reach into `Dict`s
-
-In terms of reach, think of Dicts as records where each field is a `Maybe`.
+{-| Reach into a `Dict`'s value at a given key
 
     import Dict exposing (Dict)
     import Reach exposing (onJust)
