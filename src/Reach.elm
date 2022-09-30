@@ -1,5 +1,5 @@
 module Reach exposing
-    ( Part, Maybe, Elements, ViewMap(..)
+    ( Part, Maybe, Elements(..)
     , ElementsMappingToSameType, MaybeMappingToSameType, PartMappingToSameType
     , part, maybe, elements
     , into
@@ -12,7 +12,7 @@ module Reach exposing
 
 {-| Reach into nested structures to [map](#mapOver) or [`view`](#view) arbitrary content
 
-@docs Part, Maybe, Elements, ViewMap
+@docs Part, Maybe, Elements
 
 
 ## mapping to same type
@@ -97,21 +97,10 @@ type alias Maybe structure possibility possibilityView mapped possibilityMapped 
 haskell/... devs will recognize this as a traversal
 
 -}
-type alias Elements structure element view elementView mapped elementMapped =
-    ViewMap element elementView elementMapped
-    -> ViewMap structure view mapped
-
-
-{-| Description on how to `view` or `map` a value
-
-[`Reach.Elements`](Reach#Elements) and its descendants
-always expect a [`ViewMap`](#ViewMap) and build a new [`ViewMap`](#ViewMap) with it
-
--}
-type ViewMap value view mapped
-    = ViewMap
-        { view : value -> view
-        , map : value -> mapped
+type Elements structure element view elementView mapped elementMapped
+    = Elements
+        { view : (element -> elementView) -> (structure -> view)
+        , map : (element -> elementMapped) -> (structure -> mapped)
         , description : List String
         }
 
@@ -197,8 +186,12 @@ type alias ElementsMappingToSameType structure possibility view possibilityView 
 view :
     Elements structure reach view reach mapped reachMapped
     -> (structure -> view)
-view reachMany =
-    reachMany |> viewAndDescription |> .view
+view reach =
+    let
+        (Elements reachInternal) =
+            reach
+    in
+    reachInternal.view identity
 
 
 {-| Used with a Prism, think of `!!` boolean coercion in Javascript except type-safe.
@@ -254,39 +247,8 @@ description :
     Elements structure reach view reach mapped reach
     -> List String
 description =
-    \reachMany ->
-        reachMany |> viewAndDescription |> .description
-
-
-viewAndDescription :
-    Elements structure reach view reach mapped reachMapped
-    ->
-        { description : List String
-        , view : structure -> view
-        }
-viewAndDescription reach =
-    let
-        (ViewMap viewMap) =
-            reach
-                (ViewMap
-                    { description = []
-                    , view = identity
-                    , map =
-                        -- as this will never be called, we can do any
-                        -- shenanigans we want to make `viewAndDescription` take a `Reach.Elements` that can also map
-                        \_ ->
-                            let
-                                runForeverButProduceANewTypeVariableInTheory : () -> newTypeVariable
-                                runForeverButProduceANewTypeVariableInTheory () =
-                                    runForeverButProduceANewTypeVariableInTheory ()
-                            in
-                            runForeverButProduceANewTypeVariableInTheory ()
-                    }
-                )
-    in
-    { description = viewMap.description
-    , view = viewMap.view
-    }
+    \(Elements reachInternal) ->
+        reachInternal.description
 
 
 {-| Create a 1:1 [`Reach.Part`](Reach#Part) from
@@ -383,17 +345,22 @@ elements :
         }
     -> Elements structure reach view reachView mapped reachMapped
 elements focusDescription reach =
-    \(ViewMap deeper) ->
-        ViewMap
-            { view = reach.view deeper.view
-            , map = reach.map deeper.map
-            , description =
-                deeper.description
-                    |> (::) focusDescription
-            }
+    Elements
+        { view = reach.view
+        , map = reach.map
+        , description =
+            [ focusDescription ]
+        }
 
 
-{-| Reach elements deeper inside the structure
+{-| Reach elements deeper inside a structure
+
+    import Record
+
+    { foo = { qux = 0 } }
+        |> Reach.mapOver (Record.foo |> Reach.into Record.qux) (\n -> n + 1)
+    --> { foo = { qux = 1 } }
+
 -}
 into :
     Elements element elementElement elementView element elementMapped elementElementMapped
@@ -401,8 +368,18 @@ into :
         (Elements structure element view elementView mapped elementMapped
          -> Elements structure elementElement view element mapped elementElementMapped
         )
-into reachElements =
-    \reach -> reach |> Reach.into reachElements
+into reachFurther =
+    let
+        (Elements reachFurtherInternal) =
+            reachFurther
+    in
+    \(Elements reachInternal) ->
+        Elements
+            { view = reachInternal.view << reachFurtherInternal.view
+            , map = reachInternal.map << reachFurtherInternal.map
+            , description =
+                reachFurtherInternal.description ++ reachInternal.description
+            }
 
 
 {-| Given a reach and a change for each element
@@ -423,16 +400,10 @@ mapOver :
         )
 mapOver reach change =
     let
-        (ViewMap structureViewMap) =
+        (Elements reachInternal) =
             reach
-                (ViewMap
-                    { description = []
-                    , view = identity
-                    , map = change
-                    }
-                )
     in
-    structureViewMap.map
+    reachInternal.map change
 
 
 {-| Lazy version of [`mapOver`](#mapOver).
