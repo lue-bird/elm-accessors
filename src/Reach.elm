@@ -2,6 +2,7 @@ module Reach exposing
     ( Part, Maybe, Elements, ViewMap(..)
     , ElementsMappingToSameType, MaybeMappingToSameType, PartMappingToSameType
     , part, maybe, elements
+    , into
     , view, has
     , description
     , mapOver, mapOverLazy
@@ -22,6 +23,11 @@ module Reach exposing
 ## create
 
 @docs part, maybe, elements
+
+
+## compose
+
+@docs into
 
 
 ## scan
@@ -52,25 +58,6 @@ module Reach exposing
   - [`Tuple.Reach.first`](Tuple-Reach#first)
   - [`SelectList.Reach.selected`](SelectList-Reach#selected)
   - record `.field` value
-
-Intuitively, its type could look like
-
-    type alias Lens structure part mapped partMapped =
-        { access : structure -> part
-        , map : (part -> partMapped) -> (structure -> mapped)
-        }
-
-Unfortunately, we then need `Reach.toPart`, `Reach.toTranslate`, `Reach.toMaybe`, ... compose functions.
-
-Defining "Lens" in terms of [`ViewMap`](#ViewMap)s:
-
-    ViewMap part partView partMapped
-    -> ViewMap structure partView mapped
-
-we're able to make use of `<<`
-to [`view`](#view)/[map](#mapOver) a nested structure.
-
-Technical note: This is an approximation of [CPS based / Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/)
 
 -}
 type alias Part structure part partView mapped partMapped =
@@ -199,11 +186,11 @@ type alias ElementsMappingToSameType structure possibility view possibilityView 
     import List.Reach
 
     { foo = { bar = "filling" } }
-        |> Reach.view (Record.foo << Record.bar)
+        |> Reach.view (Record.foo |> Reach.into Record.bar)
     --> "filling"
 
     { foo = [ { bar = "filling" } ] }
-        |> Reach.view (Record.foo << List.Reach.elementEach << Record.bar)
+        |> Reach.view (Record.foo |> Reach.into List.Reach.elementEach |> Reach.into Record.bar)
     --> [ "filling" ]
 
 -}
@@ -244,7 +231,7 @@ has reachMaybe =
 
 
 {-| Each reach has a name.
-The `<<` chain gives us a `List` of unique reach [`description`](#description)s.
+The `|> Reach.into` chain gives us a `List` of unique reach [`description`](#description)s.
 This is useful when you want type-safe identifiers for a `Dict`
 similar to the way you'd use a Sum type's constructors to key a dictionary for a form
 but you still want to use the `elm/core` implementation.
@@ -254,9 +241,9 @@ but you still want to use the `elm/core` implementation.
     import Record
 
     (Record.email
-        << onJust
-        << Record.info
-        << Dict.Reach.valueAtString "subject"
+        |> Reach.into onJust
+        |> Reach.into Record.info
+        |> Reach.into Dict.Reach.valueAtString "subject"
     )
         |> Reach.description
         |> String.join ")"
@@ -406,13 +393,25 @@ elements focusDescription reach =
             }
 
 
+{-| Reach elements deeper inside the structure
+-}
+into :
+    Elements element elementElement elementView element elementMapped elementElementMapped
+    ->
+        (Elements structure element view elementView mapped elementMapped
+         -> Elements structure elementElement view element mapped elementElementMapped
+        )
+into reachElements =
+    \reach -> reach |> Reach.into reachElements
+
+
 {-| Given a reach and a change for each element
 `mapOver` transforms the data `structure`'s reached content.
 
     import Record
 
     { foo = { qux = 0 } }
-        |> Reach.mapOver (Record.foo << Record.qux) (\n -> n + 1)
+        |> Reach.mapOver (Record.foo |> Reach.into Record.qux) (\n -> n + 1)
     --> { foo = { qux = 1 } }
 
 -}
@@ -482,19 +481,19 @@ mapOverLazy reach change =
         }
 
     maybeRecord
-        |> Reach.view (Record.foo << onJust << Record.bar)
+        |> Reach.view (Record.foo |> Reach.into onJust |> Reach.into Record.bar)
     --> Just 2
 
     maybeRecord
-        |> Reach.view (Record.qux << onJust << Record.bar)
+        |> Reach.view (Record.qux |> Reach.into onJust |> Reach.into Record.bar)
     --> Nothing
 
     maybeRecord
-        |> Reach.mapOver (Record.foo << onJust << Record.bar) (\n -> n + 1)
+        |> Reach.mapOver (Record.foo |> Reach.into onJust |> Reach.into Record.bar) (\n -> n + 1)
     --> { foo = Just { bar = 3 }, qux = Nothing }
 
     maybeRecord
-        |> Reach.mapOver (Record.qux << onJust << Record.bar) (\n -> n + 1)
+        |> Reach.mapOver (Record.qux |> Reach.into onJust |> Reach.into Record.bar) (\n -> n + 1)
     --> { foo = Just { bar = 2 }, qux = Nothing }
 
 -}
@@ -524,11 +523,11 @@ onJust =
         }
 
     maybeRecord
-        |> Reach.has (Record.foo << onNothing)
+        |> Reach.has (Record.foo |> Reach.into onNothing)
     --> False
 
     maybeRecord
-        |> Reach.has (Record.qux << onNothing)
+        |> Reach.has (Record.qux |> Reach.into onNothing)
     --> True
 
 There's no real use case for reaching into variants with 0 values except for [`Reach.has`](Reach#has)
@@ -570,21 +569,21 @@ onNothing =
         , qux = Err "Not an Int"
         }
 
-    maybeRecord |> Reach.view (Record.foo << onOk << Record.bar)
+    maybeRecord |> Reach.view (Record.foo |> Reach.into onOk |> Reach.into Record.bar)
     --> Just 2
 
-    maybeRecord |> Reach.view (Record.qux << onOk << Record.bar)
+    maybeRecord |> Reach.view (Record.qux |> Reach.into onOk |> Reach.into Record.bar)
     --> Nothing
 
     maybeRecord
         |> Reach.mapOver
-            (Record.foo << onOk << Record.bar)
+            (Record.foo |> Reach.into onOk |> Reach.into Record.bar)
             (\n -> n + 1)
     --> { foo = Ok { bar = 3 }, qux = Err "Not an Int" }
 
     maybeRecord
         |> Reach.mapOver
-            (Record.qux << onOk << Record.bar)
+            (Record.qux |> Reach.into onOk |> Reach.into Record.bar)
             (\n -> n + 1)
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
@@ -614,18 +613,18 @@ onOk =
         , qux = Err "Not an Int"
         }
 
-    maybeRecord |> Reach.view (Record.foo << onErr)
+    maybeRecord |> Reach.view (Record.foo |> Reach.into onErr)
     --> Nothing
 
-    maybeRecord |> Reach.view (Record.qux << onErr)
+    maybeRecord |> Reach.view (Record.qux |> Reach.into onErr)
     --> Just "Not an Int"
 
     maybeRecord
-        |> Reach.mapOver (Record.foo << onErr) String.toUpper
+        |> Reach.mapOver (Record.foo |> Reach.into onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
 
     maybeRecord
-        |> Reach.mapOver (Record.qux << onErr) String.toUpper
+        |> Reach.mapOver (Record.qux |> Reach.into onErr) String.toUpper
     --> { foo = Ok { bar = 2 }, qux = Err "NOT AN INT" }
 
 -}

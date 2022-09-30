@@ -25,12 +25,12 @@ import Reach
         }
 
     listRecord
-        |> Reach.view (Record.foo << List.Reach.elementEach << Record.bar)
+        |> Reach.view (Record.foo |> Reach.into List.Reach.elementEach |> Reach.into Record.bar)
     --> [2, 3, 4]
 
     listRecord
         |> Reach.mapOver
-            (Record.foo << List.Reach.elementEach << Record.bar)
+            (Record.foo |> Reach.into List.Reach.elementEach |> Reach.into Record.bar)
             (\n -> n + 1)
     --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
 
@@ -66,18 +66,18 @@ elementEach =
     bars |> Reach.view (List.Reach.element 9000)
     --> Nothing
 
-    bars |> Reach.view (List.Reach.element 0 << Record.bar)
+    bars |> Reach.view (List.Reach.element 0 |> Reach.into Record.bar)
     --> Just "Stuff"
 
     bars
         |> Reach.mapOver
-            (List.Reach.element 0 << Record.bar)
+            (List.Reach.element 0 |> Reach.into Record.bar)
             (\_ -> "Whatever")
     --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
     bars
         |> Reach.mapOver
-            (List.Reach.element 9000 << Record.bar)
+            (List.Reach.element 9000 |> Reach.into Record.bar)
             (\_ -> "Whatever")
     --> bars
 

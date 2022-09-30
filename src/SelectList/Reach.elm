@@ -28,12 +28,12 @@ import SelectList exposing (SelectList)
 
     fooBarScroll
         |> Reach.view
-            (Record.foo << SelectList.Reach.elementEach << Record.bar)
+            (Record.foo |> Reach.into SelectList.Reach.elementEach |> Reach.into Record.bar)
     --> SelectList.fromLists [1] 2 [3, 4]
 
     fooBarScroll
         |> Reach.mapOver
-            (Record.foo << SelectList.Reach.elementEach << Record.bar)
+            (Record.foo |> Reach.into SelectList.Reach.elementEach |> Reach.into Record.bar)
             (\n -> n + 1)
     --> { foo =
     -->     SelectList.fromLists
@@ -74,12 +74,12 @@ elementEach =
 
     fooBarScroll
         |> Reach.view
-            (Record.foo << SelectList.Reach.selected << Record.bar)
+            (Record.foo |> Reach.into SelectList.Reach.selected |> Reach.into Record.bar)
     --> 2
 
     fooBarScroll
         |> Reach.mapOver
-            (Record.foo << SelectList.Reach.selected << Record.bar)
+            (Record.foo |> Reach.into SelectList.Reach.selected |> Reach.into Record.bar)
             (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
@@ -88,7 +88,7 @@ elementEach =
 
     fooBarScroll
         |> Reach.mapOver
-            (Record.foo << SelectList.Reach.selected << Record.bar)
+            (Record.foo |> Reach.into SelectList.Reach.selected |> Reach.into Record.bar)
             (\n -> n * 10)
     --> { foo =
     -->     SelectList.fromLists

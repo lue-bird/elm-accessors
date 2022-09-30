@@ -24,12 +24,12 @@ import Reach
         }
 
     fooBarray
-        |> Reach.view (Record.foo << Array.Reach.elementEach << Record.bar)
+        |> Reach.view (Record.foo |> Reach.into Array.Reach.elementEach |> Reach.into Record.bar)
     --> Array.fromList [ 2, 3, 4 ]
 
     fooBarray
         |> Reach.mapOver
-            (Record.foo << Array.Reach.elementEach << Record.bar)
+            (Record.foo |> Reach.into Array.Reach.elementEach |> Reach.into Record.bar)
             (\n -> n + 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
@@ -66,17 +66,17 @@ elementEach =
     barray |> Reach.view (Array.Reach.element 9000)
     --> Nothing
 
-    barray |> Reach.view (Array.Reach.element 2 << Record.bar)
+    barray |> Reach.view (Array.Reach.element 2 |> Reach.into Record.bar)
     --> Just "Woot"
 
     barray
-        |> Reach.mapOver (Array.Reach.element 0 << Record.bar) (\_ -> "Whatever")
+        |> Reach.mapOver (Array.Reach.element 0 |> Reach.into Record.bar) (\_ -> "Whatever")
     --> Array.fromList
     -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
 
     barray
         |> Reach.mapOver
-            (Array.Reach.element 9000 << Record.bar)
+            (Array.Reach.element 9000 |> Reach.into Record.bar)
             (\_ -> "Whatever")
     --> barray
 

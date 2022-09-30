@@ -28,23 +28,23 @@ import Reach
         }
 
     recordDictStringBar
-        |> Reach.view (Record.foo << Dict.Reach.valueEach)
+        |> Reach.view (Record.foo |> Reach.into Dict.Reach.valueEach)
     --> Dict.fromList
     -->     [ ( "a", { bar = 2 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
 
     recordDictStringBar
-        |> Reach.mapOver (Record.foo << Dict.Reach.valueEach << Record.bar) ((*) 10)
+        |> Reach.mapOver (Record.foo |> Reach.into Dict.Reach.valueEach |> Reach.into Record.bar) ((*) 10)
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 30 } ), ( "c", { bar = 40 } ) ]
     --> }
 
     recordDictStringBar
-        |> Reach.view (Record.foo << Dict.Reach.valueEach << Record.bar)
+        |> Reach.view (Record.foo |> Reach.into Dict.Reach.valueEach |> Reach.into Record.bar)
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     recordDictStringBar
-        |> Reach.mapOver (Record.foo << Dict.Reach.valueEach << Record.bar) (\n -> n + 1)
+        |> Reach.mapOver (Record.foo |> Reach.into Dict.Reach.valueEach |> Reach.into Record.bar) (\n -> n + 1)
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
@@ -85,12 +85,12 @@ valueEach =
 
     dict
         |> Reach.view
-            (Dict.Reach.valueAt ( 'b', String.fromChar ) << Record.bar)
+            (Dict.Reach.valueAt ( 'b', String.fromChar ) |> Reach.into Record.bar)
     --> Just 2
 
     dict
         |> Reach.mapOver
-            (Dict.Reach.valueAt ( 'x', String.fromChar ) << Record.bar)
+            (Dict.Reach.valueAt ( 'x', String.fromChar ) |> Reach.into Record.bar)
             (\_ -> 3)
     --> dict
 

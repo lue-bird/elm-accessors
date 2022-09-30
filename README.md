@@ -71,12 +71,12 @@ fooBars =
     }
 
 fooBars
-    |> Reach.view (Record.foo << List.Reach.elementEach << Record.bar)
+    |> Reach.view (Record.foo |> Reach.into List.Reach.elementEach |> Reach.into Record.bar)
 --> [ 3, 2, 0 ]
 
 fooBars
     |> Reach.mapOver
-        (recordFoo << List.Reach.elementEach << Record.bar)
+        (recordFoo |> Reach.into List.Reach.elementEach |> Reach.into Record.bar)
         (\n -> n * 2)
 --> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 ```
@@ -87,11 +87,11 @@ Reaching into on non-matching data structures will yield nice
 compile-time errors:
 
 ```elm
-fooBars |> Reach.view (Record.foo << Record.foo)
+fooBars |> Reach.view (Record.foo |> Reach.into Record.foo)
 ```
 > The 2nd argument to `view` is not what I expect:
 > 
->     ..| view (recordFoo << recordFoo) myData
+>     ..| view (recordFoo |> Reach.into recordFoo) myData
 >                                       ^^^^^^
 > This `myData` value is a:
 > 
@@ -109,10 +109,10 @@ import Reach exposing (onJust)
 import List.Reach
 
 tryEach =
-    onJust << List.Reach.elementEach
+    onJust |> Reach.into List.Reach.elementEach
 
 { bar = Just [ 1, 3, 2 ] }
-    |> Reach.mapOver (recordBar << tryEach) negate
+    |> Reach.mapOver (recordBar |> Reach.into tryEach) negate
 --> { bar = Just [ -1, -3, -2 ] }
 ```
 

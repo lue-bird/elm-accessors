@@ -23,7 +23,7 @@ tests =
         , lensExamples
         , test "description"
             (\() ->
-                (Record.info << Record.stuff << List.Reach.element 7 << Record.name)
+                (Record.info |> Reach.into Record.stuff |> Reach.into List.Reach.element 7 |> Reach.into Record.name)
                     |> Reach.description
                     |> String.join ")"
                     |> Expect.equal "info)stuff)element 7)name"
@@ -120,19 +120,19 @@ prismExamples : Test
 prismExamples =
     Test.describe
         "prism"
-        [ (Record.info << Dict.Reach.valueAtString "stuff")
+        [ (Record.info |> Reach.into Dict.Reach.valueAtString "stuff")
             |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.email << onJust)
+        , (Record.email |> Reach.into onJust)
             |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.stuff << List.Reach.element 0)
+        , (Record.stuff |> Reach.into List.Reach.element 0)
             |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
@@ -213,11 +213,11 @@ settableExamples =
     in
     Test.describe
         "settable"
-        [ check (Record.email << onJust)
-        , check (Record.stuff << List.Reach.element 0)
-        , check (Record.stuff << List.Reach.elementEach)
-        , check (Record.things << Array.Reach.element 0)
-        , check (Record.things << Array.Reach.elementEach)
+        [ check (Record.email |> Reach.into onJust)
+        , check (Record.stuff |> Reach.into List.Reach.element 0)
+        , check (Record.stuff |> Reach.into List.Reach.elementEach)
+        , check (Record.things |> Reach.into Array.Reach.element 0)
+        , check (Record.things |> Reach.into Array.Reach.elementEach)
         ]
 
 
@@ -374,9 +374,9 @@ stringAlterFuzzer : Fuzzer (Alter String)
 stringAlterFuzzer =
     Fuzz.oneOf
         [ Fuzz.map String.append Fuzz.string
-        , Fuzz.map (\s -> String.append s << String.reverse) Fuzz.string
-        , Fuzz.map (\prefix -> String.append prefix << String.toUpper) Fuzz.string
-        , Fuzz.map (\prefix -> String.append prefix << String.toLower) Fuzz.string
+        , Fuzz.map (\s -> String.append s |> Reach.into String.reverse) Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix |> Reach.into String.toUpper) Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix |> Reach.into String.toLower) Fuzz.string
         ]
 
 
