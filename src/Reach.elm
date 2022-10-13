@@ -2,6 +2,7 @@ module Reach exposing
     ( Part, Maybe, Elements, ViewMap(..)
     , ElementsMappingToSameType, MaybeMappingToSameType, PartMappingToSameType
     , part, maybe, elements
+    , flat
     , view, has
     , description
     , mapOver, mapOverLazy
@@ -22,6 +23,11 @@ module Reach exposing
 ## create
 
 @docs part, maybe, elements
+
+
+## alter
+
+@docs flat
 
 
 ## scan
@@ -403,6 +409,66 @@ elements focusDescription reach =
             , description =
                 deeper.description
                     |> (::) focusDescription
+            }
+
+
+{-| Only relevant if you want to [`view`](#view) a structure.
+
+Chaining [`Reach.Maybe`](#Maybe)s can have an undesired consequence
+for the result of [`view`](#view):
+
+    import List.Reach
+    import Record
+
+    Just { info = Just [ "we", "are", "Maybe something?" ] }
+        |> Reach.view
+            (onJust
+                << Record.info
+                << onJust
+                << List.Reach.element 2
+            )
+        --> Just (Just (Just "Maybe something?"))
+
+Nested `Just`s is rarely what you want.
+Instead, [`Reach.flat`](#flat)
+before every [`Reach.Maybe`](#Maybe) except the last 2 in chain
+so only one `Maybe` is left to [`view`](#view)
+
+    import List.Reach
+    import Record
+
+    Just { info = Just [ "we", "are", "Maybe something?" ] }
+        |> Reach.view
+            (Reach.flat
+                << onJust
+                << Record.info
+                << Reach.flat
+                << onJust
+                << List.Reach.element 2
+            )
+        --> Just "Maybe something?"
+
+It's like calling `Maybe.andThen identity` on what we get from there on
+
+-}
+flat :
+    Elements
+        structure
+        structure
+        (Maybe.Maybe valueView)
+        (Maybe.Maybe (Maybe.Maybe valueView))
+        mapped
+        mapped
+flat =
+    \(ViewMap deeper) ->
+        ViewMap
+            { view =
+                \structure ->
+                    structure
+                        |> deeper.view
+                        |> Maybe.andThen identity
+            , map = deeper.map
+            , description = deeper.description
             }
 
 
