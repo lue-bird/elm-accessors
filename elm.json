@@ -1,24 +1,24 @@
 {
-        "type": "package",
-        "name": "erlandsona/elm-accessors",
-        "summary": "Reach into a nested structure to map or view",
-        "license": "MIT",
-        "version": "2.1.0",
-        "exposed-modules": [
-                "Reach",
-                "Tuple.Reach",
-                "List.Reach",
-                "Array.Reach",
-                "Dict.Reach",
-                "SelectList.Reach"
-        ],
-        "elm-version": "0.19.0 <= v < 0.20.0",
-        "dependencies": {
-                "elm/core": "1.0.0 <= v < 2.0.0",
-                "elm-community/list-extra": "8.6.0 <= v < 9.0.0",
-                "miyamoen/select-list": "4.1.0 <= v < 5.0.0"
-        },
-        "test-dependencies": {
-                "elm-explorations/test": "1.2.2 <= v < 2.0.0"
-        }
+    "type": "package",
+    "name": "erlandsona/elm-accessors",
+    "summary": "Reach into a nested structure to map or view",
+    "license": "MIT",
+    "version": "2.1.0",
+    "exposed-modules": [
+        "Reach",
+        "Tuple.Reach",
+        "List.Reach",
+        "Array.Reach",
+        "Dict.Reach",
+        "SelectList.Reach"
+    ],
+    "elm-version": "0.19.0 <= v < 0.20.0",
+    "dependencies": {
+        "elm/core": "1.0.0 <= v < 2.0.0",
+        "elm-community/list-extra": "8.6.0 <= v < 9.0.0",
+        "miyamoen/select-list": "4.1.0 <= v < 5.0.0"
+    },
+    "test-dependencies": {
+        "elm-explorations/test": "2.0.1 <= v < 3.0.0"
+    }
 }
