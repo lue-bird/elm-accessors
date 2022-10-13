@@ -431,7 +431,7 @@ for the result of [`view`](#view):
 
 Nested `Just`s is rarely what you want.
 Instead, [`Reach.flat`](#flat)
-before every [`Reach.Maybe`](#Maybe) except the last 2 in chain
+before every [`Reach.Maybe`](#Maybe) except the last one in chain
 so only one `Maybe` is left to [`view`](#view)
 
     import List.Reach
@@ -460,13 +460,39 @@ flat :
         mapped
         mapped
 flat =
+    \reach ->
+        reach
+            |> viewOnly
+                (\viewNested -> viewNested |> Maybe.andThen identity)
+
+
+{-| Don't map, just specify a way to view.
+
+    Reach.flat =
+        Reach.viewOnly (Maybe.andThen identity)
+
+    reachValueElseOnNothing fallback =
+        Reach.viewOnly (Maybe.withDefault fallback)
+
+-}
+viewOnly :
+    (view -> viewChanged)
+    ->
+        Elements
+            structure
+            structure
+            viewChanged
+            view
+            mapped
+            mapped
+viewOnly viewChange =
     \(ViewMap deeper) ->
         ViewMap
             { view =
                 \structure ->
                     structure
                         |> deeper.view
-                        |> Maybe.andThen identity
+                        |> viewChange
             , map = deeper.map
             , description = deeper.description
             }
