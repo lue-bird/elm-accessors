@@ -563,6 +563,8 @@ mapOverLazy reach change =
         |> Reach.mapOver (Record.qux << onJust << Record.bar) (\n -> n + 1)
     --> { foo = Just { bar = 2 }, qux = Nothing }
 
+To view nested [`Reach.Maybe`](#Maybe)s flattened, [`Reach.flat`](#flat)
+
 -}
 onJust :
     Maybe
