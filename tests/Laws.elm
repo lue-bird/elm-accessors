@@ -3,7 +3,6 @@ module Laws exposing (tests)
 import Array exposing (Array)
 import Array.Map
 import Dict exposing (Dict)
-import Dict.Map
 import Expect
 import Fuzz exposing (Fuzzer)
 import List.Map
@@ -218,15 +217,6 @@ personFuzzer =
         |> Fuzz.andMap
             (dictFuzz { key = Fuzz.string, value = Fuzz.string })
         |> Fuzz.andMap (Fuzz.array Fuzz.string)
-
-
-maybeStringAlterFuzzer : Fuzzer (Maybe String -> Maybe String)
-maybeStringAlterFuzzer =
-    Fuzz.oneOf
-        (List.map Fuzz.constant
-            [ Maybe.andThen String.toInt >> Maybe.map String.fromInt
-            ]
-        )
 
 
 stringAlterFuzzer : Fuzzer (String -> String)
