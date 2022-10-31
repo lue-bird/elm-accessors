@@ -14,6 +14,7 @@ effect =
 
 effect
     |> Map.over
+        -- no nested update helpers
         (recordTrail << each << recordSparkle)
         (\n -> n * 2)
 --> { trail = [ { sparkle = 6 }, { sparkle = 4 }, { sparkle = 0 } ] }
@@ -21,6 +22,7 @@ effect
 recordTrail : Alter { record | trail : trail } trail
 recordTrail =
     Map.at "trail"
+        -- exactly how you'd write your helpers
         (\alter record -> { record | trail = record.trail |> alter })
 
 recordSparkle : Alter { record | sparkle : sparkle } sparkle
