@@ -1,20 +1,22 @@
 Describe how to map a structure's inner content easily
 
-## map
-Examples
-
-- a part
-    - a record's `.score` field value
-    - a tuple's second value
-- some elements
-    - a `List`'s contained 0-n elements
-    - a `Set Int`'s contained 0-n even elements
-- a possible value
-    - a `Maybe`'s 0-1 values
-    - a `List`'s 0-1 head elements
-
 ```elm
 import Map exposing (Map, Alter)
+
+fooBars : { foo : List { bar : number } }
+fooBars =
+    { foo =
+        [ { bar = 3 }
+        , { bar = 2 }
+        , { bar = 0 }
+        ]
+    }
+
+fooBars
+    |> Map.over
+        (recordFoo << List.Map.each << recordBar)
+        (\n -> n * 2)
+--> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 
 recordFoo : Alter { record | foo : foo } foo
 recordFoo =
@@ -33,25 +35,6 @@ onJust =
 each : Map (List element) element (List elementMapped) elementMapped
 each = 
     Map.at "each" List.map
-```
-
-## reach deeper
-
-```elm
-fooBars : { foo : List { bar : number } }
-fooBars =
-    { foo =
-        [ { bar = 3 }
-        , { bar = 2 }
-        , { bar = 0 }
-        ]
-    }
-
-fooBars
-    |> Map.over
-        (recordFoo << List.Map.each << recordBar)
-        (\n -> n * 2)
---> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 ```
 
 ## type-safe, reusable
