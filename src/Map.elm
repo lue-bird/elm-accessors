@@ -54,21 +54,21 @@ module Map exposing
 
 Intuitively, its type could look like
 
-    type alias Map structure part mapped partMapped =
-        { map : (part -> partMapped) -> (structure -> mapped)
+    type alias Map structure element mapped elementMapped =
+        { map : (element -> elementMapped) -> (structure -> mapped)
         , description : List String
         }
 
-Unfortunately, we then need `Map.toPart`, `Map.toTranslate`, `Map.toMaybe`, ... compose functions.
+Unfortunately, we then need a separate composition function which is a tad more verbose.
 
-Defining "Lens" in terms of [`ToMapped`](#ToMapped)s
+Defining "Lens" as a function from a [`ToMapped`](#ToMapped) to another [`ToMapped`](#ToMapped)
 
-    ToMapped part partMapped -> ToMapped structure mapped
+    ToMapped element elementMapped -> ToMapped structure mapped
 
 we're able to make use of `<<`
 to [`Map.over`](#over) a nested structure.
 
-Technical note: This is an approximation of [CPS based / Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/)
+Technical note: The concept is also used in [CPS based / Van Laarhoven encoded lenses](https://www.tweag.io/blog/2022-05-05-existential-optics/)
 
 -}
 type alias Map structure element mapped elementMapped =
@@ -88,11 +88,7 @@ type ToMapped value mapped
         }
 
 
-
--- mapping to same type
-
-
-{-| [`Map`](#Map) that will only preserve the element type.
+{-| [`Map`](#Map) that will preserve the element type.
 
 `Alter` can be used to simplify argument and result types
 
@@ -112,6 +108,8 @@ type ToMapped value mapped
                         (head |> alter) :: tail
             )
 
+This applies to records, `type`s without any type variables or mapping some of many equal-typed elements
+
 -}
 type alias Alter structure element =
     Map structure element structure element
@@ -121,10 +119,10 @@ type alias Alter structure element =
 --
 
 
-{-| The `<<` chain gives us a `List` of unique [`description`](#description)s.
+{-| The `<<` chain gives us a `List` of unique transformation names.
 This is useful when you want type-safe identifiers for a `Dict`
 similar to the way you'd use a Sum type's constructors to key a dictionary for a form
-but you still want to use the `elm/core` implementation.
+with the `elm/core` implementation
 
     import Map
     import Dict.Map
@@ -152,6 +150,7 @@ description =
                         { toMapped =
                             -- as this will never be called, we can do any
                             -- shenanigans we want to make `description` take a `Map` that can also map
+                            -- @erlandsona: here's your beloved void ↓
                             \_ ->
                                 let
                                     runForeverButProduceANewTypeVariableInTheory : () -> newTypeVariable
@@ -169,7 +168,7 @@ description =
 {-| Create a [`Map`](#Map) from
 
   - a `String` that uniquely describes the part
-  - a function that changes elements inside the structure
+  - a function that changes elements inside the structure with a given function
 
 ```
 foo : Alter { record | foo : foo } foo
