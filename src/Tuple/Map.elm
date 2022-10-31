@@ -26,12 +26,7 @@ import Tuple
     --> ( "IT'S FINE!!!", 1 )
 
 -}
-first :
-    Map
-        ( first, second )
-        first
-        ( firstMapped, second )
-        firstMapped
+first : Map ( first, second ) first ( firstMapped, second ) firstMapped
 first =
     Map.at "first" Tuple.mapFirst
 
