@@ -24,7 +24,7 @@ tests =
                 (Record.info << Record.stuff << List.Map.element 7 << Record.name)
                     |> Map.description
                     |> String.join ")"
-                    |> Expect.equal "info)stuff)element 7)name"
+                    |> Expect.equal "info)stuff)7)name"
             )
         ]
 
