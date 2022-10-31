@@ -54,7 +54,9 @@ each =
     fooBarScroll =
         { foo =
             SelectList.fromLists
-                [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
+                [ { bar = 1 } ]
+                { bar = 2 }
+                [ { bar = 3 }, { bar = 4 } ]
         }
 
     fooBarScroll
@@ -63,7 +65,9 @@ each =
             (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
-    -->         [ { bar = 1 } ] { bar = 37 } [ { bar = 3 }, { bar = 4 } ]
+    -->         [ { bar = 1 } ]
+    -->         { bar = 37 }
+    -->         [ { bar = 3 }, { bar = 4 } ]
     --> }
 
     fooBarScroll
@@ -72,7 +76,9 @@ each =
             (\n -> n * 10)
     --> { foo =
     -->     SelectList.fromLists
-    -->         [ { bar = 1 } ] { bar = 20 } [ { bar = 3 }, { bar = 4 } ]
+    -->         [ { bar = 1 } ]
+    -->         { bar = 20 }
+    -->         [ { bar = 3 }, { bar = 4 } ]
     --> }
 
 -}
