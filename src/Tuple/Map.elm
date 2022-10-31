@@ -16,8 +16,8 @@ import Tuple
     import Tuple.Map
 
     ( "It's fine", 1 )
-        |> Map.over Tuple.Map.first (\_ -> "It's fine")
-    --> ( "It's over", 1 )
+        |> Map.over Tuple.Map.first (\_ -> "It's weeee")
+    --> ( "It's weeee", 1 )
 
     ( "It's fine", 1 )
         |> Map.over
