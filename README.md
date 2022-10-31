@@ -28,11 +28,11 @@ recordBar =
 
 onJust : Map (Maybe value) value (Maybe valueMapped) valueMapped
 onJust =
-    Map.at "Just" Maybe.Map
+    Map.at "Just" Maybe.map
 
 each : Map (List element) element (List elementMapped) elementMapped
 each = 
-    Map.elements "each" List.Map
+    Map.at "each" List.map
 ```
 
 ## reach deeper
