@@ -57,11 +57,6 @@ first =
     --> ( "HI THERE!!!", 9000 )
 
 -}
-second :
-    Map
-        ( first, second )
-        second
-        ( first, secondMapped )
-        secondMapped
+second : Map ( first, second ) second ( first, secondMapped ) secondMapped
 second =
     Map.at "second" Tuple.mapSecond
