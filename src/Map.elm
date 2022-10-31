@@ -121,8 +121,7 @@ type alias Alter structure element =
 --
 
 
-{-| Each reach has a name.
-The `<<` chain gives us a `List` of unique reach [`description`](#description)s.
+{-| The `<<` chain gives us a `List` of unique [`description`](#description)s.
 This is useful when you want type-safe identifiers for a `Dict`
 similar to the way you'd use a Sum type's constructors to key a dictionary for a form
 but you still want to use the `elm/core` implementation.
@@ -138,21 +137,24 @@ but you still want to use the `elm/core` implementation.
     )
         |> Map.description
         |> String.join ")"
-    --> "email)Just)info)value at subject"
+    --> "email)Just)info)subject"
 
 -}
 description :
-    Map structure reach mapped reach
+    Map structure element mapped elementMapped
     -> List String
 description =
     \map ->
-        map
-            (ToMapped
-                { toMapped = \_ -> Debug.todo ""
-                , description = []
-                }
-            )
-            |> (\(ToMapped toMappedInternal) -> toMappedInternal.description)
+        let
+            (ToMapped toMappedInternal) =
+                map
+                    (ToMapped
+                        { toMapped = \_ -> Debug.todo ""
+                        , description = []
+                        }
+                    )
+        in
+        toMappedInternal.description
 
 
 {-| Create a [`Map`](#Map) from
@@ -170,12 +172,7 @@ onOk : Map (Result error value) value (Result error valueMapped) valueMapped
 onOk =
     Map.at "Ok" Result.Map
 
-each :
-    Map
-        (List element)
-        element
-        (List elementMapped)
-        elementMapped
+each : Map (List element) element (List elementMapped) elementMapped
 each =
     Map.at "each" List.Map
 ```
@@ -197,8 +194,8 @@ at focusDescription map =
             }
 
 
-{-| Given a reach and a change for each element
-`over` transforms the data `structure`'s reached content.
+{-| Transform elements
+as shown in a given [`Map`](#Map) with a given function
 
     import Record
 
@@ -213,17 +210,17 @@ over :
         ((element -> elementMapped)
          -> (structure -> mapped)
         )
-over reach change =
+over map change =
     let
-        (ToMapped structureViewMap) =
-            reach
+        (ToMapped toMapped) =
+            map
                 (ToMapped
                     { description = []
                     , toMapped = change
                     }
                 )
     in
-    structureViewMap.toMapped
+    toMapped.toMapped
 
 
 {-| [`Map.over`](#over) which checks that the old and the new version are different
@@ -235,16 +232,16 @@ not prevent `Html.lazy` from doing its work.
 
 -}
 overLazy :
-    Map structure reach structure reach
+    Alter structure element
     ->
-        ((reach -> reach)
+        ((element -> element)
          -> (structure -> structure)
         )
-overLazy reach change =
+overLazy alter change =
     \structure ->
         let
             changedStructure =
-                structure |> over reach change
+                structure |> over alter change
         in
         if changedStructure /= structure then
             changedStructure

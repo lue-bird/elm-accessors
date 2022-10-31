@@ -1,6 +1,6 @@
 Describe how to map a structure's inner content easily
 
-## reach 
+## map
 Examples
 
 - a part
@@ -35,7 +35,7 @@ each =
     Map.elements "each" List.Map
 ```
 
-## reach deep inside
+## reach deeper
 
 ```elm
 fooBars : { foo : List { bar : number } }
@@ -74,7 +74,7 @@ fooBars |> Map.over (recordFoo << recordFoo) (\n -> n * 2)
 > 
 >     { foo : { a | foo : c } }
 
-Any reach you create can be composed with any other to match your new
+Any `Map` you create can be composed with any other to match your new
 data structures
 
 ```elm
@@ -95,5 +95,5 @@ run
 
 `elm-review`, `npx elm-verify-examples` and `elm-test`/`elm-test-rs`
 
-If you write new reaches for common library data, I'll be
-happy to review and merge. Please include tests.
+If you write new [`Map`](Map#Map)s for common library data, I'll be
+happy to review and merge. Please include tests
