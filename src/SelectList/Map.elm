@@ -6,7 +6,7 @@ module SelectList.Map exposing (each, selected)
 
 -}
 
-import Map exposing (Map)
+import Map exposing (Alter, Map)
 import SelectList exposing (SelectList)
 
 
@@ -76,11 +76,6 @@ each =
     --> }
 
 -}
-selected :
-    Map
-        (SelectList elementMapped)
-        elementMapped
-        (SelectList elementMapped)
-        elementMapped
+selected : Alter (SelectList elementMapped) elementMapped
 selected =
     Map.at "selected" SelectList.updateSelected
