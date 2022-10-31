@@ -149,7 +149,16 @@ description =
             (ToMapped toMappedInternal) =
                 map
                     (ToMapped
-                        { toMapped = \_ -> Debug.todo ""
+                        { toMapped =
+                            -- as this will never be called, we can do any
+                            -- shenanigans we want to make `description` take a `Map` that can also map
+                            \_ ->
+                                let
+                                    runForeverButProduceANewTypeVariableInTheory : () -> newTypeVariable
+                                    runForeverButProduceANewTypeVariableInTheory () =
+                                        runForeverButProduceANewTypeVariableInTheory ()
+                                in
+                                runForeverButProduceANewTypeVariableInTheory ()
                         , description = []
                         }
                     )
