@@ -2,60 +2,38 @@ Describe how to reach a structure's content
 to [map](map#over)/[`view`](map#view) arbitrary content more easily
 
 ## reach 
+Examples
 
-- 1:1, e.g.
+- a part
     - a record's `.score` field value
     - a tuple's second value
-- 1:n, e.g.
+- some elements
     - a `List`'s contained 0-n elements
     - a `Set Int`'s contained 0-n even elements
-- 1:?, e.g.
+- a possible value
     - a `Maybe`'s 0-1 values
     - a `List`'s 0-1 head elements
 
 ```elm
-import Map
+import Map exposing (Map, Alter)
 
-recordFoo : Map.PartMappingToSameType { record | foo : foo } foo fooView
+recordFoo : Alter { record | foo : foo } foo
 recordFoo =
-    Map.part "foo"
-        { access = .foo
-        , map = \alter record -> { record | foo = record.foo |> alter }
-        }
+    Map.at "foo"
+        (\alter record -> { record | foo = record.foo |> alter })
 
-recordBar : Map.PartMappingToSameType { record | bar : bar } bar barView
+recordBar : Alter { record | bar : bar } bar
 recordBar =
-    Map.part "bar"
-        { access = .bar
-        , map = \alter record -> { record | bar = record.bar |> alter }
-        }
+    Map.at "bar"
+        (\alter record -> { record | bar = record.bar |> alter })
 
-onJust :
-    Map.Possibility
-        (Maybe value)
-        value
-        valueView
-        (Maybe valueMapped)
-        valueMapped
+onJust : Map (Maybe value) value (Maybe valueMapped) valueMapped
 onJust =
-    Map.Possibility "Just"
-        { view = identity
-        , map = Maybe.Map
-        }
+    Map.at "Just" Maybe.Map
 
-each :
-    Map.Elements
-        (List element)
-        element
-        (List elementView)
-        elementView
-        (List elementMapped)
-        elementMapped
+each : Map (List element) element (List elementMapped) elementMapped
 each = 
-    Map.elements "element each"
-        { view = List.Map
-        , map = List.Map
-        }
+    Map.elements "each" List.Map
 ```
 
 ## reach deep inside
@@ -71,12 +49,8 @@ fooBars =
     }
 
 fooBars
-    |> Map.view (Record.foo << List.Map.each << Record.bar)
---> [ 3, 2, 0 ]
-
-fooBars
     |> Map.over
-        (recordFoo << List.Map.each << Record.bar)
+        (recordFoo << List.Map.each << recordBar)
         (\n -> n * 2)
 --> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 ```
@@ -84,25 +58,25 @@ fooBars
 ## type-safe, reusable
 
 Reaching into on non-matching data structures will yield nice
-compile-time errors:
+compile-time errors
 
 ```elm
-fooBars |> Map.view (Record.foo << Record.foo)
+fooBars |> Map.over (recordFoo << recordFoo) (\n -> n * 2)
 ```
-> The 2nd argument to `view` is not what I expect:
+> The 2nd argument to `over` is not what I expect:
 > 
->     ..| view (recordFoo << recordFoo) myData
+>     ..| over (recordFoo << recordFoo) fooBars
 >                                       ^^^^^^
-> This `myData` value is a:
+> This `fooBars` value is a:
 > 
 >     { foo : List { bar : number } }
 > 
-> But `view` needs the 2nd argument to be:
+> But `over` needs the 2nd argument to be:
 > 
 >     { foo : { a | foo : c } }
 
 Any reach you create can be composed with any other to match your new
-data structures: 
+data structures
 
 ```elm
 import Map exposing (onJust)
