@@ -7,7 +7,7 @@ import Dict.Map
 import Expect
 import Fuzz exposing (Fuzzer)
 import List.Map
-import Map exposing (onJust)
+import Map exposing (Alter, onJust)
 import Maybe exposing (Maybe)
 import Record
 import String
@@ -18,8 +18,7 @@ tests : Test
 tests =
     Test.describe
         "traversal laws"
-        [ prismExamples
-        , settableExamples
+        [ settableExamples
         , lensExamples
         , test "description"
             (\() ->
@@ -52,153 +51,17 @@ lensExamples =
 
 isLens :
     { structure : Fuzzer structure
-    , focusAlter : Fuzzer (Alter focus)
+    , focusAlter : Fuzzer (focus -> focus)
     , focus : Fuzzer focus
     }
-    -> Map.PartMappingToSameType structure focus focus
+    -> Alter structure focus
     -> Test
 isLens fuzzer =
     \settable ->
         Test.describe
             (settable |> Map.description |> String.join ")")
             [ isSettable fuzzer settable
-
-            -- there's Traversal laws in here somewhere but not sure they're expressible in elm
-            , lens_get_set fuzzer settable
-            , lens_set_get fuzzer settable
             ]
-
-
-lens_get_set :
-    { m | structure : Fuzzer structure }
-    -> Map.PartMappingToSameType structure focus focus
-    -> Test
-lens_get_set fuzzer =
-    \lens_ ->
-        Test.fuzz
-            (Fuzz.constant (\structure -> { structure = structure })
-                |> Fuzz.andMap fuzzer.structure
-            )
-            "lens_get_set"
-            (\{ structure } ->
-                structure
-                    |> Map.over lens_ (\_ -> structure |> Map.view lens_)
-                    |> Expect.equal structure
-            )
-
-
-lens_set_get :
-    { m
-        | structure : Fuzzer structure
-        , focus : Fuzzer focus
-    }
-    -> Map.PartMappingToSameType structure focus focus
-    -> Test
-lens_set_get fuzzer =
-    \lens_ ->
-        Test.fuzz
-            (Fuzz.constant
-                (\structure focus ->
-                    { structure = structure
-                    , focus = focus
-                    }
-                )
-                |> Fuzz.andMap fuzzer.structure
-                |> Fuzz.andMap fuzzer.focus
-            )
-            "lens_set_get"
-            (\{ structure, focus } ->
-                (structure
-                    |> Map.over lens_ (\_ -> focus)
-                    |> Map.view lens_
-                )
-                    |> Expect.equal focus
-            )
-
-
-prismExamples : Test
-prismExamples =
-    Test.describe
-        "prism"
-        [ (Record.info << Dict.Map.valueAtString "stuff")
-            |> isPrism
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.email << onJust)
-            |> isPrism
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        , (Record.stuff << List.Map.element 0)
-            |> isPrism
-                { structure = personFuzzer
-                , focusAlter = stringAlterFuzzer
-                , focus = Fuzz.string
-                }
-        ]
-
-
-isPrism :
-    { structure : Fuzzer structure
-    , focusAlter : Fuzzer (Alter focus)
-    , focus : Fuzzer focus
-    }
-    -> Map.Alter structure focus focus
-    -> Test
-isPrism fuzzer optionalToTest =
-    Test.describe
-        ("isOptional "
-            ++ (optionalToTest |> Map.description |> String.join ")")
-        )
-        [ optional_identity fuzzer optionalToTest
-        , setFocusViewIsFocus fuzzer optionalToTest
-        ]
-
-
-setFocusViewIsFocus :
-    { m | structure : Fuzzer structure, focus : Fuzzer focus }
-    -> Map.Alter structure focus focus
-    -> Test
-setFocusViewIsFocus fuzzer =
-    \optional ->
-        Test.fuzz
-            (Fuzz.constant (\structure focus -> { structure = structure, focus = focus })
-                |> Fuzz.andMap fuzzer.structure
-                |> Fuzz.andMap fuzzer.focus
-            )
-            "setFocusViewIsFocus"
-            (\{ structure, focus } ->
-                structure
-                    |> Map.over optional (\_ -> focus)
-                    |> Map.view optional
-                    |> Expect.equal
-                        (structure |> Map.view optional |> Maybe.Map (\_ -> focus))
-            )
-
-
-optional_identity :
-    { m | structure : Fuzzer structure }
-    -> Map.Alter structure focus focus
-    -> Test
-optional_identity fuzzer optional =
-    Test.fuzz
-        (Fuzz.constant (\structure -> { structure = structure })
-            |> Fuzz.andMap fuzzer.structure
-        )
-        "optional_identity"
-        (\{ structure } ->
-            case structure |> Map.view optional of
-                Just focus ->
-                    structure
-                        |> Map.over optional (\_ -> focus)
-                        |> Expect.equal structure
-
-                Nothing ->
-                    Expect.pass
-        )
 
 
 settableExamples : Test
@@ -223,10 +86,10 @@ settableExamples =
 
 isSettable :
     { structure : Fuzzer structure
-    , focusAlter : Fuzzer (Alter focus)
+    , focusAlter : Fuzzer (focus -> focus)
     , focus : Fuzzer focus
     }
-    -> Map.ElementsMappingToSameType structure focus view focus
+    -> Alter structure focus
     -> Test
 isSettable fuzzer settable =
     Test.describe
@@ -241,7 +104,7 @@ isSettable fuzzer settable =
 
 setter_identity :
     { m | structure : Fuzzer structure }
-    -> Map.ElementsMappingToSameType structure focus view focus
+    -> Alter structure focus
     -> Test
 setter_identity fuzzer settable =
     Test.fuzz
@@ -259,9 +122,9 @@ setter_identity fuzzer settable =
 setter_composition :
     { m
         | structure : Fuzzer structure
-        , focusAlter : Fuzzer (Alter focus)
+        , focusAlter : Fuzzer (focus -> focus)
     }
-    -> Map.ElementsMappingToSameType structure focus view focus
+    -> Alter structure focus
     -> Test
 setter_composition fuzzer settable =
     Test.fuzz
@@ -294,7 +157,7 @@ setter_set_set :
         | structure : Fuzzer structure
         , focus : Fuzzer focus
     }
-    -> Map.ElementsMappingToSameType structure focus view focus
+    -> Alter structure focus
     -> Test
 setter_set_set fuzzer settable =
     Test.fuzz
@@ -357,36 +220,32 @@ personFuzzer =
         |> Fuzz.andMap (Fuzz.array Fuzz.string)
 
 
-type alias Alter a =
-    a -> a
-
-
-maybeStringAlterFuzzer : Fuzzer (Alter (Maybe String))
+maybeStringAlterFuzzer : Fuzzer (Maybe String -> Maybe String)
 maybeStringAlterFuzzer =
     Fuzz.oneOf
-        (List.Map Fuzz.constant
-            [ Maybe.andThen String.toInt >> Maybe.Map String.fromInt
+        (List.map Fuzz.constant
+            [ Maybe.andThen String.toInt >> Maybe.map String.fromInt
             ]
         )
 
 
-stringAlterFuzzer : Fuzzer (Alter String)
+stringAlterFuzzer : Fuzzer (String -> String)
 stringAlterFuzzer =
     Fuzz.oneOf
-        [ Fuzz.Map String.append Fuzz.string
-        , Fuzz.Map (\s -> String.append s << String.reverse) Fuzz.string
-        , Fuzz.Map (\prefix -> String.append prefix << String.toUpper) Fuzz.string
-        , Fuzz.Map (\prefix -> String.append prefix << String.toLower) Fuzz.string
+        [ Fuzz.map String.append Fuzz.string
+        , Fuzz.map (\s -> String.append s << String.reverse) Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toUpper) Fuzz.string
+        , Fuzz.map (\prefix -> String.append prefix << String.toLower) Fuzz.string
         ]
 
 
-intAlter : Fuzzer (Alter Int)
+intAlter : Fuzzer (Int -> Int)
 intAlter =
     Fuzz.oneOf
-        [ Fuzz.Map (+) Fuzz.int
-        , Fuzz.Map (-) Fuzz.int
-        , Fuzz.Map (*) Fuzz.int
-        , Fuzz.Map (//) Fuzz.int
+        [ Fuzz.map (+) Fuzz.int
+        , Fuzz.map (-) Fuzz.int
+        , Fuzz.map (*) Fuzz.int
+        , Fuzz.map (//) Fuzz.int
         ]
 
 
@@ -400,5 +259,5 @@ dictFuzz :
     }
     -> Fuzzer (Dict comparableKey value)
 dictFuzz { key, value } =
-    Fuzz.list (Fuzz.tuple ( key, value ))
-        |> Fuzz.Map Dict.fromList
+    Fuzz.list (Fuzz.pair key value)
+        |> Fuzz.map Dict.fromList
