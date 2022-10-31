@@ -1,10 +1,10 @@
 module Spec exposing (suite)
 
 import Dict exposing (Dict)
-import Dict.Reach as Dict
+import Dict.Map as Dict
 import Expect
-import List.Reach as List
-import Reach exposing (onJust)
+import List.Map as List
+import Map exposing (onJust)
 import Record
 import Test exposing (Test, test)
 
@@ -58,95 +58,95 @@ suite =
             [ test "simple" <|
                 \_ ->
                     simpleRecord
-                        |> Reach.view Record.foo
+                        |> Map.view Record.foo
                         |> Expect.equal 3
             , test "nested" <|
                 \_ ->
                     nestedRecord
-                        |> Reach.view (Record.foo << Record.bar)
+                        |> Map.view (Record.foo << Record.bar)
                         |> Expect.equal "Yop"
             , test "in list" <|
                 \_ ->
                     recordWithList
-                        |> Reach.view (Record.bar << List.elementEach << Record.foo)
+                        |> Map.view (Record.bar << List.each << Record.foo)
                         |> Expect.equal [ 3, 5 ]
             , test "in Just" <|
                 \_ ->
                     maybeRecord
-                        |> Reach.view (Record.bar << onJust << Record.qux)
+                        |> Map.view (Record.bar << onJust << Record.qux)
                         |> Expect.equal (Just False)
             , test "in Nothing" <|
                 \_ ->
                     maybeRecord
-                        |> Reach.view (Record.foo << onJust << Record.bar)
+                        |> Map.view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
             , Test.describe
                 "dict"
                 [ test "present" <|
                     \_ ->
                         dict
-                            |> Reach.view (Dict.valueAtString "foo")
+                            |> Map.view (Dict.valueAtString "foo")
                             |> Expect.equal (Just 7)
                 , test "absent" <|
                     \_ ->
                         dict
-                            |> Reach.view (Dict.valueAtString "bar")
+                            |> Map.view (Dict.valueAtString "bar")
                             |> Expect.equal Nothing
                 , test "nested present" <|
                     \_ ->
                         recordWithDict
-                            |> Reach.view (Record.bar << Dict.valueAtString "foo")
+                            |> Map.view (Record.bar << Dict.valueAtString "foo")
                             |> Expect.equal (Just 7)
                 , test "nested absent" <|
                     \_ ->
                         recordWithDict
-                            |> Reach.view (Record.bar << Dict.valueAtString "bar")
+                            |> Map.view (Record.bar << Dict.valueAtString "bar")
                             |> Expect.equal Nothing
                 , test "with lens afterwards" <|
                     \_ ->
                         dictWithRecord
-                            |> Reach.view (Dict.valueAtString "foo" << Record.bar)
+                            |> Map.view (Dict.valueAtString "foo" << Record.bar)
                             |> Expect.equal (Just "Yop")
                 ]
             ]
         , Test.describe
-            "mapOver (\\_ -> ...)"
+            "over (\\_ -> ...)"
             [ test "simple" <|
                 \_ ->
                     simpleRecord
-                        |> Reach.mapOver Record.qux (\_ -> True)
+                        |> Map.over Record.qux (\_ -> True)
                         |> .qux
                         |> Expect.equal True
             , test "nested" <|
                 \_ ->
                     nestedRecord
-                        |> Reach.mapOver (Record.foo << Record.foo) (\_ -> 5)
+                        |> Map.over (Record.foo << Record.foo) (\_ -> 5)
                         |> .foo
                         |> .foo
                         |> Expect.equal 5
             , test "in list" <|
                 \_ ->
                     recordWithList
-                        |> Reach.mapOver
-                            (Record.bar << List.elementEach << Record.bar)
+                        |> Map.over
+                            (Record.bar << List.each << Record.bar)
                             (\_ -> "Why, hello")
-                        |> Reach.view (Record.bar << List.elementEach << Record.bar)
+                        |> Map.view (Record.bar << List.each << Record.bar)
                         |> Expect.equal [ "Why, hello", "Why, hello" ]
             , test "in Just" <|
                 \_ ->
                     maybeRecord
-                        |> Reach.mapOver
+                        |> Map.over
                             (Record.bar << onJust << Record.foo)
                             (\_ -> 4)
-                        |> Reach.view (Record.bar << onJust << Record.foo)
+                        |> Map.view (Record.bar << onJust << Record.foo)
                         |> Expect.equal (Just 4)
             , test "in Nothing" <|
                 \_ ->
                     maybeRecord
-                        |> Reach.mapOver
+                        |> Map.over
                             (Record.foo << onJust << Record.bar)
                             (\_ -> "Nope")
-                        |> Reach.view (Record.foo << onJust << Record.bar)
+                        |> Map.view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
             ]
         , Test.describe
@@ -154,35 +154,35 @@ suite =
             [ test "simple" <|
                 \_ ->
                     simpleRecord
-                        |> Reach.mapOver Record.bar (\w -> w ++ " lait")
+                        |> Map.over Record.bar (\w -> w ++ " lait")
                         |> .bar
                         |> Expect.equal "Yop lait"
             , test "nested" <|
                 \_ ->
                     nestedRecord
-                        |> Reach.mapOver (Record.foo << Record.qux) not
+                        |> Map.over (Record.foo << Record.qux) not
                         |> .foo
                         |> .qux
                         |> Expect.equal True
             , test "list" <|
                 \_ ->
                     recordWithList
-                        |> Reach.mapOver
-                            (Record.bar << List.elementEach << Record.foo)
+                        |> Map.over
+                            (Record.bar << List.each << Record.foo)
                             (\n -> n - 2)
-                        |> Reach.view (Record.bar << List.elementEach << Record.foo)
+                        |> Map.view (Record.bar << List.each << Record.foo)
                         |> Expect.equal [ 1, 3 ]
             , test "through Just" <|
                 \_ ->
                     maybeRecord
-                        |> Reach.mapOver (Record.bar << onJust << Record.foo) (\n -> n + 3)
-                        |> Reach.view (Record.bar << onJust << Record.foo)
+                        |> Map.over (Record.bar << onJust << Record.foo) (\n -> n + 3)
+                        |> Map.view (Record.bar << onJust << Record.foo)
                         |> Expect.equal (Just 6)
             , test "through Nothing" <|
                 \_ ->
                     maybeRecord
-                        |> Reach.mapOver (Record.foo << onJust << Record.bar) (\w -> w ++ "!")
-                        |> Reach.view (Record.foo << onJust << Record.bar)
+                        |> Map.over (Record.foo << onJust << Record.bar) (\w -> w ++ "!")
+                        |> Map.view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
             ]
         , Test.describe
@@ -190,42 +190,42 @@ suite =
             [ test "simple" <|
                 \_ ->
                     simpleRecord
-                        |> Reach.mapOverLazy Record.bar (\w -> w ++ " lait")
+                        |> Map.overLazy Record.bar (\w -> w ++ " lait")
                         |> .bar
                         |> Expect.equal "Yop lait"
             , test "nested" <|
                 \_ ->
                     nestedRecord
-                        |> Reach.mapOverLazy (Record.foo << Record.qux) not
+                        |> Map.overLazy (Record.foo << Record.qux) not
                         |> .foo
                         |> .qux
                         |> Expect.equal True
             , test "list" <|
                 \_ ->
                     recordWithList
-                        |> Reach.mapOverLazy
-                            (Record.bar << List.elementEach << Record.foo)
+                        |> Map.overLazy
+                            (Record.bar << List.each << Record.foo)
                             (\n -> n - 2)
-                        |> Reach.view (Record.bar << List.elementEach << Record.foo)
+                        |> Map.view (Record.bar << List.each << Record.foo)
                         |> Expect.equal [ 1, 3 ]
             , test "through Just" <|
                 \_ ->
                     maybeRecord
-                        |> Reach.mapOverLazy (Record.bar << onJust << Record.foo) (\n -> n + 3)
-                        |> Reach.view (Record.bar << onJust << Record.foo)
+                        |> Map.overLazy (Record.bar << onJust << Record.foo) (\n -> n + 3)
+                        |> Map.view (Record.bar << onJust << Record.foo)
                         |> Expect.equal (Just 6)
             , test "through Nothing" <|
                 \_ ->
                     maybeRecord
-                        |> Reach.mapOverLazy (Record.foo << onJust << Record.bar) (\w -> w ++ "!")
-                        |> Reach.view (Record.foo << onJust << Record.bar)
+                        |> Map.overLazy (Record.foo << onJust << Record.bar) (\w -> w ++ "!")
+                        |> Map.view (Record.foo << onJust << Record.bar)
                         |> Expect.equal Nothing
             ]
         , Test.describe
             "create"
             [ let
                 myRecordFoo =
-                    Reach.part "foo"
+                    Map.at "foo"
                         { access = .foo
                         , map = \alter record -> { record | foo = alter record.foo }
                         }
@@ -235,28 +235,28 @@ suite =
                 [ test "view" <|
                     \_ ->
                         nestedRecord
-                            |> Reach.view (myRecordFoo << Record.bar)
+                            |> Map.view (myRecordFoo << Record.bar)
                             |> Expect.equal "Yop"
                 , test "set" <|
                     \_ ->
                         nestedRecord
-                            |> Reach.mapOver (Record.foo << myRecordFoo) (\_ -> 1)
+                            |> Map.over (Record.foo << myRecordFoo) (\_ -> 1)
                             |> .foo
                             |> .foo
                             |> Expect.equal 1
                 , test "map" <|
                     \_ ->
                         nestedRecord
-                            |> Reach.mapOver (myRecordFoo << myRecordFoo) (\n -> n + 3)
+                            |> Map.over (myRecordFoo << myRecordFoo) (\n -> n + 3)
                             |> .foo
                             |> .foo
                             |> Expect.equal 6
                 ]
             , let
                 myOnEach =
-                    Reach.elements "element each"
-                        { view = List.map
-                        , map = List.map
+                    Map.elements "element each"
+                        { view = List.Map
+                        , map = List.Map
                         }
               in
               Test.describe
@@ -264,19 +264,19 @@ suite =
                 [ test "view" <|
                     \_ ->
                         recordWithList
-                            |> Reach.view (Record.bar << myOnEach << Record.foo)
+                            |> Map.view (Record.bar << myOnEach << Record.foo)
                             |> Expect.equal [ 3, 5 ]
                 , test "set" <|
                     \_ ->
                         recordWithList
-                            |> Reach.mapOver (Record.bar << myOnEach << Record.bar) (\_ -> "Greetings")
-                            |> Reach.view (Record.bar << List.elementEach << Record.bar)
+                            |> Map.over (Record.bar << myOnEach << Record.bar) (\_ -> "Greetings")
+                            |> Map.view (Record.bar << List.each << Record.bar)
                             |> Expect.equal [ "Greetings", "Greetings" ]
                 , test "map" <|
                     \_ ->
                         recordWithList
-                            |> Reach.mapOver (Record.bar << myOnEach << Record.foo) (\n -> n - 2)
-                            |> Reach.view (Record.bar << List.elementEach << Record.foo)
+                            |> Map.over (Record.bar << myOnEach << Record.foo) (\n -> n - 2)
+                            |> Map.view (Record.bar << List.each << Record.foo)
                             |> Expect.equal [ 1, 3 ]
                 ]
             ]

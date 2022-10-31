@@ -1,16 +1,16 @@
 {
     "type": "package",
     "name": "erlandsona/elm-accessors",
-    "summary": "Reach into a nested structure to map or view",
+    "summary": "map elements in a nested structure",
     "license": "MIT",
     "version": "2.1.0",
     "exposed-modules": [
-        "Reach",
-        "Tuple.Reach",
-        "List.Reach",
-        "Array.Reach",
-        "Dict.Reach",
-        "SelectList.Reach"
+        "Map",
+        "Tuple.Map",
+        "List.Map",
+        "Array.Map",
+        "Dict.Map",
+        "SelectList.Map"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {

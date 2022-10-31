@@ -1,19 +1,19 @@
-module Dict.Reach exposing (valueEach, valueAt, valueAtString)
+module Dict.Map exposing (valueEach, valueAt, valueAtString)
 
-{-| Reach into a `Dict`
+{-| map into a `Dict`
 
 @docs valueEach, valueAt, valueAtString
 
 -}
 
 import Dict exposing (Dict)
-import Reach
+import Map exposing (Map)
 
 
 {-| Traverse a Dict including the index of each element
 
-    import Reach
-    import Dict.Reach
+    import Map
+    import Dict.Map
     import Record
     import Dict exposing (Dict)
 
@@ -28,23 +28,23 @@ import Reach
         }
 
     recordDictStringBar
-        |> Reach.view (Record.foo << Dict.Reach.valueEach)
+        |> Map.view (Record.foo << Dict.Map.valueEach)
     --> Dict.fromList
     -->     [ ( "a", { bar = 2 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
 
     recordDictStringBar
-        |> Reach.mapOver (Record.foo << Dict.Reach.valueEach << Record.bar) ((*) 10)
+        |> Map.over (Record.foo << Dict.Map.valueEach << Record.bar) ((*) 10)
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 30 } ), ( "c", { bar = 40 } ) ]
     --> }
 
     recordDictStringBar
-        |> Reach.view (Record.foo << Dict.Reach.valueEach << Record.bar)
+        |> Map.view (Record.foo << Dict.Map.valueEach << Record.bar)
     --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     recordDictStringBar
-        |> Reach.mapOver (Record.foo << Dict.Reach.valueEach << Record.bar) (\n -> n + 1)
+        |> Map.over (Record.foo << Dict.Map.valueEach << Record.bar) (\n -> n + 1)
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
@@ -52,78 +52,70 @@ import Reach
 
 -}
 valueEach :
-    Reach.Elements
+    Map
         (Dict key value)
         value
-        (Dict key valueView)
-        valueView
         (Dict key valueMapped)
         valueMapped
 valueEach =
-    Reach.elements "value each"
-        { view = \valueView -> Dict.map (\_ -> valueView)
-        , map = \valueMap -> Dict.map (\_ -> valueMap)
-        }
+    Map.at "value each"
+        (\valueMap -> Dict.map (\_ -> valueMap))
 
 
-{-| Reach into a `Dict`'s value at a given key
+{-| map into a `Dict`'s value at a given key
 
     import Dict exposing (Dict)
-    import Reach exposing (onJust)
-    import Dict.Reach
+    import Map exposing (onJust)
+    import Dict.Map
     import Record
 
     dict : Dict Char { bar : Int }
     dict =
         Dict.fromList [ ( 'b', { bar = 2 } ) ]
 
-    dict |> Reach.view (Dict.Reach.valueAt ( 'b', String.fromChar ))
+    dict |> Map.view (Dict.Map.valueAt ( 'b', String.fromChar ))
     --> Just { bar = 2 }
 
-    dict |> Reach.view (Dict.Reach.valueAt ( 'a', String.fromChar ))
+    dict |> Map.view (Dict.Map.valueAt ( 'a', String.fromChar ))
     --> Nothing
 
     dict
-        |> Reach.view
-            (Dict.Reach.valueAt ( 'b', String.fromChar ) << Record.bar)
+        |> Map.view
+            (Dict.Map.valueAt ( 'b', String.fromChar ) << Record.bar)
     --> Just 2
 
     dict
-        |> Reach.mapOver
-            (Dict.Reach.valueAt ( 'x', String.fromChar ) << Record.bar)
+        |> Map.over
+            (Dict.Map.valueAt ( 'x', String.fromChar ) << Record.bar)
             (\_ -> 3)
     --> dict
 
-[`valueAtString`](#valueAtString) is short for `Dict.Reach.valueAt ( stringKey, identity )`.
+[`valueAtString`](#valueAtString) is short for `Dict.Map.valueAt ( stringKey, identity )`.
 
 -}
 valueAt :
     ( comparableKey, comparableKey -> String )
     ->
-        Reach.Maybe
+        Map
             (Dict comparableKey value)
             value
-            valueView
             (Dict comparableKey value)
             value
 valueAt ( key, keyToString ) =
-    Reach.maybe ("value at " ++ (key |> keyToString))
-        { access = Dict.get key
-        , map =
-            \valueMap structure ->
-                structure |> Dict.update key (Maybe.map valueMap)
-        }
+    Map.at (key |> keyToString)
+        (\valueMap structure ->
+            structure |> Dict.update key (Maybe.map valueMap)
+        )
 
 
-{-| Shorthand for [`Dict.Reach.valueAt ( "key String", identity )`](#valueAt).
+{-| Shorthand for [`Dict.Map.valueAt ( "key String", identity )`](#valueAt).
 -}
 valueAtString :
     String
     ->
-        Reach.Maybe
+        Map
             (Dict String value)
             value
-            valueView
             (Dict String value)
             value
 valueAtString key =

@@ -1,11 +1,11 @@
 {
   "root": "../src",
   "tests": [
-    "Reach",
-    "Tuple.Reach",
-    "List.Reach",
-    "Array.Reach",
-    "Dict.Reach",
-    "SelectList.Reach"
+    "Map",
+    "Tuple.Map",
+    "List.Map",
+    "Array.Map",
+    "Dict.Map",
+    "SelectList.Map"
   ]
 }

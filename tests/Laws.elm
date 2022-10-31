@@ -1,14 +1,14 @@
 module Laws exposing (tests)
 
 import Array exposing (Array)
-import Array.Reach
+import Array.Map
 import Dict exposing (Dict)
-import Dict.Reach
+import Dict.Map
 import Expect
 import Fuzz exposing (Fuzzer)
-import List.Reach
+import List.Map
+import Map exposing (onJust)
 import Maybe exposing (Maybe)
-import Reach exposing (onJust)
 import Record
 import String
 import Test exposing (Test, test)
@@ -23,8 +23,8 @@ tests =
         , lensExamples
         , test "description"
             (\() ->
-                (Record.info << Record.stuff << List.Reach.element 7 << Record.name)
-                    |> Reach.description
+                (Record.info << Record.stuff << List.Map.element 7 << Record.name)
+                    |> Map.description
                     |> String.join ")"
                     |> Expect.equal "info)stuff)element 7)name"
             )
@@ -55,12 +55,12 @@ isLens :
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> Reach.PartMappingToSameType structure focus focus
+    -> Map.PartMappingToSameType structure focus focus
     -> Test
 isLens fuzzer =
     \settable ->
         Test.describe
-            (settable |> Reach.description |> String.join ")")
+            (settable |> Map.description |> String.join ")")
             [ isSettable fuzzer settable
 
             -- there's Traversal laws in here somewhere but not sure they're expressible in elm
@@ -71,7 +71,7 @@ isLens fuzzer =
 
 lens_get_set :
     { m | structure : Fuzzer structure }
-    -> Reach.PartMappingToSameType structure focus focus
+    -> Map.PartMappingToSameType structure focus focus
     -> Test
 lens_get_set fuzzer =
     \lens_ ->
@@ -82,7 +82,7 @@ lens_get_set fuzzer =
             "lens_get_set"
             (\{ structure } ->
                 structure
-                    |> Reach.mapOver lens_ (\_ -> structure |> Reach.view lens_)
+                    |> Map.over lens_ (\_ -> structure |> Map.view lens_)
                     |> Expect.equal structure
             )
 
@@ -92,7 +92,7 @@ lens_set_get :
         | structure : Fuzzer structure
         , focus : Fuzzer focus
     }
-    -> Reach.PartMappingToSameType structure focus focus
+    -> Map.PartMappingToSameType structure focus focus
     -> Test
 lens_set_get fuzzer =
     \lens_ ->
@@ -109,8 +109,8 @@ lens_set_get fuzzer =
             "lens_set_get"
             (\{ structure, focus } ->
                 (structure
-                    |> Reach.mapOver lens_ (\_ -> focus)
-                    |> Reach.view lens_
+                    |> Map.over lens_ (\_ -> focus)
+                    |> Map.view lens_
                 )
                     |> Expect.equal focus
             )
@@ -120,7 +120,7 @@ prismExamples : Test
 prismExamples =
     Test.describe
         "prism"
-        [ (Record.info << Dict.Reach.valueAtString "stuff")
+        [ (Record.info << Dict.Map.valueAtString "stuff")
             |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
@@ -132,7 +132,7 @@ prismExamples =
                 , focusAlter = stringAlterFuzzer
                 , focus = Fuzz.string
                 }
-        , (Record.stuff << List.Reach.element 0)
+        , (Record.stuff << List.Map.element 0)
             |> isPrism
                 { structure = personFuzzer
                 , focusAlter = stringAlterFuzzer
@@ -146,12 +146,12 @@ isPrism :
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> Reach.MaybeMappingToSameType structure focus focus
+    -> Map.Alter structure focus focus
     -> Test
 isPrism fuzzer optionalToTest =
     Test.describe
         ("isOptional "
-            ++ (optionalToTest |> Reach.description |> String.join ")")
+            ++ (optionalToTest |> Map.description |> String.join ")")
         )
         [ optional_identity fuzzer optionalToTest
         , setFocusViewIsFocus fuzzer optionalToTest
@@ -160,7 +160,7 @@ isPrism fuzzer optionalToTest =
 
 setFocusViewIsFocus :
     { m | structure : Fuzzer structure, focus : Fuzzer focus }
-    -> Reach.MaybeMappingToSameType structure focus focus
+    -> Map.Alter structure focus focus
     -> Test
 setFocusViewIsFocus fuzzer =
     \optional ->
@@ -172,16 +172,16 @@ setFocusViewIsFocus fuzzer =
             "setFocusViewIsFocus"
             (\{ structure, focus } ->
                 structure
-                    |> Reach.mapOver optional (\_ -> focus)
-                    |> Reach.view optional
+                    |> Map.over optional (\_ -> focus)
+                    |> Map.view optional
                     |> Expect.equal
-                        (structure |> Reach.view optional |> Maybe.map (\_ -> focus))
+                        (structure |> Map.view optional |> Maybe.Map (\_ -> focus))
             )
 
 
 optional_identity :
     { m | structure : Fuzzer structure }
-    -> Reach.MaybeMappingToSameType structure focus focus
+    -> Map.Alter structure focus focus
     -> Test
 optional_identity fuzzer optional =
     Test.fuzz
@@ -190,10 +190,10 @@ optional_identity fuzzer optional =
         )
         "optional_identity"
         (\{ structure } ->
-            case structure |> Reach.view optional of
+            case structure |> Map.view optional of
                 Just focus ->
                     structure
-                        |> Reach.mapOver optional (\_ -> focus)
+                        |> Map.over optional (\_ -> focus)
                         |> Expect.equal structure
 
                 Nothing ->
@@ -214,10 +214,10 @@ settableExamples =
     Test.describe
         "settable"
         [ check (Record.email << onJust)
-        , check (Record.stuff << List.Reach.element 0)
-        , check (Record.stuff << List.Reach.elementEach)
-        , check (Record.things << Array.Reach.element 0)
-        , check (Record.things << Array.Reach.elementEach)
+        , check (Record.stuff << List.Map.element 0)
+        , check (Record.stuff << List.Map.each)
+        , check (Record.things << Array.Map.element 0)
+        , check (Record.things << Array.Map.each)
         ]
 
 
@@ -226,12 +226,12 @@ isSettable :
     , focusAlter : Fuzzer (Alter focus)
     , focus : Fuzzer focus
     }
-    -> Reach.ElementsMappingToSameType structure focus view focus
+    -> Map.ElementsMappingToSameType structure focus view focus
     -> Test
 isSettable fuzzer settable =
     Test.describe
         ("isSettable "
-            ++ (settable |> Reach.description |> String.join ")")
+            ++ (settable |> Map.description |> String.join ")")
         )
         [ setter_identity fuzzer settable
         , setter_composition fuzzer settable
@@ -241,7 +241,7 @@ isSettable fuzzer settable =
 
 setter_identity :
     { m | structure : Fuzzer structure }
-    -> Reach.ElementsMappingToSameType structure focus view focus
+    -> Map.ElementsMappingToSameType structure focus view focus
     -> Test
 setter_identity fuzzer settable =
     Test.fuzz
@@ -251,7 +251,7 @@ setter_identity fuzzer settable =
         "setter_identity"
         (\{ structure } ->
             structure
-                |> Reach.mapOver settable identity
+                |> Map.over settable identity
                 |> Expect.equal structure
         )
 
@@ -261,7 +261,7 @@ setter_composition :
         | structure : Fuzzer structure
         , focusAlter : Fuzzer (Alter focus)
     }
-    -> Reach.ElementsMappingToSameType structure focus view focus
+    -> Map.ElementsMappingToSameType structure focus view focus
     -> Test
 setter_composition fuzzer settable =
     Test.fuzz
@@ -279,12 +279,12 @@ setter_composition fuzzer settable =
         "setter_composition"
         (\{ structure, alter0, alter1 } ->
             (structure
-                |> Reach.mapOver settable alter0
-                |> Reach.mapOver settable alter1
+                |> Map.over settable alter0
+                |> Map.over settable alter1
             )
                 |> Expect.equal
                     (structure
-                        |> Reach.mapOver settable (alter0 >> alter1)
+                        |> Map.over settable (alter0 >> alter1)
                     )
         )
 
@@ -294,7 +294,7 @@ setter_set_set :
         | structure : Fuzzer structure
         , focus : Fuzzer focus
     }
-    -> Reach.ElementsMappingToSameType structure focus view focus
+    -> Map.ElementsMappingToSameType structure focus view focus
     -> Test
 setter_set_set fuzzer settable =
     Test.fuzz
@@ -312,12 +312,12 @@ setter_set_set fuzzer settable =
         "setter_set_set"
         (\{ structure, focus0, focus1 } ->
             (structure
-                |> Reach.mapOver settable (\_ -> focus0)
-                |> Reach.mapOver settable (\_ -> focus1)
+                |> Map.over settable (\_ -> focus0)
+                |> Map.over settable (\_ -> focus1)
             )
                 |> Expect.equal
                     (structure
-                        |> Reach.mapOver settable (\_ -> focus1)
+                        |> Map.over settable (\_ -> focus1)
                     )
         )
 
@@ -364,8 +364,8 @@ type alias Alter a =
 maybeStringAlterFuzzer : Fuzzer (Alter (Maybe String))
 maybeStringAlterFuzzer =
     Fuzz.oneOf
-        (List.map Fuzz.constant
-            [ Maybe.andThen String.toInt >> Maybe.map String.fromInt
+        (List.Map Fuzz.constant
+            [ Maybe.andThen String.toInt >> Maybe.Map String.fromInt
             ]
         )
 
@@ -373,20 +373,20 @@ maybeStringAlterFuzzer =
 stringAlterFuzzer : Fuzzer (Alter String)
 stringAlterFuzzer =
     Fuzz.oneOf
-        [ Fuzz.map String.append Fuzz.string
-        , Fuzz.map (\s -> String.append s << String.reverse) Fuzz.string
-        , Fuzz.map (\prefix -> String.append prefix << String.toUpper) Fuzz.string
-        , Fuzz.map (\prefix -> String.append prefix << String.toLower) Fuzz.string
+        [ Fuzz.Map String.append Fuzz.string
+        , Fuzz.Map (\s -> String.append s << String.reverse) Fuzz.string
+        , Fuzz.Map (\prefix -> String.append prefix << String.toUpper) Fuzz.string
+        , Fuzz.Map (\prefix -> String.append prefix << String.toLower) Fuzz.string
         ]
 
 
 intAlter : Fuzzer (Alter Int)
 intAlter =
     Fuzz.oneOf
-        [ Fuzz.map (+) Fuzz.int
-        , Fuzz.map (-) Fuzz.int
-        , Fuzz.map (*) Fuzz.int
-        , Fuzz.map (//) Fuzz.int
+        [ Fuzz.Map (+) Fuzz.int
+        , Fuzz.Map (-) Fuzz.int
+        , Fuzz.Map (*) Fuzz.int
+        , Fuzz.Map (//) Fuzz.int
         ]
 
 
@@ -401,4 +401,4 @@ dictFuzz :
     -> Fuzzer (Dict comparableKey value)
 dictFuzz { key, value } =
     Fuzz.list (Fuzz.tuple ( key, value ))
-        |> Fuzz.map Dict.fromList
+        |> Fuzz.Map Dict.fromList

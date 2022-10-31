@@ -1,15 +1,15 @@
 module Record exposing (age, bar, element, email, foo, info, name, qux, stuff, things, value)
 
-import Reach
+import Map
 
 
 makeOneToOne_ :
     String
     -> (structure -> fieldValue)
     -> ((fieldValue -> fieldValue) -> structure -> structure)
-    -> Reach.PartMappingToSameType structure fieldValue reachView
+    -> Map.PartMappingToSameType structure fieldValue reachView
 makeOneToOne_ fieldName access alter =
-    Reach.part fieldName
+    Map.at fieldName
         { access = access
         , map = alter
         }

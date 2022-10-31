@@ -1,19 +1,19 @@
-module SelectList.Reach exposing (elementEach, selected)
+module SelectList.Map exposing (each, selected)
 
-{-| Reach into a [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
+{-| map into a [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
 
-@docs elementEach, selected
+@docs each, selected
 
 -}
 
-import Reach
+import Map exposing (Map)
 import SelectList exposing (SelectList)
 
 
-{-| Reach each element contained inside a `SelectList`
+{-| map each element contained inside a `SelectList`
 
-    import Reach
-    import SelectList.Reach
+    import Map
+    import SelectList.Map
     import Record
     import SelectList exposing (SelectList)
 
@@ -27,13 +27,13 @@ import SelectList exposing (SelectList)
         }
 
     fooBarScroll
-        |> Reach.view
-            (Record.foo << SelectList.Reach.elementEach << Record.bar)
+        |> Map.view
+            (Record.foo << SelectList.Map.each << Record.bar)
     --> SelectList.fromLists [1] 2 [3, 4]
 
     fooBarScroll
-        |> Reach.mapOver
-            (Record.foo << SelectList.Reach.elementEach << Record.bar)
+        |> Map.over
+            (Record.foo << SelectList.Map.each << Record.bar)
             (\n -> n + 1)
     --> { foo =
     -->     SelectList.fromLists
@@ -43,25 +43,20 @@ import SelectList exposing (SelectList)
     --> }
 
 -}
-elementEach :
-    Reach.Elements
+each :
+    Map
         (SelectList element)
         element
-        (SelectList elementView)
-        elementView
         (SelectList elementMapped)
         elementMapped
-elementEach =
-    Reach.elements "element each"
-        { view = SelectList.map
-        , map = SelectList.map
-        }
+each =
+    Map.at "each" SelectList.map
 
 
-{-| Reach the `SelectList`'s selected element
+{-| map the `SelectList`'s selected element
 
-    import Reach
-    import SelectList.Reach
+    import Map
+    import SelectList.Map
     import Record
     import SelectList exposing (SelectList)
 
@@ -73,13 +68,13 @@ elementEach =
         }
 
     fooBarScroll
-        |> Reach.view
-            (Record.foo << SelectList.Reach.selected << Record.bar)
+        |> Map.view
+            (Record.foo << SelectList.Map.selected << Record.bar)
     --> 2
 
     fooBarScroll
-        |> Reach.mapOver
-            (Record.foo << SelectList.Reach.selected << Record.bar)
+        |> Map.over
+            (Record.foo << SelectList.Map.selected << Record.bar)
             (\_ -> 37)
     --> { foo =
     -->     SelectList.fromLists
@@ -87,8 +82,8 @@ elementEach =
     --> }
 
     fooBarScroll
-        |> Reach.mapOver
-            (Record.foo << SelectList.Reach.selected << Record.bar)
+        |> Map.over
+            (Record.foo << SelectList.Map.selected << Record.bar)
             (\n -> n * 10)
     --> { foo =
     -->     SelectList.fromLists
@@ -97,14 +92,10 @@ elementEach =
 
 -}
 selected :
-    Reach.Part
+    Map
         (SelectList elementMapped)
         elementMapped
-        elementView
         (SelectList elementMapped)
         elementMapped
 selected =
-    Reach.part "selected"
-        { access = SelectList.selected
-        , map = SelectList.updateSelected
-        }
+    Map.at "selected" SelectList.updateSelected

@@ -1,5 +1,5 @@
 Describe how to reach a structure's content
-to [map](Reach#over)/[`view`](Reach#view) arbitrary content more easily
+to [map](map#over)/[`view`](map#view) arbitrary content more easily
 
 ## reach 
 
@@ -14,47 +14,47 @@ to [map](Reach#over)/[`view`](Reach#view) arbitrary content more easily
     - a `List`'s 0-1 head elements
 
 ```elm
-import Reach
+import Map
 
-recordFoo : Reach.PartMappingToSameType { record | foo : foo } foo fooView
+recordFoo : Map.PartMappingToSameType { record | foo : foo } foo fooView
 recordFoo =
-    Reach.part "foo"
+    Map.part "foo"
         { access = .foo
         , map = \alter record -> { record | foo = record.foo |> alter }
         }
 
-recordBar : Reach.PartMappingToSameType { record | bar : bar } bar barView
+recordBar : Map.PartMappingToSameType { record | bar : bar } bar barView
 recordBar =
-    Reach.part "bar"
+    Map.part "bar"
         { access = .bar
         , map = \alter record -> { record | bar = record.bar |> alter }
         }
 
 onJust :
-    Reach.Maybe
+    Map.Possibility
         (Maybe value)
         value
         valueView
         (Maybe valueMapped)
         valueMapped
 onJust =
-    Reach.maybe "Just"
+    Map.Possibility "Just"
         { view = identity
-        , map = Maybe.map
+        , map = Maybe.Map
         }
 
-elementEach :
-    Reach.Elements
+each :
+    Map.Elements
         (List element)
         element
         (List elementView)
         elementView
         (List elementMapped)
         elementMapped
-elementEach = 
-    Reach.elements "element each"
-        { view = List.map
-        , map = List.map
+each = 
+    Map.elements "element each"
+        { view = List.Map
+        , map = List.Map
         }
 ```
 
@@ -71,12 +71,12 @@ fooBars =
     }
 
 fooBars
-    |> Reach.view (Record.foo << List.Reach.elementEach << Record.bar)
+    |> Map.view (Record.foo << List.Map.each << Record.bar)
 --> [ 3, 2, 0 ]
 
 fooBars
-    |> Reach.mapOver
-        (recordFoo << List.Reach.elementEach << Record.bar)
+    |> Map.over
+        (recordFoo << List.Map.each << Record.bar)
         (\n -> n * 2)
 --> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
 ```
@@ -87,7 +87,7 @@ Reaching into on non-matching data structures will yield nice
 compile-time errors:
 
 ```elm
-fooBars |> Reach.view (Record.foo << Record.foo)
+fooBars |> Map.view (Record.foo << Record.foo)
 ```
 > The 2nd argument to `view` is not what I expect:
 > 
@@ -105,14 +105,14 @@ Any reach you create can be composed with any other to match your new
 data structures: 
 
 ```elm
-import Reach exposing (onJust)
-import List.Reach
+import Map exposing (onJust)
+import List.Map
 
 tryEach =
-    onJust << List.Reach.elementEach
+    onJust << List.Map.each
 
 { bar = Just [ 1, 3, 2 ] }
-    |> Reach.mapOver (recordBar << tryEach) negate
+    |> Map.over (recordBar << tryEach) negate
 --> { bar = Just [ -1, -3, -2 ] }
 ```
 

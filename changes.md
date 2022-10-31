@@ -9,16 +9,16 @@ TODO!
     - clutter without benefit
     - no need for backwards compatibility
 - `module Accessors.Lazy` remove
-    - in favor of `Reach.mapOverLazy`
+    - in favor of `Map.overLazy`
 - `module Accessors`
-    - name → `Reach`
+    - name → `map`
         - plural is just more verbose and
-        - `Reach` is shorter
-        - `Reach` is nice as a type prefix
-    - tuple accessors move to `Tuple.Reach`
-    - `List` accessors move to `List.Reach`
-    - `Array` accessors move to `Array.Reach`
-    - `Dict` accessors move to `Dict.Reach`
+        - `map` is shorter
+        - `map` is nice as a type prefix
+    - tuple accessors move to `Tuple.Map`
+    - `List` accessors move to `List.Map`
+    - `Array` accessors move to `Array.Map`
+    - `Dict` accessors move to `Dict.Map`
     - ```elm
       type Relation structure reach view
           = Relation
@@ -44,9 +44,9 @@ TODO!
         - in favor of `valueElseOnNothing`
     - `type alias ..._`s remove
     - `def`, `or`, indexed/keyed versions, non-structure-preserving reaches remove
-        - in favor of handling directly in the function given to `mapOver` or after `view`
-    - `Accessor` name → `Reach.Elements`
-    - `Lens` name → `Reach.Part`
+        - in favor of handling directly in the function given to `over` or after `view`
+    - `Accessor` name → `Map.Elements`
+    - `Lens` name → `Map.Part`
     - `is` name → `has`
     - `try` name → `onJust`
     - `ok` name → `onOk`
@@ -55,12 +55,12 @@ TODO!
     - `name` → `|> description |> String.join ")"`
     - `makeOneToOne`, `makeOneToN` remove
         - no need for backwards compatibility
-    - `makeOneToOne_` name → `Reach.part`
-    - `makeOneToN_` name → `Reach.elements`
-    - `over` name → `mapOver`
+    - `makeOneToOne_` name → `Map.part`
+    - `makeOneToN_` name → `Map.elements`
+    - `over` name → `over`
     - `get` name → `view`
     - `name : -> String` name → `description : List String`
-    - `Reach.Maybe`, `Reach.maybe` add
-    - `Reach....MappingToSameType`s add
-    - `mapOverLazy` add
+    - `Map.Possibility`, `Map.Possibility` add
+    - `Map....MappingToSameType`s add
+    - `overLazy` add
     - `onNothing` add
