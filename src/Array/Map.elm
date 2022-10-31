@@ -1,6 +1,6 @@
 module Array.Map exposing (each, element)
 
-{-| map into an `Array`
+{-| [`Map`](Map#Map) an `Array`
 
 @docs each, element
 
@@ -17,17 +17,19 @@ import Map exposing (Alter, Map)
     import Array.Map
     import Record
 
-    fooBarray : { foo : Array { bar : Int } }
-    fooBarray =
-        { foo =
-            Array.fromList [ { bar = 2 }, { bar = 3 }, { bar = 4 } ]
+    effect : { trail : Array { sparkle : Int } }
+    effect =
+        { trail =
+            Array.fromList [ { sparkle = 2 }, { sparkle = 3 }, { sparkle = 4 } ]
         }
 
-    fooBarray
+    effect
         |> Map.over
-            (Record.foo << Array.Map.each << Record.bar)
+            (Record.trail << Array.Map.each << Record.sparkle)
             (\n -> n + 1)
-    --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
+    --> { trail =
+    -->     Array.fromList [ { sparkle = 3 }, { sparkle = 4 }, { sparkle = 5 } ]
+    --> }
 
 -}
 each : Map (Array element) element (Array elementMapped) elementMapped
@@ -42,20 +44,20 @@ each =
     import Array.Map
     import Record
 
-    barray : Array { bar : String }
-    barray =
-        Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
+    tags : Array { tag : String }
+    tags =
+        Array.fromList [ { tag = "Stuff" }, { tag =  "Things" }, { tag = "Woot" } ]
 
-    barray
-        |> Map.over (Array.Map.element 0 << Record.bar) (\_ -> "Whatever")
+    tags
+        |> Map.over (Array.Map.element 0 << Record.tag) (\_ -> "Whatever")
     --> Array.fromList
-    -->     [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
+    -->     [ { tag = "Whatever" }, { tag =  "Things" }, { tag = "Woot" } ]
 
-    barray
+    tags
         |> Map.over
-            (Array.Map.element 9000 << Record.bar)
+            (Array.Map.element 9000 << Record.tag)
             (\_ -> "Whatever")
-    --> barray
+    --> tags
 
 -}
 element : Int -> Alter (Array elementMapped) elementMapped

@@ -1,6 +1,6 @@
 module Dict.Map exposing (valueEach, valueAt, valueAtString)
 
-{-| map into a `Dict`
+{-| [`Map`](Map#Map) a `Dict`
 
 @docs valueEach, valueAt, valueAtString
 
@@ -17,28 +17,28 @@ import Map exposing (Alter, Map)
     import Record
     import Dict exposing (Dict)
 
-    recordDictStringBar : { foo : Dict String { bar : Int } }
-    recordDictStringBar =
-        { foo =
+    variables : { pool : Dict String { value : Int } }
+    variables =
+        { pool =
             Dict.fromList
-                [ ( "a", { bar = 2 } )
-                , ( "b", { bar = 3 } )
-                , ( "c", { bar = 4 } )
+                [ ( "a", { value = 2 } )
+                , ( "b", { value = 3 } )
+                , ( "c", { value = 4 } )
                 ]
         }
 
-    recordDictStringBar
-        |> Map.over (Record.foo << Dict.Map.valueEach << Record.bar) (\n -> n * 10)
-    --> { foo =
+    variables
+        |> Map.over (Record.pool << Dict.Map.valueEach << Record.value) (\n -> n * 10)
+    --> { pool =
     -->     Dict.fromList
-    -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 30 } ), ( "c", { bar = 40 } ) ]
+    -->         [ ( "a", { value = 20 } ), ( "b", { value = 30 } ), ( "c", { value = 40 } ) ]
     --> }
 
-    recordDictStringBar
-        |> Map.over (Record.foo << Dict.Map.valueEach << Record.bar) (\n -> n + 1)
-    --> { foo =
+    variables
+        |> Map.over (Record.pool << Dict.Map.valueEach << Record.value) (\n -> n + 1)
+    --> { pool =
     -->     Dict.fromList
-    -->         [ ( "a", { bar = 3 } ), ( "b", { bar = 4 } ), ( "c", { bar = 5 } ) ]
+    -->         [ ( "a", { value = 3 } ), ( "b", { value = 4 } ), ( "c", { value = 5 } ) ]
     --> }
 
 -}
@@ -55,13 +55,13 @@ valueEach =
     import Dict.Map
     import Record
 
-    dict : Dict Char { bar : Int }
+    dict : Dict Char { value : Int }
     dict =
-        Dict.fromList [ ( 'b', { bar = 2 } ) ]
+        Dict.fromList [ ( 'b', { value = 2 } ) ]
 
     dict
         |> Map.over
-            (Dict.Map.valueAt ( 'x', String.fromChar ) << Record.bar)
+            (Dict.Map.valueAt ( 'x', String.fromChar ) << Record.value)
             (\_ -> 3)
     --> dict
 

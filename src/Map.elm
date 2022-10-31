@@ -171,10 +171,10 @@ description =
   - a function that changes elements inside the structure with a given function
 
 ```
-foo : Alter { record | foo : foo } foo
-foo =
-    Map.at "foo"
-        (\alter record -> { record | foo = record.foo |> alter })
+score : Alter { record | score : score } score
+score =
+    Map.at "score"
+        (\alter record -> { record | score = record.score |> alter })
 
 onOk : Map (Result error value) value (Result error valueMapped) valueMapped
 onOk =
@@ -207,9 +207,10 @@ as shown in a given [`Map`](#Map) with a given function
 
     import Record
 
-    { foo = { qux = 0 } }
-        |> Map.over (Record.foo << Record.qux) (\n -> n + 1)
-    --> { foo = { qux = 1 } }
+    -- don't nest like this in practice
+    { book = { sales = 0 } }
+        |> Map.over (Record.book << Record.sales) (\n -> n + 1)
+    --> { book = { sales = 1 } }
 
 -}
 over :
@@ -262,24 +263,24 @@ overLazy alter change =
 -- Maybe
 
 
-{-| map the value inside `Maybe`
+{-| Map the value inside a `Maybe`
 
     import Map exposing (onJust)
     import Record
 
-    maybeRecord : { foo : Maybe { bar : Int }, qux : Maybe { bar : Int } }
-    maybeRecord =
-        { foo = Just { bar = 2 }
-        , qux = Nothing
+    article : { series : Maybe { id : Int }, publisher : Maybe { id : Int } }
+    article =
+        { series = Just { id = 2 }
+        , publisher = Nothing
         }
 
-    maybeRecord
-        |> Map.over (Record.foo << onJust << Record.bar) (\n -> n + 1)
-    --> { foo = Just { bar = 3 }, qux = Nothing }
+    article
+        |> Map.over (Record.series << onJust << Record.id) (\n -> n + 100)
+    --> { series = Just { id = 102 }, publisher = Nothing }
 
-    maybeRecord
-        |> Map.over (Record.qux << onJust << Record.bar) (\n -> n + 1)
-    --> { foo = Just { bar = 2 }, qux = Nothing }
+    article
+        |> Map.over (Record.publisher << onJust << Record.id) (\n -> n + 100)
+    --> { series = Just { id = 2 }, publisher = Nothing }
 
 -}
 onJust : Map (Maybe value) value (Maybe valueMapped) valueMapped
@@ -296,23 +297,23 @@ onJust =
     import Map exposing (onOk)
     import Record
 
-    maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
-    maybeRecord =
-        { foo = Ok { bar = 2 }
-        , qux = Err "Not an Int"
+    fetched : { current : Result String { id : Int }, alternative : Result String { id : Int } }
+    fetched =
+        { current = Ok { id = 2 }
+        , alternative = Err "Not an Int"
         }
 
-    maybeRecord
+    fetched
         |> Map.over
-            (Record.foo << onOk << Record.bar)
-            (\n -> n + 1)
-    --> { foo = Ok { bar = 3 }, qux = Err "Not an Int" }
+            (Record.current << onOk << Record.id)
+            (\n -> n + 100)
+    --> { current = Ok { id = 102 }, alternative = Err "Not an Int" }
 
-    maybeRecord
+    fetched
         |> Map.over
-            (Record.qux << onOk << Record.bar)
+            (Record.alternative << onOk << Record.id)
             (\n -> n + 1)
-    --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
+    --> { current = Ok { id = 2 }, alternative = Err "Not an Int" }
 
 -}
 onOk :
@@ -330,19 +331,19 @@ onOk =
     import Map exposing (onErr)
     import Record
 
-    maybeRecord : { foo : Result String { bar : Int }, qux : Result String { bar : Int } }
-    maybeRecord =
-        { foo = Ok { bar = 2 }
-        , qux = Err "Not an Int"
+    fetched : { current : Result String { id : Int }, alternative : Result String { id : Int } }
+    fetched =
+        { current = Ok { id = 2 }
+        , alternative = Err "Not an Int"
         }
 
-    maybeRecord
-        |> Map.over (Record.foo << onErr) String.toUpper
-    --> { foo = Ok { bar = 2 }, qux = Err "Not an Int" }
+    fetched
+        |> Map.over (Record.current << onErr) String.toUpper
+    --> { current = Ok { id = 2 }, alternative = Err "Not an Int" }
 
-    maybeRecord
-        |> Map.over (Record.qux << onErr) String.toUpper
-    --> { foo = Ok { bar = 2 }, qux = Err "NOT AN INT" }
+    fetched
+        |> Map.over (Record.alternative << onErr) String.toUpper
+    --> { current = Ok { id = 2 }, alternative = Err "NOT AN INT" }
 
 -}
 onErr :

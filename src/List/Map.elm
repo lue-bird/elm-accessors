@@ -1,6 +1,6 @@
 module List.Map exposing (element, each)
 
-{-| map into a `List`
+{-| [`Map`](Map#Map) a `List`
 
 @docs element, each
 
@@ -15,20 +15,20 @@ import Map exposing (Alter, Map)
     import Map
     import Record
 
-    listRecord : { foo : List { bar : Int } }
-    listRecord =
-        { foo =
-            [ { bar = 2 }
-            , { bar = 3 }
-            , { bar = 4 }
+    effect : { trail : List { sparkle : Int } }
+    effect =
+        { trail =
+            [ { sparkle = 2 }
+            , { sparkle = 3 }
+            , { sparkle = 4 }
             ]
         }
 
-    listRecord
+    effect
         |> Map.over
-            (Record.foo << List.Map.each << Record.bar)
+            (Record.trail << List.Map.each << Record.sparkle)
             (\n -> n + 1)
-    --> { foo = [ { bar = 3 }, { bar = 4}, { bar = 5 } ] }
+    --> { trail = [ { sparkle = 3 }, { sparkle = 4}, { sparkle = 5 } ] }
 
 -}
 each : Map (List element) element (List elementMapped) elementMapped
@@ -42,21 +42,21 @@ each =
     import List.Map
     import Record
 
-    bars : List { bar : String }
-    bars =
-        [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
+    sparkles : List { sparkle : String }
+    sparkles =
+        [ { sparkle = "Stuff" }, { sparkle =  "Things" }, { sparkle = "Woot" } ]
 
-    bars
+    sparkles
         |> Map.over
-            (List.Map.element 0 << Record.bar)
+            (List.Map.element 0 << Record.sparkle)
             (\_ -> "Whatever")
-    --> [ { bar = "Whatever" }, { bar =  "Things" }, { bar = "Woot" } ]
+    --> [ { sparkle = "Whatever" }, { sparkle =  "Things" }, { sparkle = "Woot" } ]
 
-    bars
+    sparkles
         |> Map.over
-            (List.Map.element 9000 << Record.bar)
+            (List.Map.element 9000 << Record.sparkle)
             (\_ -> "Whatever")
-    --> bars
+    --> sparkles
 
 -}
 element : Int -> Alter (List element) element

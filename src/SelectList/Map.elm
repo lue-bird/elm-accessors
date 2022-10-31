@@ -1,6 +1,6 @@
 module SelectList.Map exposing (each, selected)
 
-{-| map into a [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
+{-| [`Map`](Map#Map) a [`miyamoen/select-list`](https://dark.elm.dmy.fr/packages/miyamoen/select-list/latest/)
 
 @docs each, selected
 
@@ -17,24 +17,24 @@ import SelectList exposing (SelectList)
     import Record
     import SelectList exposing (SelectList)
 
-    fooBarScroll : { foo : SelectList { bar : Int } }
-    fooBarScroll =
-        { foo =
+    model : { projects : SelectList { id : Int } }
+    model =
+        { projects =
             SelectList.fromLists
-                [ { bar = 1 } ]
-                { bar = 2 }
-                [ { bar = 3 }, { bar = 4 } ]
+                [ { id = 1 } ]
+                { id = 2 }
+                [ { id = 3 }, { id = 4 } ]
         }
 
-    fooBarScroll
+    model
         |> Map.over
-            (Record.foo << SelectList.Map.each << Record.bar)
-            (\n -> n + 1)
-    --> { foo =
+            (Record.projects << SelectList.Map.each << Record.id)
+            (\n -> n - 1)
+    --> { projects =
     -->     SelectList.fromLists
-    -->         [ { bar = 2 } ]
-    -->         { bar = 3 }
-    -->         [ { bar = 4 }, { bar = 5 } ]
+    -->         [ { id = 0 } ]
+    -->         { id = 1 }
+    -->         [ { id = 2 }, { id = 3 } ]
     --> }
 
 -}
@@ -50,35 +50,35 @@ each =
     import Record
     import SelectList exposing (SelectList)
 
-    fooBarScroll : { foo : SelectList { bar : Int } }
-    fooBarScroll =
-        { foo =
+    model : { projects : SelectList { id : Int } }
+    model =
+        { projects =
             SelectList.fromLists
-                [ { bar = 1 } ]
-                { bar = 2 }
-                [ { bar = 3 }, { bar = 4 } ]
+                [ { id = 1 } ]
+                { id = 2 }
+                [ { id = 3 }, { id = 4 } ]
         }
 
-    fooBarScroll
+    model
         |> Map.over
-            (Record.foo << SelectList.Map.selected << Record.bar)
+            (Record.projects << SelectList.Map.selected << Record.id)
             (\_ -> 37)
-    --> { foo =
+    --> { projects =
     -->     SelectList.fromLists
-    -->         [ { bar = 1 } ]
-    -->         { bar = 37 }
-    -->         [ { bar = 3 }, { bar = 4 } ]
+    -->         [ { id = 1 } ]
+    -->         { id = 37 }
+    -->         [ { id = 3 }, { id = 4 } ]
     --> }
 
-    fooBarScroll
+    model
         |> Map.over
-            (Record.foo << SelectList.Map.selected << Record.bar)
+            (Record.projects << SelectList.Map.selected << Record.id)
             (\n -> n * 10)
-    --> { foo =
+    --> { projects =
     -->     SelectList.fromLists
-    -->         [ { bar = 1 } ]
-    -->         { bar = 20 }
-    -->         [ { bar = 3 }, { bar = 4 } ]
+    -->         [ { id = 1 } ]
+    -->         { id = 20 }
+    -->         [ { id = 3 }, { id = 4 } ]
     --> }
 
 -}
