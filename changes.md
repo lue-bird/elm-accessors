@@ -11,10 +11,10 @@ TODO!
 - `module Accessors.Lazy` remove
     - in favor of `Map.overLazy`
 - `module Accessors`
-    - name → `map`
+    - name → `Map`
         - plural is just more verbose and
-        - `map` is shorter
-        - `map` is nice as a type prefix
+        - `Map` is shorter
+        - `Map` is nice as a type prefix
     - tuple accessors move to `Tuple.Map`
     - `List` accessors move to `List.Map`
     - `Array` accessors move to `Array.Map`
@@ -29,38 +29,29 @@ TODO!
       ```
       → `description` `List`, type change on map allowed, `map` simplified
       ```elm
-      type ViewMap value view mapped
+      type ToMapped value mapped
           = ViewMap
-              { view : value -> view
-              , map : value -> mapped
+              { map : value -> mapped
               , description : List String
               }
       ```
     - `Setable` remove
-        - type described _every_ uncomposable traversal
+        - type described every uncomposable traversal
     - `set` remove
         - in favor of `over ... (\_ -> )` which supplies the value to replace with lazily
-    - `or` remove
-        - in favor of `valueElseOnNothing`
     - `type alias ..._`s remove
-    - `def`, `or`, indexed/keyed versions, non-structure-preserving reaches remove
-        - in favor of handling directly in the function given to `over` or after `view`
+    - `def`, `or`, indexed/keyed versions, non-structure-preserving maps remove
     - `Accessor` name → `Map.Elements`
     - `Lens` name → `Map.Part`
     - `is` name → `has`
     - `try` name → `onJust`
     - `ok` name → `onOk`
     - `err` name → `onErr`
-    - `def` name → `valueElseOnNothing`
     - `name` → `|> description |> String.join ")"`
     - `makeOneToOne`, `makeOneToN` remove
         - no need for backwards compatibility
-    - `makeOneToOne_` name → `Map.part`
-    - `makeOneToN_` name → `Map.elements`
-    - `over` name → `over`
-    - `get` name → `view`
+    - `makeOneToOne_`, `makeOneToN_` → `Map.at`
+    - `get` remove
     - `name : -> String` name → `description : List String`
-    - `Map.Possibility`, `Map.Possibility` add
-    - `Map....MappingToSameType`s add
+    - `Alter` add
     - `overLazy` add
-    - `onNothing` add

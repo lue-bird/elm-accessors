@@ -7,10 +7,10 @@ module Dict.Map exposing (valueEach, valueAt, valueAtString)
 -}
 
 import Dict exposing (Dict)
-import Map exposing (Map)
+import Map exposing (Alter, Map)
 
 
-{-| Traverse a Dict including the index of each element
+{-| Map each value inside a `Dict`
 
     import Map
     import Dict.Map
@@ -28,20 +28,11 @@ import Map exposing (Map)
         }
 
     recordDictStringBar
-        |> Map.view (Record.foo << Dict.Map.valueEach)
-    --> Dict.fromList
-    -->     [ ( "a", { bar = 2 } ), ( "b", { bar = 3 } ), ( "c", { bar = 4 } ) ]
-
-    recordDictStringBar
-        |> Map.over (Record.foo << Dict.Map.valueEach << Record.bar) ((*) 10)
+        |> Map.over (Record.foo << Dict.Map.valueEach << Record.bar) (\n -> n * 10)
     --> { foo =
     -->     Dict.fromList
     -->         [ ( "a", { bar = 20 } ), ( "b", { bar = 30 } ), ( "c", { bar = 40 } ) ]
     --> }
-
-    recordDictStringBar
-        |> Map.view (Record.foo << Dict.Map.valueEach << Record.bar)
-    --> Dict.fromList [ ( "a", 2 ), ( "b", 3 ), ( "c", 4 ) ]
 
     recordDictStringBar
         |> Map.over (Record.foo << Dict.Map.valueEach << Record.bar) (\n -> n + 1)
@@ -51,18 +42,13 @@ import Map exposing (Map)
     --> }
 
 -}
-valueEach :
-    Map
-        (Dict key value)
-        value
-        (Dict key valueMapped)
-        valueMapped
+valueEach : Map (Dict key value) value (Dict key valueMapped) valueMapped
 valueEach =
     Map.at "value each"
         (\valueMap -> Dict.map (\_ -> valueMap))
 
 
-{-| map into a `Dict`'s value at a given key
+{-| Map a `Dict`'s value at a given key
 
     import Dict exposing (Dict)
     import Map exposing (onJust)
@@ -72,17 +58,6 @@ valueEach =
     dict : Dict Char { bar : Int }
     dict =
         Dict.fromList [ ( 'b', { bar = 2 } ) ]
-
-    dict |> Map.view (Dict.Map.valueAt ( 'b', String.fromChar ))
-    --> Just { bar = 2 }
-
-    dict |> Map.view (Dict.Map.valueAt ( 'a', String.fromChar ))
-    --> Nothing
-
-    dict
-        |> Map.view
-            (Dict.Map.valueAt ( 'b', String.fromChar ) << Record.bar)
-    --> Just 2
 
     dict
         |> Map.over
@@ -95,12 +70,7 @@ valueEach =
 -}
 valueAt :
     ( comparableKey, comparableKey -> String )
-    ->
-        Map
-            (Dict comparableKey value)
-            value
-            (Dict comparableKey value)
-            value
+    -> Alter (Dict comparableKey value) value
 valueAt ( key, keyToString ) =
     Map.at (key |> keyToString)
         (\valueMap structure ->
@@ -108,15 +78,8 @@ valueAt ( key, keyToString ) =
         )
 
 
-{-| Shorthand for [`Dict.Map.valueAt ( "key String", identity )`](#valueAt).
+{-| Shorthand for [`Dict.Map.valueAt ( "key String", identity )`](#valueAt)
 -}
-valueAtString :
-    String
-    ->
-        Map
-            (Dict String value)
-            value
-            (Dict String value)
-            value
+valueAtString : String -> Alter (Dict String value) value
 valueAtString key =
     valueAt ( key, identity )

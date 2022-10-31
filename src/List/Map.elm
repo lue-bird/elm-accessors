@@ -10,7 +10,7 @@ import List.Extra as List
 import Map exposing (Alter, Map)
 
 
-{-| map each element contained inside a `List`
+{-| Map each element contained inside a `List`
 
     import Map
     import Record
@@ -25,10 +25,6 @@ import Map exposing (Alter, Map)
         }
 
     listRecord
-        |> Map.view (Record.foo << List.Map.each << Record.bar)
-    --> [2, 3, 4]
-
-    listRecord
         |> Map.over
             (Record.foo << List.Map.each << Record.bar)
             (\n -> n + 1)
@@ -40,7 +36,7 @@ each =
     Map.at "each" List.map
 
 
-{-| map a `List`'s element at a given index
+{-| Map a `List`'s element at a given index
 
     import Map
     import List.Map
@@ -49,15 +45,6 @@ each =
     bars : List { bar : String }
     bars =
         [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
-
-    bars |> Map.view (List.Map.element 1)
-    --> Just { bar = "Things" }
-
-    bars |> Map.view (List.Map.element 9000)
-    --> Nothing
-
-    bars |> Map.view (List.Map.element 0 << Record.bar)
-    --> Just "Stuff"
 
     bars
         |> Map.over
@@ -74,4 +61,5 @@ each =
 -}
 element : Int -> Alter (List element) element
 element index =
-    Map.at (index |> String.fromInt) (List.updateAt index)
+    Map.at (index |> String.fromInt)
+        (\elementAlter list -> list |> List.updateAt index elementAlter)

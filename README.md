@@ -1,5 +1,4 @@
-Describe how to reach a structure's content
-to [map](map#over)/[`view`](map#view) arbitrary content more easily
+Describe how to map a structure's inner content easily
 
 ## reach 
 Examples

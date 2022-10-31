@@ -7,10 +7,10 @@ module Array.Map exposing (each, element)
 -}
 
 import Array exposing (Array)
-import Map exposing (Map)
+import Map exposing (Alter, Map)
 
 
-{-| map each element contained inside an `Array`
+{-| Map each element contained inside an `Array`
 
     import Array exposing (Array)
     import Map
@@ -24,27 +24,18 @@ import Map exposing (Map)
         }
 
     fooBarray
-        |> Map.view (Record.foo << Array.Map.each << Record.bar)
-    --> Array.fromList [ 2, 3, 4 ]
-
-    fooBarray
         |> Map.over
             (Record.foo << Array.Map.each << Record.bar)
             (\n -> n + 1)
     --> { foo = Array.fromList [ { bar = 3 }, { bar = 4 }, { bar = 5 } ] }
 
 -}
-each :
-    Map.Map
-        (Array element)
-        element
-        (Array elementMapped)
-        elementMapped
+each : Map (Array element) element (Array elementMapped) elementMapped
 each =
     Map.at "each" Array.map
 
 
-{-| Focus an `Array` element at a given index in a [direction](https://dark.elm.dmy.fr/packages/lue-bird/elm-linear-direction/latest/).
+{-| Focus an `Array` element at a given index in a [direction](https://dark.elm.dmy.fr/packages/lue-bird/elm-linear-direction/latest/)
 
     import Array exposing (Array)
     import Map
@@ -54,15 +45,6 @@ each =
     barray : Array { bar : String }
     barray =
         Array.fromList [ { bar = "Stuff" }, { bar =  "Things" }, { bar = "Woot" } ]
-
-    barray |> Map.view (Array.Map.element 1)
-    --> Just { bar = "Things" }
-
-    barray |> Map.view (Array.Map.element 9000)
-    --> Nothing
-
-    barray |> Map.view (Array.Map.element 2 << Record.bar)
-    --> Just "Woot"
 
     barray
         |> Map.over (Array.Map.element 0 << Record.bar) (\_ -> "Whatever")
@@ -76,17 +58,9 @@ each =
     --> barray
 
 -}
-element :
-    Int
-    ->
-        Map
-            (Array reachMapped)
-            reachMapped
-            (Array reachMapped)
-            reachMapped
+element : Int -> Alter (Array elementMapped) elementMapped
 element index =
-    Map.at
-        (index |> String.fromInt)
+    Map.at (index |> String.fromInt)
         (\alter array ->
             case array |> Array.get index of
                 Nothing ->

@@ -10,7 +10,7 @@ import Map exposing (Map)
 import SelectList exposing (SelectList)
 
 
-{-| map each element contained inside a `SelectList`
+{-| Map each element contained inside a `SelectList`
 
     import Map
     import SelectList.Map
@@ -27,11 +27,6 @@ import SelectList exposing (SelectList)
         }
 
     fooBarScroll
-        |> Map.view
-            (Record.foo << SelectList.Map.each << Record.bar)
-    --> SelectList.fromLists [1] 2 [3, 4]
-
-    fooBarScroll
         |> Map.over
             (Record.foo << SelectList.Map.each << Record.bar)
             (\n -> n + 1)
@@ -43,17 +38,12 @@ import SelectList exposing (SelectList)
     --> }
 
 -}
-each :
-    Map
-        (SelectList element)
-        element
-        (SelectList elementMapped)
-        elementMapped
+each : Map (SelectList element) element (SelectList elementMapped) elementMapped
 each =
     Map.at "each" SelectList.map
 
 
-{-| map the `SelectList`'s selected element
+{-| Map a `SelectList`'s selected element
 
     import Map
     import SelectList.Map
@@ -66,11 +56,6 @@ each =
             SelectList.fromLists
                 [ { bar = 1 } ] { bar = 2 } [ { bar = 3 }, { bar = 4 } ]
         }
-
-    fooBarScroll
-        |> Map.view
-            (Record.foo << SelectList.Map.selected << Record.bar)
-    --> 2
 
     fooBarScroll
         |> Map.over

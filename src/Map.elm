@@ -1,29 +1,26 @@
 module Map exposing
-    ( description
+    ( Map, Alter
+    , ToMapped(..)
+    , at
+    , description
     , over, overLazy
     , onJust
     , onOk, onErr
-    , Alter, Map, ToMapped(..), at
     )
 
-{-| map into nested structures to [map](#over) or [`view`](#view) arbitrary content
+{-| Map content inside a nested structure
 
-@docs Part, Possibility, Elements, ViewMap
-
-
-## mapping to same type
-
-@docs ElementsMappingToSameType, MaybeMappingToSameType, PartMappingToSameType
+@docs Map, Alter
+@docs ToMapped
 
 
 ## create
 
-@docs part, possibility, elements
+@docs at
 
 
 ## scan
 
-@docs view, has
 @docs description
 
 
@@ -51,8 +48,8 @@ module Map exposing
       - [`onJust`](#onJust)
       - [`onOk`](#onOk)
       - [`onErr`](#onErr)
-  - [`Tuple.Map.first`](Tuple-map#first)
-  - [`SelectList.Map.selected`](SelectList-map#selected)
+  - [`Tuple.Map.first`](Tuple-Map#first)
+  - [`SelectList.Map.selected`](SelectList-Map#selected)
   - record `.field` value
 
 Intuitively, its type could look like
@@ -79,10 +76,9 @@ type alias Map structure element mapped elementMapped =
     -> ToMapped structure mapped
 
 
-{-| Description on how to `view` or `map` a value
+{-| Description on how to `map` a value
 
-[`Map.Elements`](map#Elements) and its descendants
-always expect a [`ViewMap`](#ViewMap) and build a new [`ViewMap`](#ViewMap) with it
+[`Map`](#Map) always expect a [`ToMapped`](#ToMapped) and build a new [`ToMapped`](#ToMapped) with it
 
 -}
 type ToMapped value mapped
@@ -136,7 +132,7 @@ but you still want to use the `elm/core` implementation.
     import Record
 
     (Record.email
-        << onJust
+        << Map.onJust
         << Record.info
         << Dict.Map.valueAtString "subject"
     )
@@ -273,18 +269,12 @@ overLazy reach change =
         }
 
     maybeRecord
-        |> Map.view (Record.foo << onJust << Record.bar)
-    --> Just 2
-
-    maybeRecord
         |> Map.over (Record.foo << onJust << Record.bar) (\n -> n + 1)
     --> { foo = Just { bar = 3 }, qux = Nothing }
 
     maybeRecord
         |> Map.over (Record.qux << onJust << Record.bar) (\n -> n + 1)
     --> { foo = Just { bar = 2 }, qux = Nothing }
-
-To view nested [`Map.Possibility`](#Maybe)s flattened, [`Map.flat`](#flat)
 
 -}
 onJust : Map (Maybe value) value (Maybe valueMapped) valueMapped
@@ -306,12 +296,6 @@ onJust =
         { foo = Ok { bar = 2 }
         , qux = Err "Not an Int"
         }
-
-    maybeRecord |> Map.view (Record.foo << onOk << Record.bar)
-    --> Just 2
-
-    maybeRecord |> Map.view (Record.qux << onOk << Record.bar)
-    --> Nothing
 
     maybeRecord
         |> Map.over
@@ -346,12 +330,6 @@ onOk =
         { foo = Ok { bar = 2 }
         , qux = Err "Not an Int"
         }
-
-    maybeRecord |> Map.view (Record.foo << onErr)
-    --> Nothing
-
-    maybeRecord |> Map.view (Record.qux << onErr)
-    --> Just "Not an Int"
 
     maybeRecord
         |> Map.over (Record.foo << onErr) String.toUpper

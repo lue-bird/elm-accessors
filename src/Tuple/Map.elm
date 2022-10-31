@@ -15,10 +15,6 @@ import Tuple
     import Map
     import Tuple.Map
 
-
-    ( "It's over", 1 ) |> Map.view Tuple.Map.first
-    --> "It's over"
-
     ( "It's over", 1 )
         |> Map.over Tuple.Map.first (\_ -> "It's over")
     --> ( "It's over", 1 )
