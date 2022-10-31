@@ -1,6 +1,6 @@
 module Tuple.Map exposing (first, second)
 
-{-| map tuple parts `( first, second )`
+{-| [`Map`](Map#Map) tuple parts `( first, second )`
 
 @docs first, second
 
@@ -10,20 +10,20 @@ import Map exposing (Map)
 import Tuple
 
 
-{-| Lens over the first component of a Tuple.
+{-| Map the first part of a Tuple
 
     import Map
     import Tuple.Map
 
-    ( "It's over", 1 )
-        |> Map.over Tuple.Map.first (\_ -> "It's over")
+    ( "It's fine", 1 )
+        |> Map.over Tuple.Map.first (\_ -> "It's fine")
     --> ( "It's over", 1 )
 
-    ( "It's over", 1 )
+    ( "It's fine", 1 )
         |> Map.over
             Tuple.Map.first
             (\m -> (m |> String.toUpper) ++ "!!!")
-    --> ( "IT'S OVER!!!", 1 )
+    --> ( "IT'S FINE!!!", 1 )
 
 -}
 first :
@@ -36,7 +36,7 @@ first =
     Map.at "first" Tuple.mapFirst
 
 
-{-| Lens map the second component of a Tuple.
+{-| Map the second part of a Tuple
 
     import Map
     import Tuple.Map as Tuple
