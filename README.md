@@ -3,34 +3,30 @@ Describe how to map a structure's inner content easily
 ```elm
 import Map exposing (Map, Alter)
 
-fooBars : { foo : List { bar : number } }
-fooBars =
-    { foo =
-        [ { bar = 3 }
-        , { bar = 2 }
-        , { bar = 0 }
+effect : { trail : List { sparkle : Int } }
+effect =
+    { trail =
+        [ { sparkle = 3 }
+        , { sparkle = 2 }
+        , { sparkle = 0 }
         ]
     }
 
-fooBars
+effect
     |> Map.over
-        (recordFoo << List.Map.each << recordBar)
+        (recordTrail << each << recordSparkle)
         (\n -> n * 2)
---> { foo = [ { bar = 6 }, { bar = 4 }, { bar = 0 } ] }
+--> { trail = [ { sparkle = 6 }, { sparkle = 4 }, { sparkle = 0 } ] }
 
-recordFoo : Alter { record | foo : foo } foo
-recordFoo =
-    Map.at "foo"
-        (\alter record -> { record | foo = record.foo |> alter })
+recordTrail : Alter { record | trail : trail } trail
+recordTrail =
+    Map.at "trail"
+        (\alter record -> { record | trail = record.trail |> alter })
 
-recordBar : Alter { record | bar : bar } bar
-recordBar =
-    Map.at "bar"
-        (\alter record -> { record | bar = record.bar |> alter })
-
-onJust : Map (Maybe value) value (Maybe valueMapped) valueMapped
-onJust =
-    Map.at "Just" Maybe.map
+recordSparkle : Alter { record | sparkle : sparkle } sparkle
+recordSparkle =
+    Map.at "sparkle"
+        (\alter record -> { record | sparkle = record.sparkle |> alter })
 
 each : Map (List element) element (List elementMapped) elementMapped
 each = 
@@ -43,33 +39,36 @@ Reaching into on non-matching data structures will yield nice
 compile-time errors
 
 ```elm
-fooBars |> Map.over (recordFoo << recordFoo) (\n -> n * 2)
+Map.over (recordTrail << recordTrail) (\n -> n * 2) effect
 ```
 > The 2nd argument to `over` is not what I expect:
 > 
->     ..| over (recordFoo << recordFoo) fooBars
->                                       ^^^^^^
-> This `fooBars` value is a:
+>     ..| over (recordTrail << recordTrail) effect
+>                                           ^^^^^^
+> This `effect` value is a:
 > 
->     { foo : List { bar : number } }
+>     { trail : List { sparkle : Int } }
 > 
 > But `over` needs the 2nd argument to be:
 > 
->     { foo : { a | foo : c } }
+>     { trail : { a | trail : c } }
 
 Any `Map` you create can be composed with any other to match your new
 data structures
 
 ```elm
 import Map exposing (onJust)
-import List.Map
+
+onJust : Map (Maybe value) value (Maybe valueMapped) valueMapped
+onJust =
+    Map.at "Just" Maybe.map
 
 tryEach =
-    onJust << List.Map.each
+    onJust << each
 
-{ bar = Just [ 1, 3, 2 ] }
-    |> Map.over (recordBar << tryEach) negate
---> { bar = Just [ -1, -3, -2 ] }
+{ sparkle = Just [ 1, 3, 2 ] }
+    |> Map.over (recordSparkle << tryEach) negate
+--> { sparkle = Just [ -1, -3, -2 ] }
 ```
 
 ## contribute
